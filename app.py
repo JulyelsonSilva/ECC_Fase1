@@ -86,7 +86,7 @@ def visao_equipes():
         cursor = conn.cursor(dictionary=True)
 
         if equipe == 'Dirigentes':
-            colunas = ['Montagem', 'Fichas', 'Palestras', 'Finanças', 'Pós Encontro']
+            colunas = ['Montagem', 'Fichas', 'Palestra', 'Finanças', 'Pós Encontro']
             dados = {col: {} for col in colunas}
 
             for pasta in colunas:
@@ -105,7 +105,7 @@ def visao_equipes():
                 tabela[ano] = linha
 
         elif equipe == 'Sala':
-            colunas = ['Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
+            colunas = ['Boa Vontade', 'Canto', 'Canto', 'Som e Projeção', 'Som e Projeção', 'Recepção Palestrantes']
             dados = {col: {} for col in colunas}
 
             for subt in colunas:
