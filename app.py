@@ -255,7 +255,7 @@ def visao_casal():
             dados_encontreiros = [{
                 "ano": r["ano"],
                 "equipe": r["equipe"],
-                "coordenador": r["coordenador"].strip().lower()  # trata espaços e caixa
+               "coordenador": r["coordenador"]
             } for r in resultados_encontreiros]
 
             # Se não encontrou na tabela encontristas, adiciona valor padrão
