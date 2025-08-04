@@ -243,7 +243,7 @@ def visao_casal():
 
         # Buscar dados na tabela encontreiros
         cursor.execute("""
-            SELECT ano, equipe, coordenador, endereco, telefone
+            SELECT ano, equipe, coordenador, endereco, telefones
             FROM encontreiros 
             WHERE nome_usual_ele = %s AND nome_usual_ela = %s
         """, (nome_ele, nome_ela))
@@ -263,7 +263,7 @@ def visao_casal():
             # Endereço e telefone do maior ano
             mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
             dados_encontrista["endereco"] = mais_recente["endereco"]
-            dados_encontrista["telefones"] = mais_recente["telefone"]
+            dados_encontrista["telefones"] = mais_recente["telefones"]
 
         # Se nenhum dado encontrado
         if not resultado_encontrista and not resultados_encontreiros:
