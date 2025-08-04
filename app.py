@@ -206,16 +206,18 @@ def visao_casal():
     nome_ele = request.args.get("nome_ele", "").strip()
     nome_ela = request.args.get("nome_ela", "").strip()
 
-    dados_encontrista = None
+    dados_encontrista = {}
     dados_encontreiros = []
+    erro = None
 
     if not nome_ele or not nome_ela:
+        erro = "Informe ambos os nomes para realizar a busca."
         return render_template("visao_casal.html",
                                nome_ele=nome_ele,
                                nome_ela=nome_ela,
-                               dados_encontrista={},
+                               dados_encontrista=None,
                                dados_encontreiros=[],
-                               erro="Informe ambos os nomes para realizar a busca.")
+                               erro=erro)
 
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -229,49 +231,48 @@ def visao_casal():
         """, (nome_ele, nome_ela))
         resultado_encontrista = cursor.fetchone()
 
-        while cursor.nextset():  # Evita erro Unread result
-            pass
+        while cursor.nextset():
+            pass  # Evita erro Unread result
 
         if resultado_encontrista:
             dados_encontrista = {
-            "ano_encontro": resultado_encontrista["ano"],
-            "endereco": resultado_encontrista["endereco"],
-            "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
-        }
-        else:
-            dados_encontrista = {}
+                "ano_encontro": resultado_encontrista["ano"],
+                "endereco": resultado_encontrista["endereco"],
+                "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+            }
 
-# Busca em encontreiros
-cursor.execute("""
-    SELECT ano, equipe, coordenador, endereco, telefone
-    FROM encontreiros 
-    WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-""", (nome_ele, nome_ela))
-resultados_encontreiros = cursor.fetchall()
+        # Buscar dados na tabela encontreiros
+        cursor.execute("""
+            SELECT ano, equipe, coordenador, endereco, telefone
+            FROM encontreiros 
+            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+        """, (nome_ele, nome_ela))
+        resultados_encontreiros = cursor.fetchall()
 
-if resultados_encontreiros:
-    dados_encontreiros = [{
-        "ano": r["ano"],
-        "equipe": r["equipe"],
-        "coordenador": r["coordenador"]
-    } for r in resultados_encontreiros]
+        if resultados_encontreiros:
+            dados_encontreiros = [{
+                "ano": r["ano"],
+                "equipe": r["equipe"],
+                "coordenador": r["coordenador"]
+            } for r in resultados_encontreiros]
 
-    # Preenche dados do encontrista se ainda não houver
-    if "ano_encontro" not in dados_encontrista:
-        dados_encontrista["ano_encontro"] = "-"
-    
-    # Endereço e telefone do maior ano
-    mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
-    dados_encontrista["endereco"] = mais_recente["endereco"]
-    dados_encontrista["telefones"] = mais_recente["telefone"]
+            # Se encontrista ainda estiver vazio, preencher ano padrão
+            if "ano_encontro" not in dados_encontrista:
+                dados_encontrista["ano_encontro"] = "-"
+
+            # Endereço e telefone do maior ano
+            mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
+            dados_encontrista["endereco"] = mais_recente["endereco"]
+            dados_encontrista["telefones"] = mais_recente["telefone"]
+
+        # Se nenhum dado encontrado
+        if not resultado_encontrista and not resultados_encontreiros:
+            erro = "Casal não encontrado."
 
     finally:
         cursor.close()
         conn.close()
-    if not dados_encontrista and not dados_encontreiros:
-        erro = "Casal não encontrado."
-    else:
-        erro = None
+
     return render_template("visao_casal.html",
                            nome_ele=nome_ele,
                            nome_ela=nome_ela,
