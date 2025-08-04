@@ -86,7 +86,7 @@ def visao_equipes():
         cursor = conn.cursor(dictionary=True)
 
         if equipe == 'Dirigentes':
-            colunas = ['Montagem', 'Fichas', 'Palestra', 'Finanças', 'Pós Encontro']
+            colunas = ['Montagem', 'Fichas', 'Palestras', 'Finanças', 'Pós Encontro']
             dados = {col: {} for col in colunas}
 
             for pasta in colunas:
@@ -104,26 +104,51 @@ def visao_equipes():
                 linha = [dados[col].get(ano, '') for col in colunas]
                 tabela[ano] = linha
 
-        elif equipe == 'Sala':
-            colunas = ['Boa Vontade', 'Canto', 'Canto', 'Som e Projeção', 'Som e Projeção', 'Recepção Palestrantes']
-            dados = {col: {} for col in colunas}
+        
 
-            for subt in colunas:
-                cursor.execute(
-                    "SELECT * FROM encontreiros WHERE equipe LIKE '%SALA%' AND equipe LIKE %s",
-                    (f"%{subt.upper()}%",)
-                )
-                for row in cursor.fetchall():
-                    ano = row['ano']
-                    nome = f"*{row['nome_ele']} e {row['nome_ela']}" if row['coordenador'].strip().lower() == 'sim' else f"{row['nome_ele']} e {row['nome_ela']}"
-                    dados[subt].setdefault(ano, nome)
+elif equipe == 'Sala':
+    colunas = ['Coordenador', 'Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
+    dados_ano = defaultdict(lambda: {col: '' for col in colunas})
+    coordenadores_globais = set()
 
-            anos = sorted({ano for subt_data in dados.values() for ano in subt_data})
-            for ano in anos:
-                linha = [dados[col].get(ano, '') for col in colunas]
-                tabela[ano] = linha
+    cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE '%SALA%'")
+    for row in cursor.fetchall():
+        ano = row['ano']
+        equipe_txt = row['equipe'].upper()
+        nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
+        coordenador = row['coordenador'].strip().lower() == 'sim'
+        if coordenador:
+            coordenadores_globais.add(nome_chave)
 
-        else:
+        if coordenador and all(x not in equipe_txt for x in ['BOA VONTADE', 'CANTO', 'SOM E PROJEÇÃO', 'RECEPÇÃO']):
+            dados_ano[ano]['Coordenador'] = f"*{nome_chave}"
+        elif 'BOA VONTADE' in equipe_txt:
+            dados_ano[ano]['Boa Vontade'] = nome_chave
+        elif 'CANTO' in equipe_txt:
+            if not dados_ano[ano]['Canto 1']:
+                dados_ano[ano]['Canto 1'] = nome_chave
+            elif not dados_ano[ano]['Canto 2']:
+                dados_ano[ano]['Canto 2'] = nome_chave
+        elif 'SOM E PROJEÇÃO' in equipe_txt:
+            if not dados_ano[ano]['Som e Projeção 1']:
+                dados_ano[ano]['Som e Projeção 1'] = nome_chave
+            elif not dados_ano[ano]['Som e Projeção 2']:
+                dados_ano[ano]['Som e Projeção 2'] = nome_chave
+        elif 'RECEPÇÃO' in equipe_txt:
+            dados_ano[ano]['Recepção de Palestras'] = nome_chave
+
+    for ano, linha_dict in dados_ano.items():
+        linha = []
+        for col in colunas:
+            nome = linha_dict[col]
+            if nome.startswith("*"):
+                linha.append(nome)
+            elif nome in coordenadores_globais:
+                linha.append(f"~{nome}")  # marcador de destaque
+            else:
+                linha.append(nome)
+        tabela[ano] = linha
+else:
             colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
             cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
             rows = cursor.fetchall()
