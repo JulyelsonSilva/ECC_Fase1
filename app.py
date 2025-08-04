@@ -213,7 +213,7 @@ def visao_casal():
         return render_template("visao_casal.html",
                                nome_ele=nome_ele,
                                nome_ela=nome_ela,
-                               dados_encontrista=None,
+                               dados_encontrista={},
                                dados_encontreiros=[],
                                erro="Informe ambos os nomes para realizar a busca.")
 
@@ -262,9 +262,13 @@ def visao_casal():
     finally:
         cursor.close()
         conn.close()
-
+    if not dados_encontrista and not dados_encontreiros:
+        erro = "Casal não encontrado."
+    else:
+        erro = None
     return render_template("visao_casal.html",
                            nome_ele=nome_ele,
                            nome_ela=nome_ela,
                            dados_encontrista=dados_encontrista,
-                           dados_encontreiros=dados_encontreiros)
+                           dados_encontreiros=dados_encontreiros,
+                           erro=erro)
