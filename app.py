@@ -210,6 +210,7 @@ def visao_casal():
     dados_encontreiros = []
     erro = None
 
+    # Só continua se ambos os nomes forem informados
     if not nome_ele or not nome_ela:
         erro = "Informe ambos os nomes para realizar a busca."
         return render_template("visao_casal.html",
@@ -219,11 +220,12 @@ def visao_casal():
                                dados_encontreiros=[],
                                erro=erro)
 
+    # Conectar ao banco de dados
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # Buscar dados na tabela encontristas
+        # 🔍 Buscar na tabela ENCONTRISTAS
         cursor.execute("""
             SELECT ano, endereco, telefone_ele, telefone_ela
             FROM encontristas 
@@ -231,8 +233,8 @@ def visao_casal():
         """, (nome_ele, nome_ela))
         resultado_encontrista = cursor.fetchone()
 
-        while cursor.nextset():
-            pass  # Evita erro Unread result
+        while cursor.nextset():  # Evita erro "Unread result found"
+            pass
 
         if resultado_encontrista:
             dados_encontrista = {
@@ -241,31 +243,31 @@ def visao_casal():
                 "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
             }
 
-        # Buscar dados na tabela encontreiros
+        # 🔍 Buscar na tabela ENCONTREIROS
         cursor.execute("""
-            SELECT ano, equipe, coordenador, endereco, telefones
+            SELECT ano, equipe, coordenador, endereco, telefone
             FROM encontreiros 
-            WHERE nome_ele = %s AND nome_ela = %s
+            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
         """, (nome_ele, nome_ela))
         resultados_encontreiros = cursor.fetchall()
 
         if resultados_encontreiros:
-           dados_encontreiros = [{
+            dados_encontreiros = [{
                 "ano": r["ano"],
                 "equipe": r["equipe"],
-                "coordenador": int(r["coordenador"]) if r["coordenador"] is not None else 0
+                "coordenador": str(r["coordenador"])  # Salva como string para uso no template
             } for r in resultados_encontreiros]
 
-            # Se encontrista ainda estiver vazio, preencher ano padrão
+            # Se não encontrou na tabela encontristas, adiciona valor padrão
             if "ano_encontro" not in dados_encontrista:
                 dados_encontrista["ano_encontro"] = "-"
 
-            # Endereço e telefone do maior ano
+            # Pega endereço e telefone do ano mais recente
             mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
             dados_encontrista["endereco"] = mais_recente["endereco"]
-            dados_encontrista["telefones"] = mais_recente["telefones"]
+            dados_encontrista["telefones"] = mais_recente["telefone"]
 
-        # Se nenhum dado encontrado
+        # Se nenhum dado encontrado em nenhuma tabela
         if not resultado_encontrista and not resultados_encontreiros:
             erro = "Casal não encontrado."
 
