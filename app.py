@@ -6,9 +6,9 @@ app = Flask(__name__)
 
 DB_CONFIG = {
     'host': 'db4free.net',
-    'user': 'seu_usuario',
-    'password': 'sua_senha',
-    'database': 'seu_banco'
+    'user': 'eccdivino2',
+    'password': 'eccdivino2025',
+    'database': 'eccdivinomcz2'
 }
 
 @app.route('/')
