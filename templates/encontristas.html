@@ -14,13 +14,32 @@
   </form>
   <table border="1">
     <tr>
-      <th>Nome Usual Ele</th><th>Nome Usual Ela</th><th>Ano</th>
+      <th>Nome Completo Ele</th><th>Nome Completo Ela</th>
+      <th>Nome Usual Ele</th><th>Nome Usual Ela</th>
+      <th>Telefone Ele</th><th>Telefone Ela</th>
+      <th>Endereço</th><th>ECC Nº</th><th>Ano</th>
+      <th>Anos Casados</th><th>Cor do Círculo</th>
+      <th>Casal Visitação</th><th>Ficha Nº</th><th>Aceitou?</th>
+      <th>Observação</th><th>Observação Extra</th>
     </tr>
     {% for item in dados %}
     <tr>
+      <td>{{ item.nome_completo_ele }}</td>
+      <td>{{ item.nome_completo_ela }}</td>
       <td>{{ item.nome_usual_ele }}</td>
       <td>{{ item.nome_usual_ela }}</td>
+      <td>{{ item.telefone_ele }}</td>
+      <td>{{ item.telefone_ela }}</td>
+      <td>{{ item.endereco }}</td>
+      <td>{{ item.ecc_num }}</td>
       <td>{{ item.ano }}</td>
+      <td>{{ item.anos_casados }}</td>
+      <td>{{ item.cor_circulo }}</td>
+      <td>{{ item.casal_visitacao }}</td>
+      <td>{{ item.ficha_num }}</td>
+      <td>{{ item.aceitou }}</td>
+      <td>{{ item.observacao }}</td>
+      <td>{{ item.observacao_extra }}</td>
     </tr>
     {% endfor %}
   </table>
