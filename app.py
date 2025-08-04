@@ -203,31 +203,42 @@ def autocomplete_nomes():
 
 @app.route('/visao-casal')
 def visao_casal():
-    nome_ele = request.args.get("nome_ele", "").strip()
-    nome_ela = request.args.get("nome_ela", "").strip()
+    nome_ele = request.args.get("nome_ele", "")
+    nome_ela = request.args.get("nome_ela", "")
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
     dados_encontrista = None
-    equipes = []
+    dados_encontreiros = []
 
-    if nome_ele or nome_ela:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-
-        # Buscar na tabela encontristas
-        cursor.execute("SELECT * FROM encontristas WHERE nome_ele LIKE %s OR nome_ela LIKE %s", 
-                       (f"%{nome_ele}%", f"%{nome_ela}%"))
+    try:
+        # Buscar se foi encontrista
+        cursor.execute("""
+            SELECT ano 
+            FROM encontristas 
+            WHERE nome_usual_ele LIKE %s OR nome_usual_ela LIKE %s
+            """, (f"%{nome_ele}%", f"%{nome_ela}%"))
         dados_encontrista = cursor.fetchone()
 
-        # Buscar na tabela encontreiros
-        cursor.execute("SELECT * FROM encontreiros WHERE nome_ele LIKE %s OR nome_ela LIKE %s", 
-                       (f"%{nome_ele}%", f"%{nome_ela}%"))
-        for row in cursor.fetchall():
-            equipes.append({
-                'ano': row['ano'],
-                'equipe': row['equipe'],
-                'pasta': row.get('pasta', ''),
-                'coordenador': row['coordenador'].strip().lower() == 'sim'
-            })
+        # Evita erro de result pendente
+        while cursor.nextset():
+            pass
+
+        # Buscar se trabalhou como encontreiros
+        cursor.execute("""
+            SELECT ano, equipe, coordenador 
+            FROM encontreiros 
+            WHERE nome_ele LIKE %s OR nome_ela LIKE %s
+            """, (f"%{nome_ele}%", f"%{nome_ela}%"))
+        dados_encontreiros = cursor.fetchall()
+
+    finally:
+        cursor.close()
         conn.close()
 
-    return render_template("visao_casal.html", nome_ele=nome_ele, nome_ela=nome_ela,
-                           dados_encontrista=dados_encontrista, equipes=equipes)
+    return render_template("visao_casal.html",
+                           nome_ele=nome_ele,
+                           nome_ela=nome_ela,
+                           dados_encontrista=dados_encontrista,
+                           dados_encontreiros=dados_encontreiros)
