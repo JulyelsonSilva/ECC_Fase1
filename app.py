@@ -90,7 +90,7 @@ def visao_equipes():
         cursor = conn.cursor(dictionary=True)
 
         if equipe == 'Dirigentes':
-            colunas = ['Montagem', 'Fichas', 'Palestras', 'Finanças', 'Pós Encontro']
+            colunas = ['Montagem', 'Fichas', 'Palestra', 'Finanças', 'Pós Encontro']
             dados = {col: {} for col in colunas}
 
             for pasta in colunas:
