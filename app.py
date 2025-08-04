@@ -213,7 +213,7 @@ def visao_casal():
         cursor = conn.cursor(dictionary=True)
 
         # Buscar na tabela encontristas
-        cursor.execute("SELECT * FROM encontristas WHERE nome_ele LIKE %s OR nome_ela LIKE %s", 
+        cursor.execute("SELECT * FROM encontristas WHERE nome_usual_ele LIKE %s OR nome_usual_ela LIKE %s", 
                        (f"%{nome_ele}%", f"%{nome_ela}%"))
         dados_encontrista = cursor.fetchone()
 
