@@ -1,85 +1,49 @@
 from flask import Flask, render_template, request
 import mysql.connector
-import math
+from collections import defaultdict
 
 app = Flask(__name__)
 
 DB_CONFIG = {
     'host': 'db4free.net',
-    'user': 'eccdivino2',
-    'password': 'eccdivino2025',
-    'database': 'eccdivinomcz2'
+    'user': 'seu_usuario',
+    'password': 'sua_senha',
+    'database': 'seu_banco'
 }
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+@app.route('/visao-equipes')
+def visao_equipes():
+    equipe = request.args.get('equipe', '')
+    tabela = {}
+    colunas = []
 
-@app.route('/encontristas')
-def encontristas():
-    page = int(request.args.get('page', 1))
-    nome_ele = request.args.get('nome_usual_ele', '')
-    nome_ela = request.args.get('nome_usual_ela', '')
-    ano = request.args.get('ano', '')
+    if equipe:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
+        rows = cursor.fetchall()
+        conn.close()
 
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
+        por_ano = defaultdict(list)
+        for row in rows:
+            ano = row['ano']
+            nome = f"*{row['nome_ele']} e {row['nome_ela']}" if row['coordenador'].strip().lower() == 'sim' else f"{row['nome_ele']} e {row['nome_ela']}"
+            por_ano[ano].append(nome)
 
-    filters = []
-    params = []
-    if nome_ele:
-        filters.append("nome_usual_ele LIKE %s")
-        params.append(f"%{nome_ele}%")
-    if nome_ela:
-        filters.append("nome_usual_ela LIKE %s")
-        params.append(f"%{nome_ela}%")
-    if ano:
-        filters.append("ano = %s")
-        params.append(ano)
+        if equipe == 'Dirigentes':
+            colunas = ['Montagem', 'Fichas', 'Palestras', 'Finanças', 'Pós Encontro']
+        elif equipe == 'Sala':
+            colunas = ['Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
+        else:
+            colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
 
-    where_clause = "WHERE " + " AND ".join(filters) if filters else ""
-    limit = 50
-    offset = (page - 1) * limit
+        for ano, nomes in por_ano.items():
+            linha = nomes[:len(colunas)]
+            while len(linha) < len(colunas):
+                linha.append('')
+            tabela[ano] = linha
 
-    cursor.execute(f"SELECT COUNT(*) as total FROM encontristas {where_clause}", params)
-    total = cursor.fetchone()['total']
-    total_pages = math.ceil(total / limit)
-
-    cursor.execute(f"SELECT * FROM encontristas {where_clause} LIMIT %s OFFSET %s", params + [limit, offset])
-    data = cursor.fetchall()
-
-    conn.close()
-    return render_template('encontristas.html', dados=data, page=page, total_pages=total_pages)
-
-@app.route('/encontreiros')
-def encontreiros():
-    nome_ele = request.args.get('nome_ele', '')
-    nome_ela = request.args.get('nome_ela', '')
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-
-    filters = []
-    params = []
-    if nome_ele:
-        filters.append("nome_ele LIKE %s")
-        params.append(f"%{nome_ele}%")
-    if nome_ela:
-        filters.append("nome_ela LIKE %s")
-        params.append(f"%{nome_ela}%")
-
-    where_clause = "WHERE " + " AND ".join(filters) if filters else ""
-
-    cursor.execute(f"SELECT DISTINCT ano FROM encontreiros ORDER BY ano DESC")
-    anos = [row['ano'] for row in cursor.fetchall()]
-    ano_dados = {}
-
-    for ano in anos:
-        cursor.execute(f"SELECT * FROM encontreiros {where_clause} AND ano = %s" if where_clause else "SELECT * FROM encontreiros WHERE ano = %s", params + [ano])
-        ano_dados[ano] = cursor.fetchall()
-
-    conn.close()
-    return render_template('encontreiros.html', dados_por_ano=ano_dados)
+    return render_template('visao_equipes.html', equipe_selecionada=equipe, tabela=tabela, colunas=colunas)
 
 if __name__ == '__main__':
     app.run(debug=True)

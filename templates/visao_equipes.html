@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Visão por Equipes</title>
+</head>
+<body>
+  <h1>Visão por Equipes</h1>
+  <form method="get">
+    <label for="equipe">Selecione uma equipe:</label>
+    <select name="equipe" id="equipe">
+      <option value="">-- Escolha --</option>
+      <option value="Dirigentes">Dirigentes</option>
+      <option value="Coordenador Geral">Coordenador Geral</option>
+      <option value="Sala">Sala</option>
+      <option value="Círculos">Círculos</option>
+      <option value="Café e Minimercado">Café e Minimercado</option>
+      <option value="Compras">Compras</option>
+      <option value="Acolhida">Acolhida</option>
+      <option value="Ordem e Limpeza">Ordem e Limpeza</option>
+      <option value="Secretaria">Secretaria</option>
+      <option value="Liturgia e Vigilia">Liturgia e Vigilia</option>
+      <option value="Cozinha">Cozinha</option>
+      <option value="Visitação">Visitação</option>
+    </select>
+    <button type="submit">Buscar</button>
+  </form>
+
+  {% if tabela %}
+    <h2>{{ equipe_selecionada }}</h2>
+    <table border="1">
+      <tr>
+        <th>Ano</th>
+        {% for col in colunas %}
+          <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+      {% for ano, dados in tabela.items() %}
+        <tr>
+          <td>{{ ano }}</td>
+          {% for nome in dados %}
+            <td>{% if nome.startswith('*') %}<strong>{{ nome[1:] }}</strong>{% else %}{{ nome }}{% endif %}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+</body>
+</html>
