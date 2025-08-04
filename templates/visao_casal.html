@@ -42,7 +42,7 @@
           <tr>
             <td>{{ linha.ano }}</td>
             <td>{{ linha.equipe }}</td>
-           <td>{{ 'Sim' if linha.coordenador in ['1', 1, True] else 'Não' }}</td>
+          <td>{{ 'Sim' if linha.coordenador == 'sim' else 'Não' }}</td>
           </tr>
         {% endfor %}
       </tbody>
