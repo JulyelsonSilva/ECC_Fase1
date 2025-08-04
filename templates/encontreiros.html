@@ -7,28 +7,30 @@
 <body>
   <h1>Encontreiros</h1>
   <form method="get">
-    Nome Ele: <input type="text" name="nome_ele">
-    Nome Ela: <input type="text" name="nome_ela">
+    Nome Ele: <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele', '') }}">
+    Nome Ela: <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela', '') }}">
     <button type="submit">Filtrar</button>
   </form>
-  {% for ano, dados in dados_por_ano.items() %}
-  <h2>{{ ano }}</h2>
-  <table border="1">
-    <tr>
-      <th>Equipe</th><th>Nome Ele</th><th>Nome Ela</th>
-      <th>Telefones</th><th>Endereço</th><th>Coordenador</th>
-    </tr>
-    {% for item in dados %}
-    <tr>
-      <td>{{ item.equipe }}</td>
-      <td>{{ item.nome_ele }}</td>
-      <td>{{ item.nome_ela }}</td>
-      <td>{{ item.telefones }}</td>
-      <td>{{ item.endereco }}</td>
-      <td>{{ item.coordenador }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+  {% for ano, registros in por_ano.items() %}
+    <h2>{{ ano }}</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          {% for col in registros[0].keys() %}
+            <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in registros %}
+          <tr>
+            {% for value in row.values() %}
+              <td>{{ value }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% endfor %}
 </body>
 </html>

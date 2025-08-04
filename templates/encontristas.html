@@ -7,49 +7,36 @@
 <body>
   <h1>Encontristas</h1>
   <form method="get">
-    Nome Usual Ele: <input type="text" name="nome_usual_ele">
-    Nome Usual Ela: <input type="text" name="nome_usual_ela">
-    Ano: <input type="text" name="ano">
+    Nome Usual Ele: <input type="text" name="nome_usual_ele" value="{{ request.args.get('nome_usual_ele', '') }}">
+    Nome Usual Ela: <input type="text" name="nome_usual_ela" value="{{ request.args.get('nome_usual_ela', '') }}">
+    Ano: <input type="text" name="ano" value="{{ request.args.get('ano', '') }}">
     <button type="submit">Filtrar</button>
   </form>
   <table border="1">
-    <tr>
-      <th>Nome Completo Ele</th><th>Nome Completo Ela</th>
-      <th>Nome Usual Ele</th><th>Nome Usual Ela</th>
-      <th>Telefone Ele</th><th>Telefone Ela</th>
-      <th>Endereço</th><th>ECC Nº</th><th>Ano</th>
-      <th>Anos Casados</th><th>Cor do Círculo</th>
-      <th>Casal Visitação</th><th>Ficha Nº</th><th>Aceitou?</th>
-      <th>Observação</th><th>Observação Extra</th>
-    </tr>
-    {% for item in dados %}
-    <tr>
-      <td>{{ item.nome_completo_ele }}</td>
-      <td>{{ item.nome_completo_ela }}</td>
-      <td>{{ item.nome_usual_ele }}</td>
-      <td>{{ item.nome_usual_ela }}</td>
-      <td>{{ item.telefone_ele }}</td>
-      <td>{{ item.telefone_ela }}</td>
-      <td>{{ item.endereco }}</td>
-      <td>{{ item.ecc_num }}</td>
-      <td>{{ item.ano }}</td>
-      <td>{{ item.anos_casados }}</td>
-      <td>{{ item.cor_circulo }}</td>
-      <td>{{ item.casal_visitacao }}</td>
-      <td>{{ item.ficha_num }}</td>
-      <td>{{ item.aceitou }}</td>
-      <td>{{ item.observacao }}</td>
-      <td>{{ item.observacao_extra }}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        {% for col in dados[0].keys() %}
+          <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in dados %}
+        <tr>
+          {% for value in row.values() %}
+            <td>{{ value }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
   <div>
-    {% if page > 1 %}
-      <a href="?page={{ page - 1 }}">Anterior</a>
+    {% if pagina > 1 %}
+      <a href="{{ url_for('encontristas', pagina=pagina-1, **request.args.to_dict()) }}">Anterior</a>
     {% endif %}
-    Página {{ page }} de {{ total_pages }}
-    {% if page < total_pages %}
-      <a href="?page={{ page + 1 }}">Próxima</a>
+    Página {{ pagina }} de {{ total_paginas }}
+    {% if pagina < total_paginas %}
+      <a href="{{ url_for('encontristas', pagina=pagina+1, **request.args.to_dict()) }}">Próxima</a>
     {% endif %}
   </div>
 </body>

@@ -7,42 +7,37 @@
 <body>
   <h1>Visão por Equipes</h1>
   <form method="get">
-    <label for="equipe">Selecione uma equipe:</label>
-    <select name="equipe" id="equipe">
+    <label>Selecione uma Equipe:</label>
+    <select name="equipe" onchange="this.form.submit()">
       <option value="">-- Escolha --</option>
-      <option value="Dirigentes">Dirigentes</option>
-      <option value="Coordenador Geral">Coordenador Geral</option>
-      <option value="Sala">Sala</option>
-      <option value="Círculos">Círculos</option>
-      <option value="Café e Minimercado">Café e Minimercado</option>
-      <option value="Compras">Compras</option>
-      <option value="Acolhida">Acolhida</option>
-      <option value="Ordem e Limpeza">Ordem e Limpeza</option>
-      <option value="Secretaria">Secretaria</option>
-      <option value="Liturgia e Vigilia">Liturgia e Vigilia</option>
-      <option value="Cozinha">Cozinha</option>
-      <option value="Visitação">Visitação</option>
+      {% for opt in ['Dirigentes', 'Coordenador Geral', 'Sala', 'Círculos', 'Café e Minimercado',
+                     'Compras', 'Acolhida', 'Ordem e Limpeza', 'Secretaria',
+                     'Liturgia e Vigilia', 'Cozinha', 'Visitação'] %}
+        <option value="{{ opt }}" {% if opt == equipe_selecionada %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
     </select>
-    <button type="submit">Buscar</button>
   </form>
-
   {% if tabela %}
-    <h2>{{ equipe_selecionada }}</h2>
+    <h2>Equipe: {{ equipe_selecionada }}</h2>
     <table border="1">
-      <tr>
-        <th>Ano</th>
-        {% for col in colunas %}
-          <th>{{ col }}</th>
-        {% endfor %}
-      </tr>
-      {% for ano, dados in tabela.items() %}
+      <thead>
         <tr>
-          <td>{{ ano }}</td>
-          {% for nome in dados %}
-            <td>{% if nome.startswith('*') %}<strong>{{ nome[1:] }}</strong>{% else %}{{ nome }}{% endif %}</td>
+          <th>Ano</th>
+          {% for col in colunas %}
+            <th>{{ col }}</th>
           {% endfor %}
         </tr>
-      {% endfor %}
+      </thead>
+      <tbody>
+        {% for ano, linha in tabela.items() %}
+          <tr>
+            <td>{{ ano }}</td>
+            {% for nome in linha %}
+              <td>{% if nome.startswith('*') %}<b>{{ nome[1:] }}</b>{% else %}{{ nome }}{% endif %}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
   {% endif %}
 </body>
