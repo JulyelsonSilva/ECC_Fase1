@@ -257,7 +257,7 @@ def visao_casal():
             # Substituir endereço e telefone, se houver ano mais recente
             mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
             dados_encontrista["endereco"] = mais_recente["endereco"]
-            dados_encontrista["telefones"] = mais_recente["telefone"]
+            dados_encontrista["telefones"] = mais_recente["telefones"]
 
     finally:
         cursor.close()
