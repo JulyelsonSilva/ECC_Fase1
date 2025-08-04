@@ -250,10 +250,10 @@ def visao_casal():
         resultados_encontreiros = cursor.fetchall()
 
         if resultados_encontreiros:
-            dados_encontreiros = [{
+           dados_encontreiros = [{
                 "ano": r["ano"],
                 "equipe": r["equipe"],
-                "coordenador": r["coordenador"]
+                "coordenador": int(r["coordenador"]) if r["coordenador"] is not None else 0
             } for r in resultados_encontreiros]
 
             # Se encontrista ainda estiver vazio, preencher ano padrão
