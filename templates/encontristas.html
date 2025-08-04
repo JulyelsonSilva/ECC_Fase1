@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Encontristas</title>
+</head>
+<body>
+  <h1>Encontristas</h1>
+  <form method="get">
+    Nome Usual Ele: <input type="text" name="nome_usual_ele">
+    Nome Usual Ela: <input type="text" name="nome_usual_ela">
+    Ano: <input type="text" name="ano">
+    <button type="submit">Filtrar</button>
+  </form>
+  <table border="1">
+    <tr>
+      <th>Nome Usual Ele</th><th>Nome Usual Ela</th><th>Ano</th>
+    </tr>
+    {% for item in dados %}
+    <tr>
+      <td>{{ item.nome_usual_ele }}</td>
+      <td>{{ item.nome_usual_ela }}</td>
+      <td>{{ item.ano }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div>
+    {% if page > 1 %}
+      <a href="?page={{ page - 1 }}">Anterior</a>
+    {% endif %}
+    Página {{ page }} de {{ total_pages }}
+    {% if page < total_pages %}
+      <a href="?page={{ page + 1 }}">Próxima</a>
+    {% endif %}
+  </div>
+</body>
+</html>

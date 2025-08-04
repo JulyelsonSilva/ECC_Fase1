@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Encontreiros</title>
+</head>
+<body>
+  <h1>Encontreiros</h1>
+  <form method="get">
+    Nome Ele: <input type="text" name="nome_ele">
+    Nome Ela: <input type="text" name="nome_ela">
+    <button type="submit">Filtrar</button>
+  </form>
+  {% for ano, dados in dados_por_ano.items() %}
+  <h2>{{ ano }}</h2>
+  <table border="1">
+    <tr>
+      <th>Equipe</th><th>Ele</th><th>Ela</th>
+    </tr>
+    {% for item in dados %}
+    <tr>
+      <td>{{ item.equipe }}</td>
+      <td>{{ item.nome_ele }}</td>
+      <td>{{ item.nome_ela }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+</body>
+</html>
