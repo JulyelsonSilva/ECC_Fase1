@@ -1,42 +1,52 @@
-
 {% extends "base.html" %}
 {% block content %}
   <h2 style="text-align: center;">Visão por Casal</h2>
+
   <form method="get" style="text-align: center; margin-bottom: 20px;">
-    <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome Ele" value="{{ nome_ele }}" list="sugestoes_ele">
+    <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome Ele" value="{{ nome_ele }}" list="sugestoes_ele" required>
     <datalist id="sugestoes_ele"></datalist>
 
-    <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome Ela" value="{{ nome_ela }}" list="sugestoes_ela">
+    <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome Ela" value="{{ nome_ela }}" list="sugestoes_ela" required>
     <datalist id="sugestoes_ela"></datalist>
 
     <button type="submit">Buscar</button>
   </form>
 
-  {% if dados_encontrista %}
-    <h3>Encontrista em: {{ dados_encontrista['ano'] }}</h3>
+  {% if erro %}
+    <p style="color: red; text-align: center;">{{ erro }}</p>
   {% endif %}
 
-  {% if equipes %}
-  <table border="1" style="margin: auto; border-collapse: collapse;">
-    <thead>
-      <tr>
-        <th>Ano</th>
-        <th>Equipe</th>
-        <th>Pasta</th>
-        <th>Coordenador</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for linha in equipes %}
+  {% if dados_encontrista %}
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h3>Dados do Encontro</h3>
+      <p><strong>Ano do Encontro:</strong> {{ dados_encontrista.ano_encontro }}</p>
+      <p><strong>Endereço:</strong> {{ dados_encontrista.endereco }}</p>
+      <p><strong>Telefones:</strong> {{ dados_encontrista.telefones }}</p>
+    </div>
+  {% elif nome_ele and nome_ela %}
+    <p style="text-align: center; color: red;">Casal não encontrado.</p>
+  {% endif %}
+
+  {% if dados_encontreiros %}
+    <h3 style="text-align: center;">Histórico de Trabalho</h3>
+    <table border="1" style="margin: auto; border-collapse: collapse;">
+      <thead>
         <tr>
-          <td>{{ linha['ano'] }}</td>
-          <td>{{ linha['equipe'] }}</td>
-          <td>{{ linha['pasta'] }}</td>
-          <td>{{ 'Sim' if linha['coordenador'] else 'Não' }}</td>
+          <th>Ano</th>
+          <th>Equipe</th>
+          <th>Coordenador</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for linha in dados_encontreiros %}
+          <tr>
+            <td>{{ linha.ano }}</td>
+            <td>{{ linha.equipe }}</td>
+            <td>{{ 'Sim' if linha.coordenador else 'Não' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% endif %}
 
   <script>
