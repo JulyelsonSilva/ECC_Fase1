@@ -233,31 +233,37 @@ def visao_casal():
             pass
 
         if resultado_encontrista:
-            dados_encontrista = {
-                "ano_encontro": resultado_encontrista["ano"],
-                "endereco": resultado_encontrista["endereco"],
-                "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
-            }
+    dados_encontrista = {
+        "ano_encontro": resultado_encontrista["ano"],
+        "endereco": resultado_encontrista["endereco"],
+        "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+    }
+else:
+    dados_encontrista = {}
 
-        # Buscar dados na tabela encontreiros
-        cursor.execute("""
-            SELECT ano, equipe, coordenador, endereco, telefones
-            FROM encontreiros 
-            WHERE nome_ele = %s AND nome_ela = %s
-        """, (nome_ele, nome_ela))
-        resultados_encontreiros = cursor.fetchall()
+# Busca em encontreiros
+cursor.execute("""
+    SELECT ano, equipe, coordenador, endereco, telefone
+    FROM encontreiros 
+    WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+""", (nome_ele, nome_ela))
+resultados_encontreiros = cursor.fetchall()
 
-        if resultados_encontreiros:
-            dados_encontreiros = [{
-                "ano": r["ano"],
-                "equipe": r["equipe"],
-                "coordenador": r["coordenador"]
-            } for r in resultados_encontreiros]
+if resultados_encontreiros:
+    dados_encontreiros = [{
+        "ano": r["ano"],
+        "equipe": r["equipe"],
+        "coordenador": r["coordenador"]
+    } for r in resultados_encontreiros]
 
-            # Substituir endereço e telefone, se houver ano mais recente
-            mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
-            dados_encontrista["endereco"] = mais_recente["endereco"]
-            dados_encontrista["telefones"] = mais_recente["telefones"]
+    # Preenche dados do encontrista se ainda não houver
+    if "ano_encontro" not in dados_encontrista:
+        dados_encontrista["ano_encontro"] = "-"
+    
+    # Endereço e telefone do maior ano
+    mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
+    dados_encontrista["endereco"] = mais_recente["endereco"]
+    dados_encontrista["telefones"] = mais_recente["telefone"]
 
     finally:
         cursor.close()
