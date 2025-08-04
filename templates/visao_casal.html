@@ -42,7 +42,7 @@
           <tr>
             <td>{{ linha.ano }}</td>
             <td>{{ linha.equipe }}</td>
-            <td>{{ 'Sim' if linha.coordenador else 'Não' }}</td>
+           <td>{{ 'Sim' if linha.coordenador|int == 1 else 'Não' }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -74,4 +74,7 @@
     inputEle.addEventListener("input", () => buscarNomes(inputEle, datalistEle));
     inputEla.addEventListener("input", () => buscarNomes(inputEla, datalistEla));
   </script>
+{% if erro %}
+  <p style="color: red; text-align: center;">{{ erro }}</p>
+{% endif %}
 {% endblock %}
