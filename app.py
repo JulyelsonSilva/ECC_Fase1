@@ -233,13 +233,13 @@ def visao_casal():
             pass
 
         if resultado_encontrista:
-    dados_encontrista = {
-        "ano_encontro": resultado_encontrista["ano"],
-        "endereco": resultado_encontrista["endereco"],
-        "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
-    }
-else:
-    dados_encontrista = {}
+            dados_encontrista = {
+            "ano_encontro": resultado_encontrista["ano"],
+            "endereco": resultado_encontrista["endereco"],
+            "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+        }
+        else:
+            dados_encontrista = {}
 
 # Busca em encontreiros
 cursor.execute("""
