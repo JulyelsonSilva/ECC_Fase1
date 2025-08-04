@@ -10,12 +10,10 @@
       margin: 0;
       padding: 0;
       background-color: #f9f9f9;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       text-align: center;
+    }
+    header {
+      padding: 2em 1em;
     }
     h1 {
       font-size: 2.5em;
@@ -25,11 +23,13 @@
       font-size: 1.2em;
       margin: 0.1em 0;
     }
-    .links {
-      margin-top: 4em;
+    main {
       display: flex;
       flex-direction: column;
-      gap: 1.5em;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+      gap: 2em;
     }
     a {
       text-decoration: none;
@@ -46,14 +46,15 @@
   </style>
 </head>
 <body>
-  <h1>Encontro de Casais com Cristo</h1>
-  <h2>Paróquia Divino Espírito Santo - Jatiúca</h2>
-  <h3>Forania Nossa Senhora Mãe do Povo - Arquidiocese de Maceió</h3>
-
-  <div class="links">
+  <header>
+    <h1>Encontro de Casais com Cristo</h1>
+    <h2>Paróquia Divino Espírito Santo - Jatiúca</h2>
+    <h3>Forania Nossa Senhora Mãe do Povo - Arquidiocese de Maceió</h3>
+  </header>
+  <main>
     <a href="/encontristas">Encontristas</a>
     <a href="/encontreiros">Encontreiros</a>
-    <a href="/visao_equipes">Visão Equipes</a>
-  </div>
+    <a href="/visao-equipes">Visão Equipes</a>
+  </main>
 </body>
 </html>
