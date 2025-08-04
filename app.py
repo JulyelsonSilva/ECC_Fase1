@@ -203,35 +203,61 @@ def autocomplete_nomes():
 
 @app.route('/visao-casal')
 def visao_casal():
-    nome_ele = request.args.get("nome_ele", "")
-    nome_ela = request.args.get("nome_ela", "")
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
+    nome_ele = request.args.get("nome_ele", "").strip()
+    nome_ela = request.args.get("nome_ela", "").strip()
 
     dados_encontrista = None
     dados_encontreiros = []
 
-    try:
-        # Buscar se foi encontrista
-        cursor.execute("""
-            SELECT ano 
-            FROM encontristas 
-            WHERE nome_usual_ele LIKE %s OR nome_usual_ela LIKE %s
-            """, (f"%{nome_ele}%", f"%{nome_ela}%"))
-        dados_encontrista = cursor.fetchone()
+    if not nome_ele or not nome_ela:
+        return render_template("visao_casal.html",
+                               nome_ele=nome_ele,
+                               nome_ela=nome_ela,
+                               dados_encontrista=None,
+                               dados_encontreiros=[],
+                               erro="Informe ambos os nomes para realizar a busca.")
 
-        # Evita erro de result pendente
-        while cursor.nextset():
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Buscar dados na tabela encontristas
+        cursor.execute("""
+            SELECT ano, endereco, telefone_ele, telefone_ela
+            FROM encontristas 
+            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+        """, (nome_ele, nome_ela))
+        resultado_encontrista = cursor.fetchone()
+
+        while cursor.nextset():  # Evita erro Unread result
             pass
 
-        # Buscar se trabalhou como encontreiros
+        if resultado_encontrista:
+            dados_encontrista = {
+                "ano_encontro": resultado_encontrista["ano"],
+                "endereco": resultado_encontrista["endereco"],
+                "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+            }
+
+        # Buscar dados na tabela encontreiros
         cursor.execute("""
-            SELECT ano, equipe, coordenador 
+            SELECT ano, equipe, coordenador, endereco, telefone
             FROM encontreiros 
-            WHERE nome_ele LIKE %s OR nome_ela LIKE %s
-            """, (f"%{nome_ele}%", f"%{nome_ela}%"))
-        dados_encontreiros = cursor.fetchall()
+            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+        """, (nome_ele, nome_ela))
+        resultados_encontreiros = cursor.fetchall()
+
+        if resultados_encontreiros:
+            dados_encontreiros = [{
+                "ano": r["ano"],
+                "equipe": r["equipe"],
+                "coordenador": r["coordenador"]
+            } for r in resultados_encontreiros]
+
+            # Substituir endereço e telefone, se houver ano mais recente
+            mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
+            dados_encontrista["endereco"] = mais_recente["endereco"]
+            dados_encontrista["telefones"] = mais_recente["telefone"]
 
     finally:
         cursor.close()
