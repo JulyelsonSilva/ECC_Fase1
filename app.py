@@ -78,6 +78,8 @@ def encontreiros():
 
 
 @app.route('/visao-equipes')
+
+@app.route('/visao-equipes')
 def visao_equipes():
     equipe = request.args.get('equipe', '')
     tabela = {}
@@ -184,3 +186,48 @@ def visao_equipes():
         conn.close()
 
     return render_template('visao_equipes.html', equipe_selecionada=equipe, tabela=tabela, colunas=colunas)
+def autocomplete_nomes():
+    termo = request.args.get("q", "").strip()
+    resultados = set()
+    if termo and len(termo) >= 3:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("SELECT nome_ele, nome_ela FROM encontristas WHERE nome_ele LIKE %s OR nome_ela LIKE %s", 
+                       (f"%{termo}%", f"%{termo}%"))
+        for nome_ele, nome_ela in cursor.fetchall():
+            resultados.add(nome_ele)
+            resultados.add(nome_ela)
+        conn.close()
+    return jsonify(sorted(resultados))
+
+
+@app.route('/visao-casal')
+def visao_casal():
+    nome_ele = request.args.get("nome_ele", "").strip()
+    nome_ela = request.args.get("nome_ela", "").strip()
+    dados_encontrista = None
+    equipes = []
+
+    if nome_ele or nome_ela:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+
+        # Buscar na tabela encontristas
+        cursor.execute("SELECT * FROM encontristas WHERE nome_ele LIKE %s OR nome_ela LIKE %s", 
+                       (f"%{nome_ele}%", f"%{nome_ela}%"))
+        dados_encontrista = cursor.fetchone()
+
+        # Buscar na tabela encontreiros
+        cursor.execute("SELECT * FROM encontreiros WHERE nome_ele LIKE %s OR nome_ela LIKE %s", 
+                       (f"%{nome_ele}%", f"%{nome_ela}%"))
+        for row in cursor.fetchall():
+            equipes.append({
+                'ano': row['ano'],
+                'equipe': row['equipe'],
+                'pasta': row.get('pasta', ''),
+                'coordenador': row['coordenador'].strip().lower() == 'sim'
+            })
+        conn.close()
+
+    return render_template("visao_casal.html", nome_ele=nome_ele, nome_ela=nome_ela,
+                           dados_encontrista=dados_encontrista, equipes=equipes)

@@ -34,9 +34,9 @@
           <td>{{ ano }}</td>
           {% for nome in linha %}
             <td>
-              {% if nome.startswith('*') %}
+              {% if nome and nome.startswith('*') %}
                 <b>{{ nome[1:] }}</b>
-              {% elif nome.startswith('~') %}
+              {% elif nome and nome.startswith('~') %}
                 <span style="background-color: yellow">{{ nome[1:] }}</span>
               {% else %}
                 {{ nome }}
