@@ -1,44 +1,51 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Visão por Equipes</title>
-</head>
-<body>
-  <h1>Visão por Equipes</h1>
-  <form method="get">
-    <label>Selecione uma Equipe:</label>
+
+{% extends "base.html" %}
+{% block content %}
+  <h2 style="text-align: center;">Visão por Equipe: {{ equipe_selecionada }}</h2>
+  <form method="get" style="text-align: center; margin-bottom: 20px;">
     <select name="equipe" onchange="this.form.submit()">
-      <option value="">-- Escolha --</option>
-      {% for opt in ['Dirigentes', 'Coordenador Geral', 'Sala', 'Círculos', 'Café e Minimercado',
-                     'Compras', 'Acolhida', 'Ordem e Limpeza', 'Secretaria',
-                     'Liturgia e Vigilia', 'Cozinha', 'Visitação'] %}
-        <option value="{{ opt }}" {% if opt == equipe_selecionada %}selected{% endif %}>{{ opt }}</option>
-      {% endfor %}
+      <option value="">Selecione uma equipe</option>
+      <option value="Dirigentes" {% if equipe_selecionada == 'Dirigentes' %}selected{% endif %}>Dirigentes</option>
+      <option value="Sala" {% if equipe_selecionada == 'Sala' %}selected{% endif %}>Sala</option>
+      <option value="Circulos" {% if equipe_selecionada == 'Circulos' %}selected{% endif %}>Círculos</option>
+      <option value="Café e Minimercado" {% if equipe_selecionada == 'Café e Minimercado' %}selected{% endif %}>Café e Minimercado</option>
+      <option value="Compras" {% if equipe_selecionada == 'Compras' %}selected{% endif %}>Compras</option>
+      <option value="Acolhida" {% if equipe_selecionada == 'Acolhida' %}selected{% endif %}>Acolhida</option>
+      <option value="Ordem e Limpeza" {% if equipe_selecionada == 'Ordem e Limpeza' %}selected{% endif %}>Ordem e Limpeza</option>
+      <option value="Secretaria" {% if equipe_selecionada == 'Secretaria' %}selected{% endif %}>Secretaria</option>
+      <option value="Liturgia e Vigilia" {% if equipe_selecionada == 'Liturgia e Vigilia' %}selected{% endif %}>Liturgia e Vigilia</option>
+      <option value="Cozinha e Visitação" {% if equipe_selecionada == 'Cozinha e Visitação' %}selected{% endif %}>Cozinha e Visitação</option>
     </select>
   </form>
+
   {% if tabela %}
-    <h2>Equipe: {{ equipe_selecionada }}</h2>
-    <table border="1">
-      <thead>
+  <table border="1" style="margin: auto; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>Ano</th>
+        {% for col in colunas %}
+          <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for ano, linha in tabela.items() %}
         <tr>
-          <th>Ano</th>
-          {% for col in colunas %}
-            <th>{{ col }}</th>
+          <td>{{ ano }}</td>
+          {% for nome in linha %}
+            <td>
+              {% if nome.startswith('*') %}
+                <b>{{ nome[1:] }}</b>
+              {% elif nome.startswith('~') %}
+                <span style="background-color: yellow">{{ nome[1:] }}</span>
+              {% else %}
+                {{ nome }}
+              {% endif %}
+            </td>
           {% endfor %}
         </tr>
-      </thead>
-      <tbody>
-        {% for ano, linha in tabela.items() %}
-          <tr>
-            <td>{{ ano }}</td>
-            {% for nome in linha %}
-              <td>{% if nome.startswith('*') %}<b><span style='background-color: yellow'>{{ nome[1:] }}</span></b>{% else %}{{ nome }}{% endif %}</td>
-            {% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
-</body>
-</html>
+{% endblock %}

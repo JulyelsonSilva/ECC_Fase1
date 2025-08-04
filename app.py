@@ -76,6 +76,7 @@ def encontreiros():
     return render_template('encontreiros.html', por_ano=por_ano)
 
 
+
 @app.route('/visao-equipes')
 def visao_equipes():
     equipe = request.args.get('equipe', '')
@@ -105,77 +106,80 @@ def visao_equipes():
                 linha = [dados[col].get(ano, '') for col in colunas]
                 tabela[ano] = linha
 
-        elif equipe == 'Sala':
-            colunas = ['Coordenador', 'Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
-            dados_ano = defaultdict(lambda: {col: '' for col in colunas})
-            coordenadores_globais = set()
-
-            cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE '%SALA%'")
-            for row in cursor.fetchall():
-                ano = row['ano']
-                equipe_txt = row['equipe'].upper()
-                nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
-                coordenador = row['coordenador'].strip().lower() == 'sim'
-                if coordenador:
-                    coordenadores_globais.add(nome_chave)
-
-                if coordenador and all(x not in equipe_txt for x in ['BOA VONTADE', 'CANTO', 'SOM E PROJEÇÃO', 'RECEPÇÃO']):
-                    dados_ano[ano]['Coordenador'] = f"*{nome_chave}"
-                elif 'BOA VONTADE' in equipe_txt:
-                    dados_ano[ano]['Boa Vontade'] = nome_chave
-                elif 'CANTO' in equipe_txt:
-                    if not dados_ano[ano]['Canto 1']:
-                        dados_ano[ano]['Canto 1'] = nome_chave
-                    elif not dados_ano[ano]['Canto 2']:
-                        dados_ano[ano]['Canto 2'] = nome_chave
-                elif 'SOM E PROJEÇÃO' in equipe_txt:
-                    if not dados_ano[ano]['Som e Projeção 1']:
-                        dados_ano[ano]['Som e Projeção 1'] = nome_chave
-                    elif not dados_ano[ano]['Som e Projeção 2']:
-                        dados_ano[ano]['Som e Projeção 2'] = nome_chave
-                elif 'RECEPÇÃO' in equipe_txt:
-                    dados_ano[ano]['Recepção de Palestras'] = nome_chave
-
-            for ano, linha_dict in dados_ano.items():
-                linha = []
-                for col in colunas:
-                    nome = linha_dict[col]
-                    if nome.startswith("*"):
-                        linha.append(nome)
-                    elif nome in coordenadores_globais:
-                        linha.append(f"~{nome}")
-                    else:
-                        linha.append(nome)
-                tabela[ano] = linha
-
         else:
-            colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
             cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
-            rows = cursor.fetchall()
-            por_ano = defaultdict(list)
-            coordenadores = set()
+            all_rows = cursor.fetchall()
 
-            for row in rows:
-                ano = row['ano']
-                nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
-                if row['coordenador'].strip().lower() == 'sim':
-                    coordenadores.add(nome_chave)
-                    por_ano[ano].insert(0, f"*{nome_chave}")
-                else:
-                    por_ano[ano].append(nome_chave)
+            # Coordenadores históricos da equipe
+            coordenadores_globais = set(
+                f"{row['nome_ele']} e {row['nome_ela']}" for row in all_rows if row['coordenador'].strip().lower() == 'sim'
+            )
 
-            for ano, nomes in por_ano.items():
-                linha = []
-                for nome in nomes:
-                    if nome.startswith("*"):
-                        linha.append(nome)
-                    elif nome in coordenadores:
-                        linha.append(f"~{nome}")
+            if equipe == 'Sala':
+                colunas = ['Coordenador', 'Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
+                dados_ano = defaultdict(lambda: {col: '' for col in colunas})
+
+                for row in all_rows:
+                    ano = row['ano']
+                    equipe_txt = row['equipe'].upper()
+                    nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
+                    coordenador = row['coordenador'].strip().lower() == 'sim'
+
+                    if coordenador and all(x not in equipe_txt for x in ['BOA VONTADE', 'CANTO', 'SOM E PROJEÇÃO', 'RECEPÇÃO']):
+                        dados_ano[ano]['Coordenador'] = f"*{nome_chave}"
+                    elif 'BOA VONTADE' in equipe_txt:
+                        dados_ano[ano]['Boa Vontade'] = nome_chave
+                    elif 'CANTO' in equipe_txt:
+                        if not dados_ano[ano]['Canto 1']:
+                            dados_ano[ano]['Canto 1'] = nome_chave
+                        elif not dados_ano[ano]['Canto 2']:
+                            dados_ano[ano]['Canto 2'] = nome_chave
+                    elif 'SOM E PROJEÇÃO' in equipe_txt:
+                        if not dados_ano[ano]['Som e Projeção 1']:
+                            dados_ano[ano]['Som e Projeção 1'] = nome_chave
+                        elif not dados_ano[ano]['Som e Projeção 2']:
+                            dados_ano[ano]['Som e Projeção 2'] = nome_chave
+                    elif 'RECEPÇÃO' in equipe_txt:
+                        dados_ano[ano]['Recepção de Palestras'] = nome_chave
+
+                for ano, linha_dict in dados_ano.items():
+                    linha = []
+                    for col in colunas:
+                        nome = linha_dict[col]
+                        if nome.startswith("*"):
+                            linha.append(nome)
+                        elif nome in coordenadores_globais:
+                            linha.append(f"~{nome}")
+                        else:
+                            linha.append(nome)
+                    tabela[ano] = linha
+
+            else:
+                colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
+                por_ano = defaultdict(list)
+                coordenadores_ano = {}
+
+                for row in all_rows:
+                    ano = row['ano']
+                    nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
+                    if row['coordenador'].strip().lower() == 'sim':
+                        coordenadores_ano[ano] = nome_chave
+                        por_ano[ano].insert(0, f"*{nome_chave}")
                     else:
-                        linha.append(nome)
-                while len(linha) < len(colunas):
-                    linha.append('')
-                tabela[ano] = linha
+                        por_ano[ano].append(nome_chave)
+
+                for ano, nomes in por_ano.items():
+                    linha = []
+                    for nome in nomes:
+                        if nome.startswith("*"):
+                            linha.append(nome)
+                        elif nome in coordenadores_globais:
+                            linha.append(f"~{nome}")
+                        else:
+                            linha.append(nome)
+                    while len(linha) < len(colunas):
+                        linha.append('')
+                    tabela[ano] = linha
 
         conn.close()
 
