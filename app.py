@@ -245,7 +245,7 @@ def visao_casal():
         cursor.execute("""
             SELECT ano, equipe, coordenador, endereco, telefones
             FROM encontreiros 
-            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+            WHERE nome_ele = %s AND nome_ela = %s
         """, (nome_ele, nome_ela))
         resultados_encontreiros = cursor.fetchall()
 
