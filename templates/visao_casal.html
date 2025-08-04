@@ -1,14 +1,10 @@
 
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% block content %}
-  <h2 style="text-align: center;">Visão por Casal</h2>
-  <form method="get" style="text-align: center; margin-bottom: 20px;">
-    <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome Ele" value="{{ nome_ele }}" list="sugestoes_ele">
-    <datalist id="sugestoes_ele"></datalist>
-
-    <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome Ela" value="{{ nome_ela }}" list="sugestoes_ela">
-    <datalist id="sugestoes_ela"></datalist>
-
+  <h2>Visão Casal</h2>
+  <form method="get">
+    <input type="text" name="nome_ele" value="{{ nome_ele }}" placeholder="Nome Ele" />
+    <input type="text" name="nome_ela" value="{{ nome_ela }}" placeholder="Nome Ela" />
     <button type="submit">Buscar</button>
   </form>
 
@@ -16,52 +12,23 @@
     <h3>Encontrista em: {{ dados_encontrista['ano'] }}</h3>
   {% endif %}
 
-  {% if equipes %}
-  <table border="1" style="margin: auto; border-collapse: collapse;">
-    <thead>
+  {% if dados_encontreiros %}
+    <h3>Equipes que Trabalhou:</h3>
+    <table>
       <tr>
         <th>Ano</th>
         <th>Equipe</th>
         <th>Pasta</th>
         <th>Coordenador</th>
       </tr>
-    </thead>
-    <tbody>
-      {% for linha in equipes %}
-        <tr>
-          <td>{{ linha['ano'] }}</td>
-          <td>{{ linha['equipe'] }}</td>
-          <td>{{ linha['pasta'] }}</td>
-          <td>{{ 'Sim' if linha['coordenador'] else 'Não' }}</td>
-        </tr>
+      {% for row in dados_encontreiros %}
+      <tr>
+        <td>{{ row.ano }}</td>
+        <td>{{ row.equipe }}</td>
+        <td>{{ row.pasta }}</td>
+        <td>{{ row.coordenador }}</td>
+      </tr>
       {% endfor %}
-    </tbody>
-  </table>
+    </table>
   {% endif %}
-
-  <script>
-    const inputEle = document.getElementById('nome_ele');
-    const inputEla = document.getElementById('nome_ela');
-    const datalistEle = document.getElementById('sugestoes_ele');
-    const datalistEla = document.getElementById('sugestoes_ela');
-
-    function buscarNomes(input, datalist) {
-      const valor = input.value;
-      if (valor.length >= 3) {
-        fetch(`/autocomplete-nomes?q=${valor}`)
-          .then(res => res.json())
-          .then(data => {
-            datalist.innerHTML = "";
-            data.forEach(nome => {
-              const opt = document.createElement("option");
-              opt.value = nome;
-              datalist.appendChild(opt);
-            });
-          });
-      }
-    }
-
-    inputEle.addEventListener("input", () => buscarNomes(inputEle, datalistEle));
-    inputEla.addEventListener("input", () => buscarNomes(inputEla, datalistEla));
-  </script>
 {% endblock %}
