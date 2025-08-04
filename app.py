@@ -84,6 +84,73 @@ def visao_equipes():
     if equipe:
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
+
+        if equipe == 'Dirigentes':
+            colunas = ['Montagem', 'Fichas', 'Palestras', 'Finanças', 'Pós Encontro']
+            dados = {col: {} for col in colunas}
+
+            for pasta in colunas:
+                cursor.execute(
+                    "SELECT * FROM encontreiros WHERE equipe LIKE '%DIRIGENTE%' AND equipe LIKE %s",
+                    (f"%{pasta.upper()}%",)
+                )
+                for row in cursor.fetchall():
+                    ano = row['ano']
+                    nome = f"*{row['nome_ele']} e {row['nome_ela']}" if row['coordenador'].strip().lower() == 'sim' else f"{row['nome_ele']} e {row['nome_ela']}"
+                    dados[pasta].setdefault(ano, nome)
+
+            anos = sorted({ano for pasta_data in dados.values() for ano in pasta_data})
+            for ano in anos:
+                linha = [dados[col].get(ano, '') for col in colunas]
+                tabela[ano] = linha
+
+        elif equipe == 'Sala':
+            colunas = ['Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
+            dados = {col: {} for col in colunas}
+
+            for subt in colunas:
+                cursor.execute(
+                    "SELECT * FROM encontreiros WHERE equipe LIKE '%SALA%' AND equipe LIKE %s",
+                    (f"%{subt.upper()}%",)
+                )
+                for row in cursor.fetchall():
+                    ano = row['ano']
+                    nome = f"*{row['nome_ele']} e {row['nome_ela']}" if row['coordenador'].strip().lower() == 'sim' else f"{row['nome_ele']} e {row['nome_ela']}"
+                    dados[subt].setdefault(ano, nome)
+
+            anos = sorted({ano for subt_data in dados.values() for ano in subt_data})
+            for ano in anos:
+                linha = [dados[col].get(ano, '') for col in colunas]
+                tabela[ano] = linha
+
+        else:
+            colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
+            cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
+            rows = cursor.fetchall()
+            por_ano = defaultdict(list)
+            for row in rows:
+                ano = row['ano']
+                nome = f"*{row['nome_ele']} e {row['nome_ela']}" if row['coordenador'].strip().lower() == 'sim' else f"{row['nome_ele']} e {row['nome_ela']}"
+                por_ano[ano].append(nome)
+
+            for ano, nomes in por_ano.items():
+                linha = nomes[:len(colunas)]
+                while len(linha) < len(colunas):
+                    linha.append('')
+                tabela[ano] = linha
+
+        conn.close()
+
+    return render_template('visao_equipes.html', equipe_selecionada=equipe, tabela=tabela, colunas=colunas)
+
+def visao_equipes():
+    equipe = request.args.get('equipe', '')
+    tabela = {}
+    colunas = []
+
+    if equipe:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
         rows = cursor.fetchall()
         conn.close()
