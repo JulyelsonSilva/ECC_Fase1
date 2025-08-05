@@ -3,24 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Organograma ECC</title>
-
-    <!-- GoJS CDN -->
     <script src="https://unpkg.com/gojs/release/go-debug.js"></script>
-
     <style>
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
         }
-
         select {
             padding: 5px;
             font-size: 16px;
         }
-
         #myDiagramDiv {
             width: 100%;
-            height: 700px;
+            height: 1000px;
             border: 1px solid #ccc;
             margin-top: 20px;
         }
@@ -28,7 +23,6 @@
 </head>
 <body>
     <h1>Organograma ECC</h1>
-
     <label for="ano">Selecione o ano:</label>
     <select id="ano" onchange="carregarOrganograma()">
         {% for a in range(2024, 1999, -1) %}
@@ -43,76 +37,140 @@
             const ano = document.getElementById("ano").value;
             const resposta = await fetch(`/dados-organograma?ano=${ano}`);
             const dados = await resposta.json();
-            criarOrganograma(dados);
+            desenharOrganograma(dados);
         }
 
-        function criarOrganograma(dados) {
+        function desenharOrganograma(dados) {
             const $ = go.GraphObject.make;
 
             const diagram = $(go.Diagram, "myDiagramDiv", {
-                initialAutoScale: go.Diagram.Uniform,
-                layout: $(go.TreeLayout, {
-                    angle: 90,
-                    layerSpacing: 40
+                layout: $(go.LayeredDigraphLayout, {
+                    direction: 90,  // vertical
+                    layerSpacing: 50,
+                    columnSpacing: 30
                 }),
-                "undoManager.isEnabled": true
+                initialAutoScale: go.Diagram.Uniform,
+                isReadOnly: true,
+                "undoManager.isEnabled": false
             });
 
-            // Estilo dos nós
-            diagram.nodeTemplate =
-                $(go.Node, "Auto",
-                    $(go.Shape, "RoundedRectangle",
-                        {
-                            fill: "lightblue",
-                            stroke: "#555",
-                            strokeWidth: 1.5
-                        },
-                        new go.Binding("fill", "isCoordinator", c => c ? "#ffcc00" : "lightblue")
-                    ),
+            diagram.nodeTemplate = $(
+                go.Node, "Auto",
+                $(go.Shape, "RoundedRectangle",
+                    {
+                        fill: "lightblue",
+                        strokeWidth: 1.5
+                    },
+                    new go.Binding("fill", "cor")
+                ),
+                $(go.Panel, "Vertical",
+                    { margin: 6 },
                     $(go.TextBlock,
-                        {
-                            margin: 8,
-                            font: "bold 13px sans-serif",
-                            wrap: go.TextBlock.WrapFit,
-                            width: 180
-                        },
-                        new go.Binding("text", "label"))
-                );
+                        { font: "bold 13px sans-serif", stroke: "#333" },
+                        new go.Binding("text", "titulo")),
+                    $(go.TextBlock,
+                        { font: "12px sans-serif", stroke: "#000" },
+                        new go.Binding("text", "casal"))
+                )
+            );
 
-            // Dados do modelo
+            const equipesFixas = [
+                { key: "dirigentes", titulo: "Dirigentes", loc: "0 0" },
+                { key: "coordenador_geral", titulo: "Coordenador Geral", loc: "150 0" },
+                { key: "setorial", titulo: "Casal Setorial", loc: "300 0" },
+                { key: "sala", titulo: "Sala", loc: "0 200" },
+                { key: "circulos", titulo: "Círculos", loc: "300 200" },
+                { key: "cafe", titulo: "Café e Minimercado", loc: "0 400" },
+                { key: "compras", titulo: "Compras", loc: "100 400" },
+                { key: "acolhida", titulo: "Acolhida", loc: "200 400" },
+                { key: "ordem", titulo: "Ordem e Limpeza", loc: "300 400" },
+                { key: "liturgia", titulo: "Liturgia e Vigília", loc: "400 400" },
+                { key: "secretaria", titulo: "Secretaria", loc: "500 400" },
+                { key: "cozinha", titulo: "Cozinha", loc: "600 400" },
+                { key: "visitacao", titulo: "Visitação", loc: "700 400" }
+            ];
+
             const nodes = [];
             const links = [];
-            const equipes = {};
 
-            for (const pessoa of dados) {
-                const nome = `${pessoa.nome_ele} e ${pessoa.nome_ela}`;
-                const id = `${pessoa.equipe}_${nome}`;
-                const isCoord = pessoa.coordenador.trim().toLowerCase() === "sim";
-                const label = isCoord ? `⭐ ${nome}` : nome;
+            // Nós fixos principais
+            for (const eq of equipesFixas) {
+                nodes.push({
+                    key: eq.key,
+                    titulo: eq.titulo,
+                    casal: "",
+                    cor: "#e0e0e0"
+                });
+            }
 
-                // Adiciona nó da equipe se ainda não existir
-                if (!equipes[pessoa.equipe]) {
-                    const equipeId = `equipe_${pessoa.equipe}`;
-                    equipes[pessoa.equipe] = equipeId;
-                    nodes.push({ key: equipeId, label: pessoa.equipe });
+            // Preencher casais
+            for (const p of dados) {
+                const nome = `${p.nome_ele} e ${p.nome_ela}`;
+                const equipeRaw = p.equipe.toLowerCase();
+
+                let chavePai = "";
+                let titulo = "";
+                let cor = "lightblue";
+
+                const coordenador = p.coordenador?.trim().toLowerCase() === "sim";
+
+                if (equipeRaw.includes("coordenador geral")) {
+                    chavePai = "coordenador_geral";
+                    titulo = "Coordenador Geral";
+                } else if (equipeRaw.includes("setorial")) {
+                    chavePai = "setorial";
+                    titulo = "Casal Setorial";
+                } else if (equipeRaw.includes("dirigente")) {
+                    chavePai = "dirigentes";
+                    titulo = p.equipe.split("-")[1]?.trim() || "Dirigente";
+                } else if (equipeRaw.includes("sala")) {
+                    chavePai = "sala";
+                    titulo = p.equipe.split("-")[1]?.trim() || "Sala";
+                } else if (equipeRaw.includes("círculos") || equipeRaw.includes("circulos")) {
+                    chavePai = "circulos";
+                    titulo = "Círculos";
+                } else if (equipeRaw.includes("café")) {
+                    chavePai = "cafe";
+                    titulo = "Café e Minimercado";
+                } else if (equipeRaw.includes("compra")) {
+                    chavePai = "compras";
+                    titulo = "Compras";
+                } else if (equipeRaw.includes("acolhida")) {
+                    chavePai = "acolhida";
+                    titulo = "Acolhida";
+                } else if (equipeRaw.includes("ordem")) {
+                    chavePai = "ordem";
+                    titulo = "Ordem e Limpeza";
+                } else if (equipeRaw.includes("liturgia")) {
+                    chavePai = "liturgia";
+                    titulo = "Liturgia e Vigília";
+                } else if (equipeRaw.includes("secretaria")) {
+                    chavePai = "secretaria";
+                    titulo = "Secretaria";
+                } else if (equipeRaw.includes("cozinha")) {
+                    chavePai = "cozinha";
+                    titulo = "Cozinha";
+                } else if (equipeRaw.includes("visitação") || equipeRaw.includes("visitacao")) {
+                    chavePai = "visitacao";
+                    titulo = "Visitação";
                 }
 
+                const key = `${chavePai}_${nome}`;
+                const labelTitulo = coordenador ? `${titulo}\nCoordenador` : titulo;
+
                 nodes.push({
-                    key: id,
-                    label: label,
-                    isCoordinator: isCoord
+                    key: key,
+                    titulo: labelTitulo,
+                    casal: nome,
+                    cor: coordenador ? "#ffe066" : "lightblue"
                 });
 
-                links.push({
-                    from: equipes[pessoa.equipe],
-                    to: id
-                });
+                links.push({ from: chavePai, to: key });
             }
 
             diagram.model = new go.GraphLinksModel(nodes, links);
         }
 
-        // Carrega o ano atual automaticamente ao abrir a página
         window.onload = () => {
             document.getElementById("ano").value = "2024";
             carregarOrganograma();
