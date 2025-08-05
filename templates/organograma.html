@@ -1,180 +1,358 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Organograma ECC</title>
-    <script src="https://unpkg.com/gojs/release/go-debug.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        select {
-            padding: 5px;
-            font-size: 16px;
-        }
-        #myDiagramDiv {
-            width: 100%;
-            height: 1000px;
-            border: 1px solid #ccc;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Organograma ECC</title>
+  <script src="https://unpkg.com/gojs/release/go-debug.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    label, select { font-size: 16px; }
+    #myDiagramDiv { width: 100%; height: 1100px; border: 1px solid #ccc; margin-top: 16px; }
+  </style>
 </head>
 <body>
-    <h1>Organograma ECC</h1>
-    <label for="ano">Selecione o ano:</label>
-    <select id="ano" onchange="carregarOrganograma()">
-        {% for a in range(2024, 1999, -1) %}
-            <option value="{{ a }}">{{ a }}</option>
-        {% endfor %}
-    </select>
+  <h2>Organograma do ECC</h2>
 
-    <div id="myDiagramDiv"></div>
+  <label for="ano">Selecione o ano:</label>
+  <select id="ano" onchange="carregarOrganograma()">
+    {% for a in range(2024, 1999, -1) %}
+      <option value="{{ a }}">{{ a }}</option>
+    {% endfor %}
+  </select>
 
-    <script>
-        async function carregarOrganograma() {
-            const ano = document.getElementById("ano").value;
-            const resposta = await fetch(`/dados-organograma?ano=${ano}`);
-            const dados = await resposta.json();
-            desenharOrganograma(dados);
-        }
+  <div id="myDiagramDiv"></div>
 
-        function desenharOrganograma(dados) {
-            const $ = go.GraphObject.make;
+  <script>
+    // -----------------------------
+    // CONSTANTES DE POSICIONAMENTO
+    // Ajuste os números para aproximar do seu mockup
+    // -----------------------------
+    const POS = {
+      // Linha 1 (topo)
+      DIRIGENTES: "120 60",
+      COORD_GERAL: "600 110",
+      SETORIAL: "1030 60",
 
-            const diagram = $(go.Diagram, "myDiagramDiv", {
-                layout: $(go.LayeredDigraphLayout, {
-                    direction: 90,  // vertical
-                    layerSpacing: 50,
-                    columnSpacing: 30
-                }),
-                initialAutoScale: go.Diagram.Uniform,
-                isReadOnly: true,
-                "undoManager.isEnabled": false
-            });
+      // Linha 2
+      SALA: "170 300",
+      CIRCULOS: "980 300",
 
-            diagram.nodeTemplate = $(
-                go.Node, "Auto",
-                $(go.Shape, "RoundedRectangle",
-                    {
-                        fill: "lightblue",
-                        strokeWidth: 1.5
-                    },
-                    new go.Binding("fill", "cor")
-                ),
-                $(go.Panel, "Vertical",
-                    { margin: 6 },
-                    $(go.TextBlock,
-                        { font: "bold 13px sans-serif", stroke: "#333" },
-                        new go.Binding("text", "titulo")),
-                    $(go.TextBlock,
-                        { font: "12px sans-serif", stroke: "#000" },
-                        new go.Binding("text", "casal"))
-                )
-            );
+      // Linha 3 (esquerda -> direita)
+      CAFE: "50 550",
+      COMPRAS: "200 550",
+      ACOLHIDA: "350 550",
+      ORDEM: "500 550",
+      LITURGIA: "650 550",
+      SECRETARIA: "800 550",
+      COZINHA: "950 550",
+      VISITACAO: "1100 550"
+    };
 
-            const equipesFixas = [
-                { key: "dirigentes", titulo: "Dirigentes", loc: "0 0" },
-                { key: "coordenador_geral", titulo: "Coordenador Geral", loc: "150 0" },
-                { key: "setorial", titulo: "Casal Setorial", loc: "300 0" },
-                { key: "sala", titulo: "Sala", loc: "0 200" },
-                { key: "circulos", titulo: "Círculos", loc: "300 200" },
-                { key: "cafe", titulo: "Café e Minimercado", loc: "0 400" },
-                { key: "compras", titulo: "Compras", loc: "100 400" },
-                { key: "acolhida", titulo: "Acolhida", loc: "200 400" },
-                { key: "ordem", titulo: "Ordem e Limpeza", loc: "300 400" },
-                { key: "liturgia", titulo: "Liturgia e Vigília", loc: "400 400" },
-                { key: "secretaria", titulo: "Secretaria", loc: "500 400" },
-                { key: "cozinha", titulo: "Cozinha", loc: "600 400" },
-                { key: "visitacao", titulo: "Visitação", loc: "700 400" }
-            ];
+    // Mapeamento de subgrupos internos
+    const DIR_SUBS = [
+      { key: "dir_montagem", titulo: "Montagem" },
+      { key: "dir_financas", titulo: "Finanças" },
+      { key: "dir_fichas", titulo: "Fichas" },
+      { key: "dir_palestra", titulo: "Palestra" },
+      { key: "dir_pos", titulo: "Pós Encontro" }
+    ];
 
-            const nodes = [];
-            const links = [];
+    const SALA_SUBS = [
+      { key: "sala_canto", titulo: "Canto" },
+      { key: "sala_somproj", titulo: "Som e Projeção" },
+      { key: "sala_boavontade", titulo: "Boa Vontade" },
+      { key: "sala_recepcao", titulo: "Recepção Palestrantes" }
+    ];
 
-            // Nós fixos principais
-            for (const eq of equipesFixas) {
-                nodes.push({
-                    key: eq.key,
-                    titulo: eq.titulo,
-                    casal: "",
-                    cor: "#e0e0e0"
-                });
-            }
+    // -----------------------------
+    // INICIALIZA DIAGRAMA
+    // -----------------------------
+    const $ = go.GraphObject.make;
+    let diagram;
 
-            // Preencher casais
-            for (const p of dados) {
-                const nome = `${p.nome_ele} e ${p.nome_ela}`;
-                const equipeRaw = p.equipe.toLowerCase();
+    function initDiagram() {
+      diagram = $(go.Diagram, "myDiagramDiv", {
+        // Sem layout automático — tudo por coordenadas (como a imagem)
+        layout: $(go.Layout),
+        initialPosition: new go.Point(0, 0),
+        initialContentAlignment: go.Spot.TopLeft,
+        isReadOnly: true,
+        "toolManager.hoverDelay": 50
+      });
 
-                let chavePai = "";
-                let titulo = "";
-                let cor = "lightblue";
+      // Template de nó "casal"
+      diagram.nodeTemplateMap.add("casal",
+        $(go.Node, "Auto",
+          { width: 200, stretch: go.GraphObject.None },
+          $(go.Shape, "RoundedRectangle",
+            {
+              fill: "#E6F4EA", stroke: "#6A6A6A", strokeWidth: 1.2
+            },
+            // Coordenador -> caixa amarela
+            new go.Binding("fill", "isCoord", c => c ? "#FFE680" : "#E6F4EA")
+          ),
+          $(go.Panel, "Vertical",
+            { margin: 6, alignment: go.Spot.Center },
+            // Nome da equipe em cima
+            $(go.TextBlock,
+              { font: "bold 12px sans-serif", stroke: "#000", textAlign: "center", wrap: go.TextBlock.WrapFit },
+              new go.Binding("text", "equipeLabel")
+            ),
+            // "Coordenador" (visível apenas quando isCoord = true)
+            $(go.TextBlock,
+              { font: "italic 11px sans-serif", stroke: "#333", textAlign: "center" },
+              new go.Binding("text", "isCoord", c => c ? "Coordenador" : ""),
+            ),
+            // Nome do casal em baixo
+            $(go.TextBlock,
+              { font: "12px sans-serif", stroke: "#000", textAlign: "center", margin: new go.Margin(4,0,0,0), wrap: go.TextBlock.WrapFit },
+              new go.Binding("text", "casalLabel")
+            )
+          )
+        )
+      );
 
-                const coordenador = p.coordenador?.trim().toLowerCase() === "sim";
+      // Cabeçalho azul de grupos
+      function headerBar(titulo, corFundo = "#0B3BAA") {
+        return $(go.Panel, "Auto",
+          $(go.Shape, "RoundedRectangle",
+            { fill: corFundo, stroke: corFundo, parameter1: 6 }),
+          $(go.TextBlock, titulo,
+            { margin: new go.Margin(6, 10, 6, 10), stroke: "white", font: "bold 12px sans-serif" })
+        );
+      }
 
-                if (equipeRaw.includes("coordenador geral")) {
-                    chavePai = "coordenador_geral";
-                    titulo = "Coordenador Geral";
-                } else if (equipeRaw.includes("setorial")) {
-                    chavePai = "setorial";
-                    titulo = "Casal Setorial";
-                } else if (equipeRaw.includes("dirigente")) {
-                    chavePai = "dirigentes";
-                    titulo = p.equipe.split("-")[1]?.trim() || "Dirigente";
-                } else if (equipeRaw.includes("sala")) {
-                    chavePai = "sala";
-                    titulo = p.equipe.split("-")[1]?.trim() || "Sala";
-                } else if (equipeRaw.includes("círculos") || equipeRaw.includes("circulos")) {
-                    chavePai = "circulos";
-                    titulo = "Círculos";
-                } else if (equipeRaw.includes("café")) {
-                    chavePai = "cafe";
-                    titulo = "Café e Minimercado";
-                } else if (equipeRaw.includes("compra")) {
-                    chavePai = "compras";
-                    titulo = "Compras";
-                } else if (equipeRaw.includes("acolhida")) {
-                    chavePai = "acolhida";
-                    titulo = "Acolhida";
-                } else if (equipeRaw.includes("ordem")) {
-                    chavePai = "ordem";
-                    titulo = "Ordem e Limpeza";
-                } else if (equipeRaw.includes("liturgia")) {
-                    chavePai = "liturgia";
-                    titulo = "Liturgia e Vigília";
-                } else if (equipeRaw.includes("secretaria")) {
-                    chavePai = "secretaria";
-                    titulo = "Secretaria";
-                } else if (equipeRaw.includes("cozinha")) {
-                    chavePai = "cozinha";
-                    titulo = "Cozinha";
-                } else if (equipeRaw.includes("visitação") || equipeRaw.includes("visitacao")) {
-                    chavePai = "visitacao";
-                    titulo = "Visitação";
-                }
+      // Template de grupo genérico (caixa com cabeçalho azul + pilha vertical)
+      diagram.groupTemplateMap.add("grupoGenerico",
+        $(go.Group, "Vertical",
+          {
+            layout: $(go.GridLayout, { wrappingColumn: 1, spacing: new go.Size(6, 6), alignment: go.GridLayout.Position }),
+            locationSpot: go.Spot.TopLeft,
+            selectionObjectName: "BODY",
+            movable: false, copyable: false, deletable: false
+          },
+          // Cabeçalho (binding "titulo")
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle",
+              { fill: "#0B3BAA", stroke: "#0B3BAA", parameter1: 6 }),
+            $(go.TextBlock,
+              { margin: new go.Margin(6, 10, 6, 10), stroke: "white", font: "bold 12px sans-serif" },
+              new go.Binding("text", "titulo"))
+          ),
+          // Corpo
+          $(go.Panel, "Auto",
+            { name: "BODY" },
+            $(go.Shape, "RoundedRectangle", { fill: "white", stroke: "#AFAFAF" }),
+            $(go.Placeholder, { padding: 8 })
+          ),
+          new go.Binding("location", "loc", go.Point.parse)
+        )
+      );
 
-                const key = `${chavePai}_${nome}`;
-                const labelTitulo = coordenador ? `${titulo}\nCoordenador` : titulo;
+      // Grupo "Dirigentes" (com subgrupos para as 5 pastas)
+      diagram.groupTemplateMap.add("grupoDirigentes",
+        $(go.Group, "Vertical",
+          {
+            layout: $(go.GridLayout, { wrappingColumn: 1, spacing: new go.Size(4, 4) }),
+            locationSpot: go.Spot.TopLeft,
+            movable: false
+          },
+          headerBar("Equipe Dirigente"),
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle", { fill: "white", stroke: "#AFAFAF" }),
+            $(go.Placeholder, { padding: 8 })
+          ),
+          new go.Binding("location", "loc", go.Point.parse)
+        )
+      );
 
-                nodes.push({
-                    key: key,
-                    titulo: labelTitulo,
-                    casal: nome,
-                    cor: coordenador ? "#ffe066" : "lightblue"
-                });
+      // Subgrupo simples (título da subpasta à esquerda + pilha)
+      diagram.groupTemplateMap.add("subGrupoLinha",
+        $(go.Group, "Vertical",
+          {
+            layout: $(go.GridLayout, { wrappingColumn: 1, spacing: new go.Size(4, 4) }),
+            movable: false
+          },
+          // faixa azul com nome da subpasta/pasta
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle", { fill: "#0B3BAA", stroke: "#0B3BAA", parameter1: 4 }),
+            $(go.TextBlock, { margin: new go.Margin(6, 10, 6, 10), stroke: "white", font: "bold 11px sans-serif" },
+              new go.Binding("text", "titulo"))
+          ),
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle", { fill: "#F4FBF6", stroke: "#D5E6D7" }),
+            $(go.Placeholder, { padding: 6 })
+          )
+        )
+      );
 
-                links.push({ from: chavePai, to: key });
-            }
+      // Grupo "Sala" (com 4 subgrupos: Canto, Som e Projeção, Boa Vontade, Recepção Palestrantes)
+      diagram.groupTemplateMap.add("grupoSala",
+        $(go.Group, "Vertical",
+          {
+            layout: $(go.GridLayout, { wrappingColumn: 1, spacing: new go.Size(8, 8) }),
+            locationSpot: go.Spot.TopLeft,
+            movable: false
+          },
+          headerBar("Equipe de Sala"),
+          $(go.TextBlock, "Casal Coordenador", { margin: new go.Margin(4, 0, 6, 0), stroke: "#333", font: "italic 11px sans-serif" }),
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle", { fill: "white", stroke: "#AFAFAF" }),
+            $(go.Placeholder, { padding: 8 })
+          ),
+          new go.Binding("location", "loc", go.Point.parse)
+        )
+      );
 
-            diagram.model = new go.GraphLinksModel(nodes, links);
-        }
+      // Grupo "Círculos" (sem subgrupos, só pilha)
+      diagram.groupTemplateMap.add("grupoCirculos",
+        $(go.Group, "Vertical",
+          {
+            layout: $(go.GridLayout, { wrappingColumn: 1, spacing: new go.Size(6, 6) }),
+            locationSpot: go.Spot.TopLeft,
+            movable: false
+          },
+          headerBar("Equipe de Círculos"),
+          $(go.TextBlock, "Casal Coordenador", { margin: new go.Margin(4, 0, 6, 0), stroke: "#333", font: "italic 11px sans-serif" }),
+          $(go.Panel, "Auto",
+            $(go.Shape, "RoundedRectangle", { fill: "white", stroke: "#AFAFAF" }),
+            $(go.Placeholder, { padding: 8 })
+          ),
+          new go.Binding("location", "loc", go.Point.parse)
+        )
+      );
+    }
 
-        window.onload = () => {
-            document.getElementById("ano").value = "2024";
-            carregarOrganograma();
-        };
-    </script>
+    // -----------------------------
+    // HELPERS DE MAPEAMENTO
+    // -----------------------------
+    function normaliza(txt) {
+      return (txt || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+    }
+
+    // Decide em qual grupo (e subgrupo) inserir um casal
+    function destinoDoCasal(p) {
+      const equipe = normaliza(p.equipe);
+
+      // Coordenador Geral
+      if (equipe.includes("COORDENADOR GERAL")) return { group: "g_cg" };
+      // Setorial
+      if (equipe.includes("SETORIAL")) return { group: "g_setorial" };
+
+      // Dirigentes + subpastas
+      if (equipe.includes("DIRIGENTE")) {
+        if (equipe.includes("MONTAGEM")) return { group: "dir_montagem", parent: "g_dirigentes" };
+        if (equipe.includes("FINANC")) return { group: "dir_financas", parent: "g_dirigentes" };
+        if (equipe.includes("FICHAS")) return { group: "dir_fichas", parent: "g_dirigentes" };
+        if (equipe.includes("PALESTR")) return { group: "dir_palestra", parent: "g_dirigentes" };
+        if (equipe.includes("POS") || equipe.includes("PÓS")) return { group: "dir_pos", parent: "g_dirigentes" };
+        return { group: "dir_outros", parent: "g_dirigentes" };
+      }
+
+      // Sala + subequipes
+      if (equipe.includes("SALA")) {
+        if (equipe.includes("CANTO")) return { group: "sala_canto", parent: "g_sala" };
+        if (equipe.includes("SOM") || equipe.includes("PROJE")) return { group: "sala_somproj", parent: "g_sala" };
+        if (equipe.includes("BOA VONTADE")) return { group: "sala_boavontade", parent: "g_sala" };
+        if (equipe.includes("RECEP")) return { group: "sala_recepcao", parent: "g_sala" };
+        return { group: "sala_outros", parent: "g_sala" };
+      }
+
+      // Circulos
+      if (equipe.includes("CIRCULO") || equipe.includes("CÍRCULO") || equipe.includes("CIRCULOS")) {
+        return { group: "g_circulos" };
+      }
+
+      // Linha inferior (8 equipes)
+      if (equipe.includes("CAFE") || equipe.includes("CAFÉ") || equipe.includes("MINIMERCADO")) return { group: "g_cafe" };
+      if (equipe.includes("COMPRAS")) return { group: "g_compras" };
+      if (equipe.includes("ACOLHIDA")) return { group: "g_acolhida" };
+      if (equipe.includes("ORDEM") || equipe.includes("LIMPEZA")) return { group: "g_ordem" };
+      if (equipe.includes("LITURGIA") || equipe.includes("VIGILIA") || equipe.includes("VIGÍLIA")) return { group: "g_liturgia" };
+      if (equipe.includes("SECRETARIA")) return { group: "g_secretaria" };
+      if (equipe.includes("COZINHA")) return { group: "g_cozinha" };
+      if (equipe.includes("VISITACAO") || equipe.includes("VISITA") || equipe.includes("VISITAÇÃO")) return { group: "g_visitacao" };
+
+      // fallback: coloca em Circulos
+      return { group: "g_circulos" };
+    }
+
+    function equipeLabelParaCaixa(p) {
+      const eq = (p.equipe || "").trim();
+      // Mostramos o nome da equipe/subpasta na caixa
+      // Ex.: "Sala - Canto", "Dirigente - Montagem", "Cozinha"
+      return eq;
+    }
+
+    // -----------------------------
+    // MODELO (GRUPOS FIXOS) + DADOS
+    // -----------------------------
+    function montarModelo(dados) {
+      const groupDataArray = [
+        // Linha 1
+        { key: "g_dirigentes", category: "grupoDirigentes", titulo: "Equipe Dirigente", loc: POS.DIRIGENTES },
+        { key: "g_cg", category: "grupoGenerico", titulo: "Casal Coordenador Geral", loc: POS.COORD_GERAL },
+        { key: "g_setorial", category: "grupoGenerico", titulo: "Casal Setorial", loc: POS.SETORIAL },
+
+        // Linha 2
+        { key: "g_sala", category: "grupoSala", titulo: "Equipe de Sala", loc: POS.SALA },
+        { key: "g_circulos", category: "grupoCirculos", titulo: "Equipe de Círculos", loc: POS.CIRCULOS },
+
+        // Linha 3
+        { key: "g_cafe", category: "grupoGenerico", titulo: "Café e Minimercado", loc: POS.CAFE },
+        { key: "g_compras", category: "grupoGenerico", titulo: "Compras", loc: POS.COMPRAS },
+        { key: "g_acolhida", category: "grupoGenerico", titulo: "Acolhida", loc: POS.ACOLHIDA },
+        { key: "g_ordem", category: "grupoGenerico", titulo: "Ordem e Limpeza", loc: POS.ORDEM },
+        { key: "g_liturgia", category: "grupoGenerico", titulo: "Liturgia e Vigília", loc: POS.LITURGIA },
+        { key: "g_secretaria", category: "grupoGenerico", titulo: "Secretaria", loc: POS.SECRETARIA },
+        { key: "g_cozinha", category: "grupoGenerico", titulo: "Cozinha", loc: POS.COZINHA },
+        { key: "g_visitacao", category: "grupoGenerico", titulo: "Visitação", loc: POS.VISITACAO },
+
+        // Subgrupos de Dirigentes
+        ...DIR_SUBS.map(sg => ({ key: sg.key, category: "subGrupoLinha", titulo: sg.titulo, isSub: true, group: "g_dirigentes" })),
+
+        // Subgrupos de Sala
+        ...SALA_SUBS.map(sg => ({ key: sg.key, category: "subGrupoLinha", titulo: sg.titulo, isSub: true, group: "g_sala" }))
+      ];
+
+      const nodeDataArray = [];
+
+      for (const p of dados) {
+        const nome = `${p.nome_ele} e ${p.nome_ela}`.trim();
+        const isCoord = (p.coordenador || "").toString().trim().toLowerCase() === "sim";
+        const destino = destinoDoCasal(p);
+
+        nodeDataArray.push({
+          key: `n_${p.equipe}_${nome}_${Math.random().toString(36).slice(2,8)}`,
+          category: "casal",
+          group: destino.group,              // entra no grupo/subgrupo correto
+          equipeLabel: equipeLabelParaCaixa(p),
+          casalLabel: nome,
+          isCoord: isCoord
+        });
+      }
+
+      diagram.model = new go.GraphLinksModel(nodeDataArray, groupDataArray);
+    }
+
+    // -----------------------------
+    // CARREGAR DADOS DO BACKEND
+    // -----------------------------
+    async function carregarOrganograma() {
+      const ano = document.getElementById("ano").value;
+      const resp = await fetch(`/dados-organograma?ano=${ano}`);
+      const dados = await resp.json();
+      montarModelo(dados);
+    }
+
+    // -----------------------------
+    // BOOT
+    // -----------------------------
+    window.addEventListener("load", () => {
+      initDiagram();
+      document.getElementById("ano").value = "2024";
+      carregarOrganograma();
+    });
+  </script>
 </body>
 </html>
