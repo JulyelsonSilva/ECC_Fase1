@@ -281,3 +281,27 @@ def visao_casal():
                            dados_encontrista=dados_encontrista,
                            dados_encontreiros=dados_encontreiros,
                            erro=erro)
+@app.route('/organograma')
+def organograma():
+    return render_template('organograma.html')
+
+@app.route('/dados-organograma')
+def dados_organograma():
+    ano = request.args.get("ano", "").strip()
+
+    if not ano:
+        return jsonify({"erro": "Ano não informado."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT equipe, nome_ele, nome_ela, telefones, endereco, coordenador
+        FROM encontreiros
+        WHERE ano = %s
+        ORDER BY equipe
+    """, (ano,))
+    dados = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return jsonify(dados)
