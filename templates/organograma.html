@@ -19,6 +19,12 @@
       gap: 50px;
       margin-bottom: 60px;
     }
+    .equipe-coluna {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
     .equipe-box {
       background: white;
       border: 1px solid #333;
@@ -97,12 +103,15 @@
         }
       });
 
-      estrutura.forEach((linhaEquipes, linhaIndex) => {
+      estrutura.forEach((linhaEquipes) => {
         const linhaDiv = document.createElement("div");
         linhaDiv.className = "linha";
 
         linhaEquipes.forEach(equipeBase => {
           if (!equipeBase) return;
+
+          const equipeColuna = document.createElement("div");
+          equipeColuna.className = "equipe-coluna";
 
           const caixaCoord = document.createElement("div");
           caixaCoord.className = "equipe-box coordenador";
@@ -117,7 +126,7 @@
 
           let hasCoord = false;
           Object.keys(equipes).forEach(eq => {
-            if (eq.startsWith(equipeBase) && equipes[eq].coordenador.length > 0) {
+            if (eq.toLowerCase().startsWith(equipeBase.toLowerCase()) && equipes[eq].coordenador.length > 0) {
               hasCoord = true;
               equipes[eq].coordenador.forEach(c => {
                 const div = document.createElement("div");
@@ -127,7 +136,7 @@
               });
             }
           });
-          if (hasCoord) linhaDiv.appendChild(caixaCoord);
+          if (hasCoord) equipeColuna.appendChild(caixaCoord);
 
           const caixaMembros = document.createElement("div");
           caixaMembros.className = "equipe-box";
@@ -138,7 +147,7 @@
 
           let hasMembro = false;
           Object.keys(equipes).forEach(eq => {
-            if (eq.startsWith(equipeBase) && equipes[eq].membros.length > 0) {
+            if (eq.toLowerCase().startsWith(equipeBase.toLowerCase()) && equipes[eq].membros.length > 0) {
               hasMembro = true;
               equipes[eq].membros.forEach(m => {
                 const div = document.createElement("div");
@@ -148,7 +157,9 @@
               });
             }
           });
-          if (hasMembro) linhaDiv.appendChild(caixaMembros);
+          if (hasMembro) equipeColuna.appendChild(caixaMembros);
+
+          if (hasCoord || hasMembro) linhaDiv.appendChild(equipeColuna);
         });
 
         container.appendChild(linhaDiv);
