@@ -25,6 +25,7 @@
       flex-direction: column;
       align-items: center;
       gap: 10px;
+      flex-shrink: 0;
     }
     .equipe-box {
       background: white;
@@ -69,22 +70,18 @@
 <body>
   <h1>Organograma ECC</h1>
   <label for="ano">Escolha o ano:</label>
-  <select id="ano">
-    <option value="">--Selecione--</option>
-    <script>
-      const anosValidos = [];
-      for (let y = 2024; y >= 2000; y--) {
-        if (y !== 2020 && y !== 2021) anosValidos.push(y);
-      }
-      anosValidos.forEach(ano => {
-        document.write(`<option value="${ano}">${ano}</option>`);
-      });
-    </script>
-  </select>
+  <select id="ano"></select>
 
   <div class="scroll-container" id="organograma"></div>
 
   <script>
+    const anosValidos = [];
+    for (let y = 2024; y >= 2000; y--) {
+      if (y !== 2020 && y !== 2021) anosValidos.push(y);
+    }
+    const selectAno = document.getElementById("ano");
+    selectAno.innerHTML = '<option value="">--Selecione--</option>' + anosValidos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
+
     const estrutura = [
       ["Equipe Dirigente - MONTAGEM", "Equipe Dirigente - PÓS ENCONTRO", "Equipe Dirigente - FICHAS", "Equipe Dirigente - PALESTRA", "Equipe Dirigente - FINANÇAS"],
       ["Casal Coordenador Geral", "Casal Setorial"],
@@ -92,7 +89,7 @@
       ["Equipe Café e Minimercado", "Equipe Compras", "Equipe Acolhida", "Equipe Ordem e Limpeza", "Equipe Liturgia e Vigília", "Equipe Secretaria", "Equipe Cozinha", "Equipe Visitação"]
     ];
 
-    document.getElementById("ano").addEventListener("change", async function() {
+    selectAno.addEventListener("change", async function() {
       const ano = this.value;
       if (!ano) return;
       const res = await fetch(`/dados-organograma?ano=${ano}`);
