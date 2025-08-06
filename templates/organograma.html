@@ -35,7 +35,8 @@
         layout: $(go.Layout),
         initialContentAlignment: go.Spot.TopLeft,
         isReadOnly: true,
-        "grid.visible": false
+        "grid.visible": false,
+        "animationManager.isEnabled": false
       });
 
       diagram.nodeTemplate =
@@ -85,23 +86,32 @@
       const nodes = [];
       const counters = {};
 
-      // Coordenadores primeiro
-      const coordenadores = data.filter(p => (p.coordenador || "").toLowerCase().trim() === "sim");
-      const naoCoordenadores = data.filter(p => (p.coordenador || "").toLowerCase().trim() !== "sim");
+      // Agrupar por equipe e ordenar com coordenadores primeiro
+      const grupos = {};
+      for (const p of data) {
+        const equipe = (p.equipe || "").trim();
+        if (!grupos[equipe]) grupos[equipe] = [];
+        grupos[equipe].push(p);
+      }
 
-      for (const tipo of [coordenadores, naoCoordenadores]) {
-        for (const p of tipo) {
-          const equipe = (p.equipe || "").trim();
+      for (const equipe in grupos) {
+        const lista = grupos[equipe];
+        // Coordenadores primeiro
+        lista.sort((a, b) => {
+          const ca = (a.coordenador || "").toLowerCase().trim() === "sim" ? -1 : 1;
+          const cb = (b.coordenador || "").toLowerCase().trim() === "sim" ? -1 : 1;
+          return ca - cb;
+        });
+
+        const nomeExibicao = Object.keys(posicoes).find(k => equipe.toUpperCase().includes(k.toUpperCase())) || "Outros";
+        if (!counters[nomeExibicao]) counters[nomeExibicao] = 0;
+        const [baseX, baseY] = posicoes[nomeExibicao] || [0, 1000];
+
+        for (const p of lista) {
           const nome = `${p.nome_ele} e ${p.nome_ela}`;
           const isCoord = (p.coordenador || "").toLowerCase().trim() === "sim";
-
-          let key = Object.keys(posicoes).find(k => equipe.toUpperCase().includes(k.toUpperCase()));
-          if (!key) key = "Outros";
-
-          if (!counters[key]) counters[key] = 0;
-          const [baseX, baseY] = posicoes[key] || [0, 1000];
           const spacing = 110;
-          const yOffset = counters[key]++ * spacing;
+          const yOffset = counters[nomeExibicao]++ * spacing;
 
           nodes.push({
             key: `${equipe}_${nome}`,
