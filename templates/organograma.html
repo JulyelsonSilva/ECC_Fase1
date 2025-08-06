@@ -34,7 +34,8 @@
       diagram = $(go.Diagram, "myDiagramDiv", {
         layout: $(go.Layout),
         initialContentAlignment: go.Spot.TopLeft,
-        isReadOnly: true
+        isReadOnly: true,
+        "grid.visible": false
       });
 
       diagram.nodeTemplate =
@@ -84,26 +85,32 @@
       const nodes = [];
       const counters = {};
 
-      for (const p of data) {
-        const equipe = (p.equipe || "").trim();
-        const nome = `${p.nome_ele} e ${p.nome_ela}`;
-        const isCoord = (p.coordenador || "").toLowerCase().trim() === "sim";
+      // Coordenadores primeiro
+      const coordenadores = data.filter(p => (p.coordenador || "").toLowerCase().trim() === "sim");
+      const naoCoordenadores = data.filter(p => (p.coordenador || "").toLowerCase().trim() !== "sim");
 
-        let key = Object.keys(posicoes).find(k => equipe.toUpperCase().includes(k.toUpperCase()));
-        if (!key) key = "Outros";
+      for (const tipo of [coordenadores, naoCoordenadores]) {
+        for (const p of tipo) {
+          const equipe = (p.equipe || "").trim();
+          const nome = `${p.nome_ele} e ${p.nome_ela}`;
+          const isCoord = (p.coordenador || "").toLowerCase().trim() === "sim";
 
-        if (!counters[key]) counters[key] = 0;
-        const [baseX, baseY] = posicoes[key] || [0, 1000];
-        const spacing = 110;
-        const yOffset = counters[key]++ * spacing;
+          let key = Object.keys(posicoes).find(k => equipe.toUpperCase().includes(k.toUpperCase()));
+          if (!key) key = "Outros";
 
-        nodes.push({
-          key: `${equipe}_${nome}`,
-          equipe: equipe,
-          casal: nome,
-          isCoord: isCoord,
-          loc: `${baseX} ${baseY + yOffset}`
-        });
+          if (!counters[key]) counters[key] = 0;
+          const [baseX, baseY] = posicoes[key] || [0, 1000];
+          const spacing = 110;
+          const yOffset = counters[key]++ * spacing;
+
+          nodes.push({
+            key: `${equipe}_${nome}`,
+            equipe: equipe,
+            casal: nome,
+            isCoord: isCoord,
+            loc: `${baseX} ${baseY + yOffset}`
+          });
+        }
       }
 
       diagram.model = new go.GraphLinksModel(nodes);
