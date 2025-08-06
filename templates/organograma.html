@@ -69,7 +69,7 @@
     const estrutura = [
       ["Equipe Dirigente - MONTAGEM", "Equipe Dirigente - PÓS ENCONTRO", "Equipe Dirigente - FICHAS", "Equipe Dirigente - PALESTRA", "Equipe Dirigente - FINANÇAS"],
       ["Casal Coordenador Geral", "Casal Setorial"],
-      ["Equipe de Sala - Coordenador/Apresentador", "Equipe de Sala - Boa Vontade", "Equipe de Sala - Canto", "Equipe de Sala - Som e Projeção", "Equipe de Sala - Recepção Palestrantes", "Equipe de Círculos"],
+      ["Equipe de Sala", "Equipe de Círculos"],
       ["Equipe Café e Minimercado", "Equipe Compras", "Equipe Acolhida", "Equipe Ordem e Limpeza", "Equipe Liturgia e Vigília", "Equipe Secretaria", "Equipe Cozinha", "Equipe Visitação"]
     ];
 
@@ -101,39 +101,54 @@
         const linhaDiv = document.createElement("div");
         linhaDiv.className = "linha";
 
-        linhaEquipes.forEach(equipe => {
-          if (!equipe) return;
+        linhaEquipes.forEach(equipeBase => {
+          if (!equipeBase) return;
 
-          const box = document.createElement("div");
-          box.className = "equipe-box";
-          if (equipes[equipe]?.coordenador?.length > 0) box.classList.add("coordenador");
+          const caixaCoord = document.createElement("div");
+          caixaCoord.className = "equipe-box coordenador";
+          const tituloCoord = document.createElement("div");
+          tituloCoord.className = "titulo";
+          tituloCoord.textContent = equipeBase;
+          caixaCoord.appendChild(tituloCoord);
+          const cargoCoord = document.createElement("div");
+          cargoCoord.className = "cargo";
+          cargoCoord.textContent = "Coordenador(es)";
+          caixaCoord.appendChild(cargoCoord);
 
-          const titulo = document.createElement("div");
-          titulo.className = "titulo";
-          titulo.textContent = equipe;
-          box.appendChild(titulo);
-
-          if (equipes[equipe]?.coordenador?.length > 0) {
-            const cargo = document.createElement("div");
-            cargo.className = "cargo";
-            cargo.textContent = "Coordenador(es)";
-            box.appendChild(cargo);
-            equipes[equipe].coordenador.forEach(c => {
-              const div = document.createElement("div");
-              div.className = "nomes";
-              div.textContent = c;
-              box.appendChild(div);
-            });
-          }
-
-          equipes[equipe]?.membros.forEach(m => {
-            const membro = document.createElement("div");
-            membro.className = "nomes";
-            membro.textContent = m;
-            box.appendChild(membro);
+          let hasCoord = false;
+          Object.keys(equipes).forEach(eq => {
+            if (eq.startsWith(equipeBase) && equipes[eq].coordenador.length > 0) {
+              hasCoord = true;
+              equipes[eq].coordenador.forEach(c => {
+                const div = document.createElement("div");
+                div.className = "nomes";
+                div.textContent = c;
+                caixaCoord.appendChild(div);
+              });
+            }
           });
+          if (hasCoord) linhaDiv.appendChild(caixaCoord);
 
-          linhaDiv.appendChild(box);
+          const caixaMembros = document.createElement("div");
+          caixaMembros.className = "equipe-box";
+          const tituloMembros = document.createElement("div");
+          tituloMembros.className = "titulo";
+          tituloMembros.textContent = equipeBase;
+          caixaMembros.appendChild(tituloMembros);
+
+          let hasMembro = false;
+          Object.keys(equipes).forEach(eq => {
+            if (eq.startsWith(equipeBase) && equipes[eq].membros.length > 0) {
+              hasMembro = true;
+              equipes[eq].membros.forEach(m => {
+                const div = document.createElement("div");
+                div.className = "nomes";
+                div.textContent = m;
+                caixaMembros.appendChild(div);
+              });
+            }
+          });
+          if (hasMembro) linhaDiv.appendChild(caixaMembros);
         });
 
         container.appendChild(linhaDiv);
