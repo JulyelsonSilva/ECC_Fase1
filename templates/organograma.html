@@ -6,38 +6,43 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      padding: 20px;
+      background: #f5f5f5;
+      margin: 20px;
     }
-    .container {
-      position: relative;
-      width: 100%;
-      height: 2000px;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(9, 250px);
+      grid-auto-rows: min-content;
+      gap: 50px;
+      justify-content: center;
     }
-    .caixa {
-      position: absolute;
-      width: 250px;
-      height: auto;
-      padding: 10px;
+    .box {
+      background: white;
       border: 1px solid #333;
       border-radius: 10px;
-      background-color: #fff;
+      padding: 10px;
       box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
     }
     .coordenador {
       background-color: #ffeb3b;
     }
-    .titulo-equipe {
+    .titulo {
       font-weight: bold;
       text-align: center;
       margin-bottom: 4px;
     }
-    .membro {
+    .cargo {
+      font-size: 12px;
+      text-align: center;
+      font-style: italic;
+      margin-bottom: 5px;
+    }
+    .nomes {
       text-align: center;
     }
     select {
-      margin-bottom: 20px;
       font-size: 16px;
+      margin-bottom: 20px;
       padding: 5px;
     }
   </style>
@@ -47,7 +52,6 @@
   <label for="ano">Escolha o ano:</label>
   <select id="ano">
     <option value="">--Selecione--</option>
-    <!-- gera anos de 2024 a 2000 -->
     <script>
       for (let y = 2024; y >= 2000; y--) {
         document.write(`<option value="${y}">${y}</option>`);
@@ -55,27 +59,17 @@
     </script>
   </select>
 
-  <div class="container" id="organograma"></div>
+  <div class="grid" id="organograma"></div>
 
   <script>
-    const posicoes = {
-      'Dirigentes': { top: 50, left: 50 },
-      'Casal Coordenador Geral': { top: 50, left: 400 },
-      'Casal Setorial': { top: 50, left: 800 },
-      'Sala': { top: 300, left: 100 },
-      'Circulos': { top: 300, left: 700 },
-      'Café e Minimercado': { top: 600, left: 0 },
-      'Compras': { top: 600, left: 300 },
-      'Acolhida': { top: 600, left: 600 },
-      'Ordem e Limpeza': { top: 600, left: 900 },
-      'Liturgia e Vigilia': { top: 600, left: 1200 },
-      'Secretaria': { top: 600, left: 1500 },
-      'Cozinha': { top: 600, left: 1800 },
-      'Visitação': { top: 600, left: 2100 }
-    };
-
-    const coordenadoresPorEquipe = {};
-    const membrosPorEquipe = {};
+    const estrutura = [
+      // Linha 1
+      ["Dirigentes", "Casal Coordenador Geral", "Casal Setorial"],
+      // Linha 2
+      ["Sala", null, "Circulos"],
+      // Linha 3
+      ["Café e Minimercado", "Compras", "Acolhida", "Ordem e Limpeza", "Liturgia e Vigilia", "Secretaria", "Cozinha", "Visitação"]
+    ];
 
     document.getElementById("ano").addEventListener("change", async function() {
       const ano = this.value;
@@ -83,27 +77,63 @@
       const res = await fetch(`/dados-organograma?ano=${ano}`);
       const dados = await res.json();
 
-      document.getElementById("organograma").innerHTML = "";
+      const grid = document.getElementById("organograma");
+      grid.innerHTML = "";
 
-      // Organizar os dados
-      dados.forEach(pessoa => {
-        const equipe = pessoa.equipe.trim();
-        const nome = pessoa.nome_ele + " e " + pessoa.nome_ela;
-        const isCoord = pessoa.coordenador.trim().toLowerCase() === "sim";
+      const equipes = {};
 
+      dados.forEach(p => {
+        const equipe = p.equipe.trim();
+        const nome = p.nome_ele + " e " + p.nome_ela;
+        const isCoord = p.coordenador.trim().toLowerCase() === "sim";
+
+        if (!equipes[equipe]) equipes[equipe] = { coordenador: null, membros: [] };
         if (isCoord) {
-          coordenadoresPorEquipe[equipe] = nome;
+          equipes[equipe].coordenador = nome;
         } else {
-          if (!membrosPorEquipe[equipe]) membrosPorEquipe[equipe] = [];
-          membrosPorEquipe[equipe].push(nome);
+          equipes[equipe].membros.push(nome);
         }
       });
 
-      Object.entries(posicoes).forEach(([equipe, pos]) => {
-        const caixa = document.createElement("div");
-        caixa.className = "caixa";
-        caixa.style.top = pos.top + "px";
-        caixa.style.left = pos.left + "px";
+      estrutura.forEach((linha, linhaIndex) => {
+        linha.forEach((equipe, colunaIndex) => {
+          if (!equipe) return;
 
-        const titulo = document.createElement("div");
-        titulo.clas
+          const div = document.createElement("div");
+          div.className = "box";
+          if (equipes[equipe]?.coordenador) div.classList.add("coordenador");
+
+          const titulo = document.createElement("div");
+          titulo.className = "titulo";
+          titulo.textContent = equipe;
+          div.appendChild(titulo);
+
+          if (equipes[equipe]?.coordenador) {
+            const cargo = document.createElement("div");
+            cargo.className = "cargo";
+            cargo.textContent = "Coordenador";
+            div.appendChild(cargo);
+
+            const nomeCoord = document.createElement("div");
+            nomeCoord.className = "nomes";
+            nomeCoord.textContent = equipes[equipe].coordenador;
+            div.appendChild(nomeCoord);
+          }
+
+          equipes[equipe]?.membros.forEach(m => {
+            const membro = document.createElement("div");
+            membro.className = "nomes";
+            membro.textContent = m;
+            div.appendChild(membro);
+          });
+
+          div.style.gridColumn = `${colunaIndex + 1} / span 1`;
+          div.style.gridRow = `${linhaIndex + 1}`;
+
+          grid.appendChild(div);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
