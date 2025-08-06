@@ -3,134 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <title>Organograma ECC</title>
-  <script src="https://unpkg.com/gojs/release/go-debug.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    #ano { font-size: 16px; margin-bottom: 20px; }
-    #myDiagramDiv {
-      width: 100%;
-      height: 1400px;
-      border: 1px solid #ccc;
+    body {
+      font-family: Arial, sans-serif;
       background: #f9f9f9;
+      padding: 20px;
+    }
+    .container {
+      position: relative;
+      width: 100%;
+      height: 2000px;
+    }
+    .caixa {
+      position: absolute;
+      width: 250px;
+      height: auto;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 10px;
+      background-color: #fff;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+    }
+    .coordenador {
+      background-color: #ffeb3b;
+    }
+    .titulo-equipe {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .membro {
+      text-align: center;
+    }
+    select {
+      margin-bottom: 20px;
+      font-size: 16px;
+      padding: 5px;
     }
   </style>
 </head>
 <body>
-  <h2>Organograma ECC</h2>
-  <label for="ano">Ano:</label>
-  <select id="ano" onchange="carregarOrganograma()">
-    {% for a in range(2024, 1999, -1) %}
-      <option value="{{ a }}">{{ a }}</option>
-    {% endfor %}
+  <h1>Organograma ECC</h1>
+  <label for="ano">Escolha o ano:</label>
+  <select id="ano">
+    <option value="">--Selecione--</option>
+    <!-- gera anos de 2024 a 2000 -->
+    <script>
+      for (let y = 2024; y >= 2000; y--) {
+        document.write(`<option value="${y}">${y}</option>`);
+      }
+    </script>
   </select>
 
-  <div id="myDiagramDiv"></div>
+  <div class="container" id="organograma"></div>
 
   <script>
-    const $ = go.GraphObject.make;
-    let diagram;
+    const posicoes = {
+      'Dirigentes': { top: 50, left: 50 },
+      'Casal Coordenador Geral': { top: 50, left: 400 },
+      'Casal Setorial': { top: 50, left: 800 },
+      'Sala': { top: 300, left: 100 },
+      'Circulos': { top: 300, left: 700 },
+      'Café e Minimercado': { top: 600, left: 0 },
+      'Compras': { top: 600, left: 300 },
+      'Acolhida': { top: 600, left: 600 },
+      'Ordem e Limpeza': { top: 600, left: 900 },
+      'Liturgia e Vigilia': { top: 600, left: 1200 },
+      'Secretaria': { top: 600, left: 1500 },
+      'Cozinha': { top: 600, left: 1800 },
+      'Visitação': { top: 600, left: 2100 }
+    };
 
-    function initDiagram() {
-      diagram = $(go.Diagram, "myDiagramDiv", {
-        layout: $(go.Layout),
-        initialContentAlignment: go.Spot.TopLeft,
-        isReadOnly: true,
-        "grid.visible": false,
-        "animationManager.isEnabled": false
+    const coordenadoresPorEquipe = {};
+    const membrosPorEquipe = {};
+
+    document.getElementById("ano").addEventListener("change", async function() {
+      const ano = this.value;
+      if (!ano) return;
+      const res = await fetch(`/dados-organograma?ano=${ano}`);
+      const dados = await res.json();
+
+      document.getElementById("organograma").innerHTML = "";
+
+      // Organizar os dados
+      dados.forEach(pessoa => {
+        const equipe = pessoa.equipe.trim();
+        const nome = pessoa.nome_ele + " e " + pessoa.nome_ela;
+        const isCoord = pessoa.coordenador.trim().toLowerCase() === "sim";
+
+        if (isCoord) {
+          coordenadoresPorEquipe[equipe] = nome;
+        } else {
+          if (!membrosPorEquipe[equipe]) membrosPorEquipe[equipe] = [];
+          membrosPorEquipe[equipe].push(nome);
+        }
       });
 
-      diagram.nodeTemplate =
-        $(go.Node, "Auto",
-          new go.Binding("location", "loc", go.Point.parse),
-          $(go.Shape, "RoundedRectangle",
-            {
-              fill: "#CFE2F3", stroke: "#999", strokeWidth: 1.5, width: 250, height: 100
-            },
-            new go.Binding("fill", "isCoord", v => v ? "#FFE599" : "#CFE2F3")
-          ),
-          $(go.Panel, "Vertical",
-            $(go.TextBlock, { margin: 4, font: "bold 13px sans-serif", wrap: go.TextBlock.WrapFit, width: 230 },
-              new go.Binding("text", "equipe")),
-            $(go.TextBlock, { font: "italic 11px sans-serif", stroke: "#333" },
-              new go.Binding("text", "isCoord", v => v ? "Coordenador" : "")),
-            $(go.TextBlock, { margin: 4, font: "12px sans-serif", wrap: go.TextBlock.WrapFit, width: 230 },
-              new go.Binding("text", "casal"))
-          )
-        );
-    }
+      Object.entries(posicoes).forEach(([equipe, pos]) => {
+        const caixa = document.createElement("div");
+        caixa.className = "caixa";
+        caixa.style.top = pos.top + "px";
+        caixa.style.left = pos.left + "px";
 
-    function carregarOrganograma() {
-      const ano = document.getElementById("ano").value;
-      fetch(`/dados-organograma?ano=${ano}`)
-        .then(res => res.json())
-        .then(data => montarOrganograma(data));
-    }
-
-    function montarOrganograma(data) {
-      const posicoes = {
-        "Dirigentes": [30, 50],
-        "Coordenador Geral": [500, 50],
-        "Casal Setorial": [950, 50],
-        "Sala": [50, 900],
-        "Círculos": [900, 900],
-        "Café e Minimercado": [0, 1000],
-        "Compras": [300, 1000],
-        "Acolhida": [600, 1000],
-        "Ordem e Limpeza": [900, 1000],
-        "Liturgia e Vigília": [1200, 1000],
-        "Secretaria": [1500, 1000],
-        "Cozinha": [1800, 1000],
-        "Visitação": [2100, 1000]
-      };
-
-      const nodes = [];
-      const counters = {};
-
-      // Agrupar por equipe e ordenar com coordenadores primeiro
-      const grupos = {};
-      for (const p of data) {
-        const equipe = (p.equipe || "").trim();
-        if (!grupos[equipe]) grupos[equipe] = [];
-        grupos[equipe].push(p);
-      }
-
-      for (const equipe in grupos) {
-        const lista = grupos[equipe];
-        // Coordenadores primeiro
-        lista.sort((a, b) => {
-          const ca = (a.coordenador || "").toLowerCase().trim() === "sim" ? -1 : 1;
-          const cb = (b.coordenador || "").toLowerCase().trim() === "sim" ? -1 : 1;
-          return ca - cb;
-        });
-
-        const nomeExibicao = Object.keys(posicoes).find(k => equipe.toUpperCase().includes(k.toUpperCase())) || "Outros";
-        if (!counters[nomeExibicao]) counters[nomeExibicao] = 0;
-        const [baseX, baseY] = posicoes[nomeExibicao] || [0, 1000];
-
-        for (const p of lista) {
-          const nome = `${p.nome_ele} e ${p.nome_ela}`;
-          const isCoord = (p.coordenador || "").toLowerCase().trim() === "sim";
-          const spacing = 110;
-          const yOffset = counters[nomeExibicao]++ * spacing;
-
-          nodes.push({
-            key: `${equipe}_${nome}`,
-            equipe: equipe,
-            casal: nome,
-            isCoord: isCoord,
-            loc: `${baseX} ${baseY + yOffset}`
-          });
-        }
-      }
-
-      diagram.model = new go.GraphLinksModel(nodes);
-    }
-
-    window.addEventListener("load", () => {
-      initDiagram();
-      document.getElementById("ano").value = "2024";
-      carregarOrganograma();
-    });
-  </script>
-</body>
-</html>
+        const titulo = document.createElement("div");
+        titulo.clas
