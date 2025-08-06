@@ -18,6 +18,7 @@
       justify-content: center;
       gap: 50px;
       margin-bottom: 60px;
+      min-width: calc((250px + 50px) * 8);
     }
     .equipe-coluna {
       display: flex;
@@ -55,6 +56,14 @@
       margin-bottom: 20px;
       padding: 5px;
     }
+    @media (max-width: 768px) {
+      .equipe-box {
+        width: 220px;
+      }
+      .linha {
+        min-width: calc((220px + 50px) * 8);
+      }
+    }
   </style>
 </head>
 <body>
@@ -63,9 +72,13 @@
   <select id="ano">
     <option value="">--Selecione--</option>
     <script>
+      const anosValidos = [];
       for (let y = 2024; y >= 2000; y--) {
-        document.write(`<option value="${y}">${y}</option>`);
+        if (y !== 2020 && y !== 2021) anosValidos.push(y);
       }
+      anosValidos.forEach(ano => {
+        document.write(`<option value="${ano}">${ano}</option>`);
+      });
     </script>
   </select>
 
@@ -84,7 +97,6 @@
       if (!ano) return;
       const res = await fetch(`/dados-organograma?ano=${ano}`);
       const dados = await res.json();
-      console.log(dados);
 
       const container = document.getElementById("organograma");
       container.innerHTML = "";
@@ -152,7 +164,12 @@
               equipes[eq].membros.forEach(m => {
                 const div = document.createElement("div");
                 div.className = "nomes";
-                div.textContent = m;
+                if (equipeBase.toLowerCase() === "equipe de sala") {
+                  const subtitulo = eq.replace(/^Equipe de Sala - /i, "");
+                  div.textContent = `${subtitulo}: ${m}`;
+                } else {
+                  div.textContent = m;
+                }
                 caixaMembros.appendChild(div);
               });
             }
