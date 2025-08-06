@@ -12,16 +12,14 @@
     .scroll-container {
       overflow-x: auto;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, 250px);
-      grid-auto-rows: min-content;
+    .linha {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
       gap: 50px;
-      justify-content: start;
-      padding: 10px;
-      width: max-content;
+      margin-bottom: 60px;
     }
-    .box {
+    .equipe-box {
       background: white;
       border: 1px solid #333;
       border-radius: 10px;
@@ -65,9 +63,7 @@
     </script>
   </select>
 
-  <div class="scroll-container">
-    <div class="grid" id="organograma"></div>
-  </div>
+  <div class="scroll-container" id="organograma"></div>
 
   <script>
     const estrutura = [
@@ -84,11 +80,10 @@
       const dados = await res.json();
       console.log(dados);
 
-      const grid = document.getElementById("organograma");
-      grid.innerHTML = "";
+      const container = document.getElementById("organograma");
+      container.innerHTML = "";
 
       const equipes = {};
-
       dados.forEach(p => {
         const equipe = p.equipe.trim();
         const nome = p.nome_ele + " e " + p.nome_ela;
@@ -102,30 +97,32 @@
         }
       });
 
-      estrutura.forEach((linha, linhaIndex) => {
-        linha.forEach((equipe, colunaIndex) => {
+      estrutura.forEach((linhaEquipes, linhaIndex) => {
+        const linhaDiv = document.createElement("div");
+        linhaDiv.className = "linha";
+
+        linhaEquipes.forEach(equipe => {
           if (!equipe) return;
 
-          const div = document.createElement("div");
-          div.className = "box";
-          if (equipes[equipe]?.coordenador?.length > 0) div.classList.add("coordenador");
+          const box = document.createElement("div");
+          box.className = "equipe-box";
+          if (equipes[equipe]?.coordenador?.length > 0) box.classList.add("coordenador");
 
           const titulo = document.createElement("div");
           titulo.className = "titulo";
           titulo.textContent = equipe;
-          div.appendChild(titulo);
+          box.appendChild(titulo);
 
           if (equipes[equipe]?.coordenador?.length > 0) {
             const cargo = document.createElement("div");
             cargo.className = "cargo";
             cargo.textContent = "Coordenador(es)";
-            div.appendChild(cargo);
-
-            equipes[equipe].coordenador.forEach(coord => {
-              const nomeCoord = document.createElement("div");
-              nomeCoord.className = "nomes";
-              nomeCoord.textContent = coord;
-              div.appendChild(nomeCoord);
+            box.appendChild(cargo);
+            equipes[equipe].coordenador.forEach(c => {
+              const div = document.createElement("div");
+              div.className = "nomes";
+              div.textContent = c;
+              box.appendChild(div);
             });
           }
 
@@ -133,14 +130,13 @@
             const membro = document.createElement("div");
             membro.className = "nomes";
             membro.textContent = m;
-            div.appendChild(membro);
+            box.appendChild(membro);
           });
 
-          div.style.gridColumn = `${colunaIndex + 1} / span 1`;
-          div.style.gridRow = `${linhaIndex + 1}`;
-
-          grid.appendChild(div);
+          linhaDiv.appendChild(box);
         });
+
+        container.appendChild(linhaDiv);
       });
     });
   </script>
