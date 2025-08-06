@@ -71,12 +71,10 @@
 
   <script>
     const estrutura = [
-      // Linha 1
-      ["Dirigentes", "Casal Coordenador Geral", "Casal Setorial"],
-      // Linha 2
-      ["Sala", null, "Circulos"],
-      // Linha 3
-      ["Café e Minimercado", "Compras", "Acolhida", "Ordem e Limpeza", "Liturgia e Vigilia", "Secretaria", "Cozinha", "Visitação"]
+      ["Equipe Dirigente - MONTAGEM", "Equipe Dirigente - PÓS ENCONTRO", "Equipe Dirigente - FICHAS", "Equipe Dirigente - PALESTRA", "Equipe Dirigente - FINANÇAS"],
+      ["Casal Coordenador Geral", "Casal Setorial"],
+      ["Equipe de Sala - Coordenador/Apresentador", "Equipe de Sala - Boa Vontade", "Equipe de Sala - Canto", "Equipe de Sala - Som e Projeção", "Equipe de Sala - Recepção Palestrantes", "Equipe de Círculos"],
+      ["Equipe Café e Minimercado", "Equipe Compras", "Equipe Acolhida", "Equipe Ordem e Limpeza", "Equipe Liturgia e Vigília", "Equipe Secretaria", "Equipe Cozinha", "Equipe Visitação"]
     ];
 
     document.getElementById("ano").addEventListener("change", async function() {
@@ -84,7 +82,7 @@
       if (!ano) return;
       const res = await fetch(`/dados-organograma?ano=${ano}`);
       const dados = await res.json();
-      console.log(dados); // DEBUG
+      console.log(dados);
 
       const grid = document.getElementById("organograma");
       grid.innerHTML = "";
@@ -96,9 +94,9 @@
         const nome = p.nome_ele + " e " + p.nome_ela;
         const isCoord = p.coordenador.trim().toLowerCase() === "sim";
 
-        if (!equipes[equipe]) equipes[equipe] = { coordenador: null, membros: [] };
+        if (!equipes[equipe]) equipes[equipe] = { coordenador: [], membros: [] };
         if (isCoord) {
-          equipes[equipe].coordenador = nome;
+          equipes[equipe].coordenador.push(nome);
         } else {
           equipes[equipe].membros.push(nome);
         }
@@ -110,23 +108,25 @@
 
           const div = document.createElement("div");
           div.className = "box";
-          if (equipes[equipe]?.coordenador) div.classList.add("coordenador");
+          if (equipes[equipe]?.coordenador?.length > 0) div.classList.add("coordenador");
 
           const titulo = document.createElement("div");
           titulo.className = "titulo";
           titulo.textContent = equipe;
           div.appendChild(titulo);
 
-          if (equipes[equipe]?.coordenador) {
+          if (equipes[equipe]?.coordenador?.length > 0) {
             const cargo = document.createElement("div");
             cargo.className = "cargo";
-            cargo.textContent = "Coordenador";
+            cargo.textContent = "Coordenador(es)";
             div.appendChild(cargo);
 
-            const nomeCoord = document.createElement("div");
-            nomeCoord.className = "nomes";
-            nomeCoord.textContent = equipes[equipe].coordenador;
-            div.appendChild(nomeCoord);
+            equipes[equipe].coordenador.forEach(coord => {
+              const nomeCoord = document.createElement("div");
+              nomeCoord.className = "nomes";
+              nomeCoord.textContent = coord;
+              div.appendChild(nomeCoord);
+            });
           }
 
           equipes[equipe]?.membros.forEach(m => {
