@@ -294,114 +294,73 @@ def dados_organograma():
 # -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
+    import re
     def split_casal(line: str):
-        """Divide a linha em (ele, ela) aceitando ; | ' e ' | espaço único."""
+        """Divide em (ele, ela) aceitando ; | ' e ' | 1 espaço."""
         raw = (line or '').strip()
         if not raw:
             return None, None
-        # 1) ;
-        if ";" in raw:
-            a, b = raw.split(";", 1)
-            return a.strip(), b.strip()
-        # 2) ' e ' (case-insensitive)
-        import re
-        if re.search(r"\s+e\s+", raw, flags=re.I):
-            parts = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I)
-            if len(parts) >= 2:
-                return parts[0].strip(), parts[1].strip()
-        # 3) espaço único (divide no primeiro espaço)
-        if " " in raw:
-            a, b = raw.split(" ", 1)
-            return a.strip(), b.strip()
+        if ";" in raw:  # prioridade 1
+            a, b = raw.split(";", 1); return a.strip(), b.strip()
+        if re.search(r"\s+e\s+", raw, flags=re.I):  # prioridade 2
+            a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
+        if " " in raw:  # prioridade 3: primeiro espaço
+            a, b = raw.split(" ", 1); return a.strip(), b.strip()
         return None, None
 
-    def buscar_consolidado(nome_a: str, nome_b: str, cursor):
-        """Busca em ENCONTREIROS (mais recente) e ENCONTRISTAS.
-           Tenta (A,B); se não achar nada, tenta (B,A)."""
-        def _consulta(a: str, b: str):
-            # ENCONTREIROS: use apenas nome_ele/nome_ela (essa tabela não tem nome_usual_*)
-            cursor.execute("""
-                SELECT *
-                FROM encontreiros
-                WHERE nome_ele = %s AND nome_ela = %s
-                ORDER BY ano DESC
-                LIMIT 1
-            """, (a, b))
-            work = cursor.fetchone()
+    def cols_existem(cursor, tabela, *cols):
+        """Retorna True se todas as 'cols' existem na tabela."""
+        cursor.execute("""
+            SELECT COLUMN_NAME
+            FROM information_schema.columns
+            WHERE table_schema = %s AND table_name = %s
+        """, (DB_CONFIG['database'], tabela))
+        existentes = {r[0] for r in cursor.fetchall()}
+        return all(c in existentes for c in cols)
 
-            # ENCONTRISTAS: pode ter nome_usual_* e nome_*
-            cursor.execute("""
-                SELECT ano, endereco, telefone_ele, telefone_ela
-                FROM encontristas
-                WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
-                   OR (nome_ele = %s AND nome_ela = %s)
-                LIMIT 1
-            """, (a, b, a, b))
-            base = cursor.fetchone()
+    def escolher_par_nome(cursor, tabela, prefer_usual=True):
+        """
+        Retorna um par de colunas para nomes (ele, ela) conforme o que existir.
+        prefer_usual=True tenta ('nome_usual_ele','nome_usual_ela') primeiro.
+        """
+        pares = [
+            ('nome_usual_ele', 'nome_usual_ela'),
+            ('nome_ele', 'nome_ela')
+        ] if prefer_usual else [
+            ('nome_ele', 'nome_ela'),
+            ('nome_usual_ele', 'nome_usual_ela')
+        ]
+        for a,b in pares:
+            if cols_existem(cursor, tabela, a, b):
+                return a, b
+        return None, None
 
-            # Consolidação (preferir dados mais recentes do work)
-            if work:
-                endereco = work.get("endereco") or (base["endereco"] if base else "")
-                # Telefones: usar 'telefones' se existir; senão montar com ele/dela; senão cair para base
-                if "telefones" in work and work.get("telefones"):
-                    telefones = work["telefones"]
-                else:
-                    tel_ele = work.get("telefone_ele")
-                    tel_ela = work.get("telefone_ela")
-                    if tel_ele or tel_ela:
-                        telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
-                    elif base:
-                        telefones = f"{base.get('telefone_ele','') or '—'} / {base.get('telefone_ela','') or '—'}"
-                    else:
-                        telefones = "— / —"
-                return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
+    def buscar_consolidado(cursor, nome_a: str, nome_b: str):
+        """
+        Busca em ENCONTREIROS (mais recente) e ENCONTRISTAS.
+        Detecta colunas disponíveis, tenta (A,B) e se não achar tenta (B,A).
+        Consolida telefones/endereço do registro mais recente.
+        """
+        # Descobrir quais colunas usar em cada tabela
+        work_a, work_b = escolher_par_nome(cursor, 'encontreiros', prefer_usual=False)
+        base_a, base_b = escolher_par_nome(cursor, 'encontristas', prefer_usual=True)
 
-            if base:
-                telefones = f"{base.get('telefone_ele','') or '—'} / {base.get('telefone_ela','') or '—'}"
-                return {"endereco": base.get("endereco") or "—", "telefones": telefones}
+        def _consulta(a, b):
+            work = None
+            if work_a and work_b:
+                cursor.execute(
+                    f"SELECT * FROM encontreiros WHERE {work_a}=%s AND {work_b}=%s ORDER BY ano DESC LIMIT 1",
+                    (a, b)
+                )
+                work = cursor.fetchone()
 
-            return None
+            base = None
+            if base_a and base_b:
+                cursor.execute(
+                    f"""SELECT endereco, telefone_ele, telefone_ela
+                        FROM encontristas
+                        WHERE ({base_a}_
 
-        # Tenta na ordem informada; se não achar, inverte
-        return _consulta(nome_a, nome_b) or _consulta(nome_b, nome_a)
-
-    resultados = []
-
-    if request.method == 'POST':
-        nomes_input = request.form.get("lista_nomes", "").strip()
-        if nomes_input:
-            linhas = [l.strip() for l in nomes_input.split("\n") if l.strip()]
-
-            conn = mysql.connector.connect(**DB_CONFIG)
-            cursor = conn.cursor(dictionary=True)
-
-            for linha in linhas:
-                ele, ela = split_casal(linha)
-                if not ele or not ela:
-                    resultados.append({
-                        "nome": linha,
-                        "endereco": "Formato não reconhecido",
-                        "telefones": "— / —"
-                    })
-                    continue
-
-                dados = buscar_consolidado(ele, ela, cursor)
-                if not dados:
-                    resultados.append({
-                        "nome": f"{ele} e {ela}",
-                        "endereco": "Não encontrado",
-                        "telefones": "— / —"
-                    })
-                else:
-                    resultados.append({
-                        "nome": f"{ele} e {ela}",
-                        "endereco": dados["endereco"],
-                        "telefones": dados["telefones"]
-                    })
-
-            conn.close()
-
-    return render_template("relatorio_casais.html", resultados=resultados)
 
 # -----------------------------
 # Main
