@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Relatório de Casais</title>
+<style>
+  :root{ --gap:14px; }
+  body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; color:#222; }
+  .wrap{ max-width: 1000px; margin: 0 auto; }
+  h1{ margin: 8px 0 12px; font-size: 20px; text-align:center; }
+  .brand-bar{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .brand-bar img{ height:64px; object-fit:contain; }
+  .controls{ display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+  .controls button{ padding:10px 14px; border:1px solid #ccc; background:#f7f7f7; border-radius:8px; cursor:pointer; }
+  .controls button:hover{ background:#eee; }
+  textarea{ width:100%; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .note{ font-size: 12px; color:#666; margin-top:6px; }
+
+  .card{ border:1px solid #e3e3e3; border-radius:12px; padding:16px; margin: 0 0 18px; page-break-inside: avoid; background:#fff; }
+  .head{ display:flex; justify-content:space-between; gap: var(--gap); flex-wrap: wrap; }
+  .title{ font-size:18px; font-weight:600; }
+  .meta{ font-size:13px; color:#555; }
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-top: 10px; }
+  .item label{ display:block; font-size:12px; color:#666; margin-bottom:4px; }
+  .item div{ font-size:15px; }
+  .tag{ display:inline-block; background:#eef; border:1px solid #ccd; border-radius:6px; padding:2px 6px; font-size:12px; margin-right:8px; }
+  .history{ margin-top: 8px; font-size: 14px; }
+  .muted{ color:#777; font-size:12px; }
+  .footer{ margin-top:4px; font-size:12px; color:#666; display:flex; gap:12px; flex-wrap:wrap; }
+
+  @media print {
+    .controls, .no-print { display:none !important; }
+    body{ margin: 10mm; }
+    .card{ break-inside: avoid-page; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand-bar no-print">
+    <img src="{{ url_for('static', filename='img/brasao_divino.jpg') }}" alt="Paróquia Divino Espírito Santo">
+    <div style="flex:1; text-align:center;">
+      <h1>Relatório de Casais — ECC<br><span style="font-size:14px;color:#555;">Paróquia Divino Espírito Santo — Maceió</span></h1>
+    </div>
+    <img src="{{ url_for('static', filename='img/brasao_ecc.jpg') }}" alt="ECC">
+  </div>
+
+  <form method="post" class="no-print" style="margin-top:14px;">
+    <textarea name="lista" placeholder="Cole aqui: Ele[TAB]Ela por linha.&#10;Ex.:&#10;João Silva[TAB]Maria Souza&#10;Carlos Lima - Ana Vieira">{{ entrada }}</textarea>
+    <div class="controls">
+      <button type="submit">Gerar relatório</button>
+      <button type="button" onclick="document.querySelector('textarea').value='';">Limpar</button>
+      <button type="button" onclick="window.print()">Imprimir</button>
+      <button type="button" onclick="baixarPDF()">Baixar PDF</button>
+    </div>
+    <div class="note">Regra: a busca só ocorre quando <strong>ambos os nomes</strong> (Ele e Ela) são informados na mesma linha.</div>
+  </form>
+
+  {% if registros is not none %}
+    {% for r in registros %}
+      <div class="card">
+        <div class="head">
+          <div class="title">
+            {{ r.nome_usual_ele or r.nome_ele or '—' }} &amp; {{ r.nome_usual_ela or r.nome_ela or '—' }}
+          </div>
+          <div class="meta">
+            {% if r.ano_encontro %}<span class="tag">Ano do Encontro: {{ r.ano_encontro }}</span>{% endif %}
+            {% if r.encontro %}<span class="tag">Turma: {{ r.encontro }}</span>{% endif %}
+            {% if r.fonte_contato %}<span class="tag">Contato mais recente: {{ r.fonte_contato }}</span>{% endif %}
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="item"><label>Telefone dele</label><div>{{ r.telefone_ele or '—' }}</div></div>
+          <div class="item"><label>Telefone dela</label><div>{{ r.telefone_ela or '—' }}</div></div>
+          <div class="item" style="grid-column: 1 / -1;"><label>Endereço</label><div>{{ r.endereco or '—' }}</div></div>
+        </div>
+
+        <div class="history">
+          <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">Anos em que trabalhou</label>
+          {% if r.historico and r.historico|length > 0 %}
+            <ul style="margin:0 0 0 18px; padding:0;">
+              {% for h in r.historico %}
+                <li>{{ h.ano }} — {{ h.equipe or 'Equipe não informada' }}{% if h.coordenador %} <span class="tag">Coordenador: {{ h.coordenador }}</span>{% endif %}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="muted">Sem registros em <em>encontreiros</em>.</div>
+          {% endif %}
+        </div>
+
+        <div class="footer">
+          <span>{{ 'Encontrado em encontristas' if r.base_existe else 'Não encontrado em encontristas' }}</span>
+          <span>{{ r.matches_work }} registro(s) em encontreiros</span>
+          <span class="muted">Entrada: {{ r.entrada }}</span>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</div>
+
+<script>
+function baixarPDF(){
+  const ta = document.querySelector('textarea[name="lista"]');
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/relatorio-casais.pdf';
+  form.target = '_blank';
+
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'lista';
+  input.value = ta ? (ta.value || '') : ({{ (entrada|tojson) if entrada is defined else '""' }});
+  form.appendChild(input);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+</script>
+</body>
+</html>
