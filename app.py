@@ -52,7 +52,7 @@ def encontristas():
     return render_template('encontristas.html', dados=dados, pagina=pagina, total_paginas=total_paginas)
 
 @app.route('/encontreiros')
-def encontrreiros():
+def encontreiros():
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
