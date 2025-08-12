@@ -6,6 +6,8 @@ import re
 from datetime import datetime
 from xhtml2pdf import pisa
 import io
+import os
+from flask import url_for
 
 app = Flask(__name__)
 
@@ -440,6 +442,22 @@ def dados_organograma():
 # -----------------------------
 # NOVO: Relatório consolidado (tela)
 # -----------------------------
+
+def link_callback(uri, rel):
+    """
+    Resolve URLs (ex.: /static/...) para caminho absoluto no disco,
+    para o xhtml2pdf conseguir carregar imagens e CSS locais.
+    """
+    if uri.startswith('/'):
+        # Caminho do static
+        if uri.startswith('/static/'):
+            path = os.path.join(app.root_path, uri.lstrip('/'))
+            return path
+        # Qualquer outro caminho absoluto do app
+        return os.path.join(app.root_path, uri.lstrip('/'))
+    # URLs completas não são baixadas; preferir /static/ + link_callback
+    return uri
+
 @app.route("/relatorio-casais", methods=["GET", "POST"])
 def relatorio_casais():
     if request.method == "GET":
