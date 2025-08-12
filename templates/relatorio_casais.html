@@ -2,48 +2,71 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Relatório de Casais</title>
+  <title>{{ titulo or 'Relatório de Casais' }}</title>
   <style>
+    :root{
+      --brand-strong: 22px;
+      --brand-mid: 16px;
+    }
     body { font-family: Arial, sans-serif; margin: 20px; color:#222; }
-    .brand-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
-    .brand-bar img { height: 80px; object-fit: contain; display:block; }
-    .brand-bar h2 { margin:0; text-align:center; flex:1; }
+    .brand-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand-logo { height: 110px; object-fit: contain; display:block; }
+    .brand-center { flex:1; text-align:center; }
+    .l1, .l2, .l5 { font-size: var(--brand-strong); font-weight: 700; line-height: 1.15; margin: 0; }
+    .l3, .l4 { font-size: var(--brand-mid); font-weight: 600; line-height: 1.2; margin: 2px 0; color:#333; }
+    .title-line { font-size: var(--brand-strong); font-weight: 700; margin: 6px 0 0; }
 
+    .form { margin-top:16px; }
     textarea { width:100%; height:150px; }
-    .controls { margin-top:10px; display:flex; gap:10px; }
-    .note { margin-top:6px; color:#666; font-size:12px; }
+    .controls { margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+    .print-btn { padding: 8px 16px; background: #007BFF; color: #fff; border: 0; border-radius:8px; cursor:pointer; }
+    input[type="text"]{ width:100%; padding:8px 10px; font-size:16px; border:1px solid #ccc; border-radius:8px; }
 
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; vertical-align: top; }
     th { background-color: #f0f0f0; }
-    .print-btn { margin-top: 10px; padding: 8px 16px; background: #007BFF; color: #fff; border: 0; border-radius:8px; cursor:pointer; }
 
-    /* NÃO mostrar formulário/instruções no modo impressão */
+    /* Esconder campos de edição no impresso */
     @media print {
       .no-print { display:none !important; }
       body { margin: 10mm; }
-      .brand-bar img { height: 60px; }
+      .brand-logo { height: 85px; }
+      .l1, .l2, .l5 { font-size: 20px; }
+      .l3, .l4 { font-size: 14px; }
+      .title-line { font-size: 20px; }
     }
   </style>
 </head>
 <body>
   <div class="brand-bar">
-   <img src="{{ url_for('static', filename='img/brasao_divino.jpg') }}" alt="Paróquia Divino Espírito Santo">
-    <h2>Relatório de Casais</h2>
-    <img src="{{ url_for('static', filename='img/brasao_ecc.jpg') }}" alt="Encontro de Casais com Cristo">
+    <img class="brand-logo" src="{{ url_for('static', filename='img/brasao_divino.jpg') }}" alt="Paróquia Divino Espírito Santo">
+    <div class="brand-center">
+      <p class="l1">PARÓQUIA DIVINO ESPÍRITO SANTO</p>
+      <p class="l2">Jatiúca - Maceió - AL</p>
+      <p class="l3">Forania Nossa Senhora Mãe do Povo</p>
+      <p class="l4">Arquidiocese de Maceió</p>
+      <p class="l5">Encontro de Casais com Cristo</p>
+      <p class="title-line">{{ titulo or 'Relatório de Casais' }}</p>
+    </div>
+    <img class="brand-logo" src="{{ url_for('static', filename='img/brasao_ecc.jpg') }}" alt="ECC">
   </div>
 
-  <form method="POST" class="no-print">
-    <label class="no-print">Cole a lista (separadores: <strong>;</strong>, <strong> e </strong> ou <strong>espaço</strong> entre os dois nomes):</label><br>
-    <textarea name="lista_nomes" placeholder="Exemplos:
-João;Maria
-João e Maria
-João Maria"></textarea><br>
+  <!-- edição de título e entrada (somem no impresso) -->
+  <form method="POST" class="form no-print">
+    <label for="titulo"><strong>Título do relatório</strong></label>
+    <input type="text" id="titulo" name="titulo" value="{{ titulo or 'Relatório de Casais' }}" placeholder="Digite o título do relatório">
+    <div style="height:8px;"></div>
+
+    <label for="lista_nomes">Cole a lista (separadores: “;”, “ e ” ou espaço):</label>
+    <textarea id="lista_nomes" name="lista_nomes" placeholder="Exemplos:
+Pedro;Ana
+Pedro e Ana
+Pedro Ana">{{ entrada or '' }}</textarea>
+
     <div class="controls">
       <button type="submit">Gerar Relatório</button>
       <button type="button" class="print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
     </div>
-    <div class="note">Dica: você pode colar direto do Excel; cada linha deve conter um casal.</div>
   </form>
 
   {% if resultados %}
