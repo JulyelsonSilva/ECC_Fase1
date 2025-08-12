@@ -431,6 +431,7 @@ def relatorio_casais():
     resultados = resultados_ok + resultados_fail
     return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
 
+
 # -----------------------------
 # Main
 # -----------------------------
