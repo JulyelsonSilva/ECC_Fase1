@@ -294,6 +294,83 @@ def dados_organograma():
 # -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
+    def split_casal(line: str):
+        """Divide a linha em (ele, ela) aceitando ; | ' e ' | espaço único.
+           Regra do espaço: divide no primeiro espaço (útil quando são só primeiros nomes)."""
+        raw = (line or '').strip()
+        if not raw:
+            return None, None
+        # Prioridade 1: ponto e vírgula
+        if ";" in raw:
+            a, b = raw.split(";", 1)
+            return a.strip(), b.strip()
+        # Prioridade 2: ' e ' (com espaços, case-insensitive)
+        import re
+        if re.search(r"\s+e\s+", raw, flags=re.I):
+            parts = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I)
+            if len(parts) >= 2:
+                return parts[0].strip(), parts[1].strip()
+        # Prioridade 3: espaço único (divide no primeiro espaço)
+        if " " in raw:
+            a, b = raw.split(" ", 1)
+            return a.strip(), b.strip()
+        # Nada reconhecido
+        return None, None
+
+    def buscar_consolidado(nome_a: str, nome_b: str, cursor):
+        """Busca em ENCONTREIROS (mais recente) e ENCONTRISTAS.
+           Tenta (A,B); se não achar nada, tenta (B,A). Consolida telefones/endereço do registro mais recente."""
+        def _consulta(a: str, b: str):
+            # ENCONTREIROS (prioriza mais recente). Tenta por nome_ele/nome_ela OU nome_usual_ele/nome_usual_ela.
+            cursor.execute("""
+                SELECT *
+                FROM encontreiros
+                WHERE (nome_ele = %s AND nome_ela = %s)
+                   OR (nome_usual_ele = %s AND nome_usual_ela = %s)
+                ORDER BY ano DESC
+                LIMIT 1
+            """, (a, b, a, b))
+            work = cursor.fetchone()
+
+            # ENCONTRISTAS (base)
+            cursor.execute("""
+                SELECT ano, endereco, telefone_ele, telefone_ela
+                FROM encontristas
+                WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
+                   OR (nome_ele = %s AND nome_ela = %s)
+                LIMIT 1
+            """, (a, b, a, b))
+            base = cursor.fetchone()
+
+            # Consolidação
+            if work:
+                endereco = work.get("endereco") or (base["endereco"] if base else "")
+                # Telefones: se houver campo 'telefones', usa; senão tenta ele/dela
+                if "telefones" in work and work.get("telefones"):
+                    telefones = work["telefones"]
+                else:
+                    tel_ele = work.get("telefone_ele")
+                    tel_ela = work.get("telefone_ela")
+                    if tel_ele or tel_ela:
+                        telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
+                    elif base:
+                        telefones = f"{base.get('telefone_ele','') or '—'} / {base.get('telefone_ela','') or '—'}"
+                    else:
+                        telefones = "— / —"
+                return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
+            elif base:
+                telefones = f"{base.get('telefone_ele','') or '—'} / {base.get('telefone_ela','') or '—'}"
+                return {"endereco": base.get("endereco") or "—", "telefones": telefones}
+            else:
+                return None
+
+        # Tenta na ordem dada
+        res = _consulta(nome_a, nome_b)
+        if res:
+            return res
+        # Tenta invertido
+        return _consulta(nome_b, nome_a)
+
     resultados = []
 
     if request.method == 'POST':
@@ -305,64 +382,32 @@ def relatorio_casais():
             cursor = conn.cursor(dictionary=True)
 
             for linha in linhas:
-                partes = linha.split(";")
-                if len(partes) == 2:
-                    nome_ele, nome_ela = partes[0].strip(), partes[1].strip()
-
-                    # ENCONTRISTAS
-                    cursor.execute("""
-                        SELECT ano, endereco, telefone_ele, telefone_ela 
-                        FROM encontristas 
-                        WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-                    """, (nome_ele, nome_ela))
-                    dado_encontrista = cursor.fetchone()
-
-                    # ENCONTREIROS (mais recente)
-                    cursor.execute("""
-                        SELECT * 
-                        FROM encontreiros 
-                        WHERE nome_ele = %s AND nome_ela = %s
-                        ORDER BY ano DESC
-                        LIMIT 1
-                    """, (nome_ele, nome_ela))
-                    dado_encontreiros = cursor.fetchone()
-
-                    # Consolidar dados mais recentes
-                    if dado_encontreiros:
-                        ano = dado_encontreiros.get("ano", "")
-                        endereco = dado_encontreiros.get("endereco") or (dado_encontrista["endereco"] if dado_encontrista else "")
-                        # Telefones: tenta campo 'telefones', senão combina ele/dela se existir
-                        if "telefones" in dado_encontreiros and dado_encontreiros.get("telefones"):
-                            telefones = dado_encontreiros.get("telefones")
-                        else:
-                            tel_ele = dado_encontreiros.get("telefone_ele") if "telefone_ele" in dado_encontreiros else None
-                            tel_ela = dado_encontreiros.get("telefone_ela") if "telefone_ela" in dado_encontreiros else None
-                            if tel_ele or tel_ela:
-                                telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
-                            elif dado_encontrista:
-                                telefones = f"{dado_encontrista.get('telefone_ele','') or '—'} / {dado_encontrista.get('telefone_ela','') or '—'}"
-                            else:
-                                telefones = "— / —"
-                    elif dado_encontrista:
-                        ano = dado_encontrista["ano"]
-                        endereco = dado_encontrista["endereco"]
-                        telefones = f"{dado_encontrista.get('telefone_ele','') or '—'} / {dado_encontrista.get('telefone_ela','') or '—'}"
-                    else:
-                        ano = "Não encontrado"
-                        endereco = "Não encontrado"
-                        telefones = "Não encontrado"
-
+                ele, ela = split_casal(linha)
+                if not ele or not ela:
                     resultados.append({
-                        "nome": f"{nome_ele} e {nome_ela}",
-                        "ano": ano,
-                        "endereco": endereco,
-                        "telefones": telefones
+                        "nome": linha,
+                        "endereco": "Formato não reconhecido",
+                        "telefones": "— / —"
+                    })
+                    continue
+
+                dados = buscar_consolidado(ele, ela, cursor)
+                if not dados:
+                    resultados.append({
+                        "nome": f"{ele} e {ela}",
+                        "endereco": "Não encontrado",
+                        "telefones": "— / —"
+                    })
+                else:
+                    resultados.append({
+                        "nome": f"{ele} e {ela}",
+                        "endereco": dados["endereco"],
+                        "telefones": dados["telefones"]
                     })
 
             conn.close()
 
     return render_template("relatorio_casais.html", resultados=resultados)
-
 # -----------------------------
 # Main
 # -----------------------------
