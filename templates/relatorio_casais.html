@@ -1,70 +1,66 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Relatório de Casais</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        textarea { width: 100%; height: 150px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; vertical-align: top; }
-        th { background-color: #f0f0f0; }
-        .print-btn {
-            margin-top: 10px;
-            padding: 8px 16px;
-            background: green;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .header-logos {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        .header-logos img { height: 80px; object-fit: contain; }
-        .header-logos h2 { text-align: center; flex: 1; margin: 0; }
-        @media print {
-            textarea, form button, .print-btn { display: none; }
-            body { margin: 10mm; }
-            .header-logos img { height: 60px; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Relatório de Casais</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; color:#222; }
+    .brand-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+    .brand-bar img { height: 80px; object-fit: contain; display:block; }
+    .brand-bar h2 { margin:0; text-align:center; flex:1; }
+
+    textarea { width:100%; height:150px; }
+    .controls { margin-top:10px; display:flex; gap:10px; }
+    .note { margin-top:6px; color:#666; font-size:12px; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; vertical-align: top; }
+    th { background-color: #f0f0f0; }
+    .print-btn { margin-top: 10px; padding: 8px 16px; background: #007BFF; color: #fff; border: 0; border-radius:8px; cursor:pointer; }
+
+    /* NÃO mostrar formulário/instruções no modo impressão */
+    @media print {
+      .no-print { display:none !important; }
+      body { margin: 10mm; }
+      .brand-bar img { height: 60px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="header-logos">
-        <img src="{{ url_for('static', filename='img/BRASAO DIVINO.jpg') }}" alt="Brasão Divino">
-        <h2>Relatório de Casais</h2>
-        <img src="{{ url_for('static', filename='img/BRASO ECC.jpg') }}" alt="Brasão ECC">
+  <div class="brand-bar">
+   <img src="{{ url_for('static', filename='img/brasao_divino.jpg') }}" alt="Paróquia Divino Espírito Santo">
+    <h2>Relatório de Casais</h2>
+    <img src="{{ url_for('static', filename='img/brasao_ecc.jpg') }}" alt="Encontro de Casais com Cristo">
+  </div>
+
+  <form method="POST" class="no-print">
+    <label class="no-print">Cole a lista (separadores: <strong>;</strong>, <strong> e </strong> ou <strong>espaço</strong> entre os dois nomes):</label><br>
+    <textarea name="lista_nomes" placeholder="Exemplos:
+João;Maria
+João e Maria
+João Maria"></textarea><br>
+    <div class="controls">
+      <button type="submit">Gerar Relatório</button>
+      <button type="button" class="print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
     </div>
+    <div class="note">Dica: você pode colar direto do Excel; cada linha deve conter um casal.</div>
+  </form>
 
-    <form method="POST">
-        <label>Cole a lista (separadores: <strong>;</strong>, <strong> e </strong> ou <strong>espaço</strong> entre os dois nomes):</label><br>
-        <textarea name="lista_nomes" placeholder="Exemplos:
-Pedro;Ana
-Pedro e Ana
-Pedro Ana"></textarea><br>
-        <button type="submit">Gerar Relatório</button>
-    </form>
-
-    {% if resultados %}
-        <button class="print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
-        <table>
-            <tr>
-                <th>Casal</th>
-                <th>Endereço</th>
-                <th>Telefones</th>
-            </tr>
-            {% for r in resultados %}
-            <tr>
-                <td>{{ r.nome }}</td>
-                <td>{{ r.endereco }}</td>
-                <td>{{ r.telefones }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    {% endif %}
+  {% if resultados %}
+    <table>
+      <tr>
+        <th>Casal</th>
+        <th>Endereço</th>
+        <th>Telefones</th>
+      </tr>
+      {% for r in resultados %}
+      <tr>
+        <td>{{ r.nome }}</td>
+        <td>{{ r.endereco }}</td>
+        <td>{{ r.telefones }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
 </body>
 </html>
