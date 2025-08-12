@@ -52,7 +52,7 @@ def encontristas():
     return render_template('encontristas.html', dados=dados, pagina=pagina, total_paginas=total_paginas)
 
 @app.route('/encontreiros')
-def encontreiros():
+def encontrreiros():
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
@@ -301,40 +301,14 @@ def relatorio_casais():
             return None, None
         if ";" in raw:
             a, b = raw.split(";", 1); return a.strip(), b.strip()
-        import re
         if re.search(r"\s+e\s+", raw, flags=re.I):
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
         if " " in raw:
             a, b = raw.split(" ", 1); return a.strip(), b.strip()
         return None, None
 
-    def get_table_columns(conn, table_name: str) -> set:
-        cur = conn.cursor()
-        try:
-            cur.execute("""
-                SELECT COLUMN_NAME
-                FROM information_schema.columns
-                WHERE table_schema=%s AND table_name=%s
-            """, (DB_CONFIG['database'], table_name))
-            return {row[0] for row in cur.fetchall()}
-        finally:
-            cur.close()
-
-    def escolher_par(colunas: set, prefer_usual=True):
-        pares = [
-            ('nome_usual_ele', 'nome_usual_ela'),
-            ('nome_ele', 'nome_ela'),
-        ] if prefer_usual else [
-            ('nome_ele', 'nome_ela'),
-            ('nome_usual_ele', 'nome_usual_ela'),
-        ]
-        for a, b in pares:
-            if a in colunas and b in colunas:
-                return a, b
-        return None, None
-
-    # valores padrão de exibição
-    resultados_ok, resultados_fail = [], []
+    resultados_ok = []
+    resultados_fail = []
     titulo = "Relatório de Casais"
     entrada = ""
 
@@ -352,40 +326,60 @@ def relatorio_casais():
                 database=DB_CONFIG['database'],
                 connection_timeout=10,
             )
+            cur = conn.cursor(dictionary=True)
             try:
-                cols_work = get_table_columns(conn, 'encontreiros')
-                cols_base = get_table_columns(conn, 'encontristas')
-                work_a, work_b = escolher_par(cols_work, prefer_usual=False)
-                base_a, base_b = escolher_par(cols_base, prefer_usual=True)
-                cur = conn.cursor(dictionary=True)
-
                 def consulta_like(a: str, b: str):
-                    """Consulta com LIKE nas duas tabelas; consolida preferindo ENCONTREIROS mais recente."""
+                    """
+                    Consulta com LIKE nas duas tabelas; consolida preferindo ENCONTREIROS (mais recente).
+                    Usa colunas que sabemos existir (evita 1054): 
+                    - encontristas: nome_ele/nome_ela e (quando existir) nome_usual_ele/nome_usual_ela
+                    - encontreiros: nome_ele/nome_ela
+                    """
+                    # ENCONTREIROS (mais recente)
                     work = None
-                    if work_a and work_b:
+                    try:
                         cur.execute(
-                            f"SELECT * FROM encontreiros WHERE {work_a} LIKE %s AND {work_b} LIKE %s ORDER BY ano DESC LIMIT 1",
-                            (f\"%{a}%\", f\"%{b}%\")
+                            "SELECT ano, nome_ele, nome_ela, endereco, telefones, telefone_ele, telefone_ela "
+                            "FROM encontreiros "
+                            "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
+                            "ORDER BY ano DESC LIMIT 1",
+                            (f"%{a}%", f"%{b}%")
                         )
                         work = cur.fetchone()
+                    except mysql.connector.Error:
+                        work = None  # segurança
 
+                    # ENCONTRISTAS (base) — tenta com nomes usuais + nomes completos via LIKE
                     base = None
-                    if base_a and base_b:
-                        where_parts = [f"({base_a} LIKE %s AND {base_b} LIKE %s)"]
-                        params = [f\"%{a}%\", f\"%{b}%\"]
-                        if 'nome_ele' in cols_base and 'nome_ela' in cols_base and (base_a, base_b) != ('nome_ele', 'nome_ela'):
-                            where_parts.append("(nome_ele LIKE %s AND nome_ela LIKE %s)")
-                            params += [f\"%{a}%\", f\"%{b}%\"]
+                    # primeiro, tenta com usuais + completos
+                    try:
                         cur.execute(
-                            "SELECT endereco, telefone_ele, telefone_ela FROM encontristas WHERE "
-                            + " OR ".join(where_parts) + " LIMIT 1",
-                            tuple(params)
+                            "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
+                            "FROM encontristas "
+                            "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                            "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                            "LIMIT 1",
+                            (f"%{a}%", f"%{b}%", f"%{a}%", f"%{b}%")
                         )
                         base = cur.fetchone()
+                    except mysql.connector.errors.ProgrammingError:
+                        # se der 1054 por não existir nome_usual_*, tenta só nome_ele/nome_ela
+                        try:
+                            cur.execute(
+                                "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
+                                "FROM encontristas "
+                                "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                                "LIMIT 1",
+                                (f"%{a}%", f"%{b}%")
+                            )
+                            base = cur.fetchone()
+                        except mysql.connector.Error:
+                            base = None
 
+                    # Consolidação
                     if work:
                         endereco = work.get('endereco') or (base.get('endereco') if base else "")
-                        if 'telefones' in work and work.get('telefones'):
+                        if work.get('telefones'):
                             telefones = work['telefones']
                         else:
                             tel_ele = work.get('telefone_ele')
@@ -411,6 +405,7 @@ def relatorio_casais():
                             resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
                             continue
 
+                        # tenta (ele, ela) e depois (ela, ele)
                         dados = consulta_like(ele, ela) or consulta_like(ela, ele)
                         if dados:
                             resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
@@ -419,18 +414,15 @@ def relatorio_casais():
                     except Exception as e:
                         app.logger.exception(f"Falha ao processar linha: {linha}")
                         resultados_fail.append({"nome": linha, "endereco": "Erro ao processar", "telefones": str(e)})
-
-                cur.close()
             finally:
                 try:
+                    cur.close()
                     conn.close()
                 except Exception:
                     pass
 
-    # encontrados primeiro, não encontrados por último
-    resultados = resultados_ok + resultados_fail
+    resultados = resultados_ok + resultados_fail  # encontrados primeiro
     return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
-
 
 # -----------------------------
 # Main
