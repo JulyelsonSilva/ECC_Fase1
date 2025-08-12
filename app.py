@@ -359,7 +359,62 @@ def relatorio_casais():
                 cursor.execute(
                     f"""SELECT endereco, telefone_ele, telefone_ela
                         FROM encontristas
-                        WHERE ({base_a}_
+                        WHERE ({base_a}=%s AND {base_b}=%s)
+                           OR (nome_ele=%s AND nome_ela=%s)
+                        LIMIT 1""",
+                    (a, b, a, b)
+                )
+                base = cursor.fetchone()
+
+            if work:
+                endereco = work.get('endereco') or (base.get('endereco') if base else "")
+                # Telefones: tenta 'telefones', senão ele/dela do work, senão ele/dela do base
+                if 'telefones' in work and work.get('telefones'):
+                    telefones = work['telefones']
+                else:
+                    tel_ele = work.get('telefone_ele')
+                    tel_ela = work.get('telefone_ela')
+                    if tel_ele or tel_ela:
+                        telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
+                    elif base:
+                        telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                    else:
+                        telefones = "— / —"
+                return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
+
+            if base:
+                telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                return {"endereco": base.get('endereco') or '—', "telefones": telefones}
+
+            return None
+
+        # tenta informado; se não achar, tenta invertido
+        return _consulta(nome_a, nome_b) or _consulta(nome_b, nome_a)
+
+    resultados = []
+    if request.method == 'POST':
+        nomes_input = (request.form.get("lista_nomes", "") or "").strip()
+        if nomes_input:
+            linhas = [l.strip() for l in nomes_input.splitlines() if l.strip()]
+            conn = mysql.connector.connect(**DB_CONFIG)
+            cursor = conn.cursor(dictionary=True)
+
+            for linha in linhas:
+                ele, ela = split_casal(linha)
+                if not ele or not ela:
+                    resultados.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
+                    continue
+
+                dados = buscar_consolidado(cursor, ele, ela)
+                if dados:
+                    resultados.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
+                else:
+                    resultados.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
+
+            conn.close()
+
+    return render_template("relatorio_casais.html", resultados=resultados)
+
 
 
 # -----------------------------
