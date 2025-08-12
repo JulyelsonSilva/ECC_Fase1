@@ -2,6 +2,12 @@
 {% block content %}
   <h2 style="text-align: center;">Visão por Casal</h2>
 
+ <!-- Botão para voltar à página inicial -->
+  <a href="{{ url_for('index') }}">
+    <button type="button">Voltar para Página Inicial</button>
+  </a>
+  <br><br>
+
   <form method="get" style="text-align: center; margin-bottom: 20px;">
     <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome Ele" value="{{ nome_ele }}" list="sugestoes_ele" required>
     <datalist id="sugestoes_ele"></datalist>
