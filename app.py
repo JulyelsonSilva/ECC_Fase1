@@ -12,6 +12,9 @@ DB_CONFIG = {
     'database': 'eccdivinomcz2'
 }
 
+# -----------------------------
+# Rotas principais
+# -----------------------------
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -182,6 +185,113 @@ def visao_equipes():
 
     return render_template('visao_equipes.html', equipe_selecionada=equipe, tabela=tabela, colunas=colunas)
 
+# -----------------------------
+# ROTA RECUPERADA: /visao-casal
+# -----------------------------
+@app.route('/visao-casal')
+def visao_casal():
+    nome_ele = request.args.get("nome_ele", "").strip()
+    nome_ela = request.args.get("nome_ela", "").strip()
+
+    dados_encontrista = {}
+    dados_encontreiros = []
+    erro = None
+
+    # Só continua se ambos os nomes forem informados
+    if not nome_ele or not nome_ela:
+        erro = "Informe ambos os nomes para realizar a busca."
+        return render_template("visao_casal.html",
+                               nome_ele=nome_ele,
+                               nome_ela=nome_ela,
+                               dados_encontrista=None,
+                               dados_encontreiros=[],
+                               erro=erro)
+
+    # Conectar ao banco de dados
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # 🔍 Buscar na tabela ENCONTRISTAS
+        cursor.execute("""
+            SELECT ano, endereco, telefone_ele, telefone_ela
+            FROM encontristas 
+            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+        """, (nome_ele, nome_ela))
+        resultado_encontrista = cursor.fetchone()
+
+        while cursor.nextset():  # Evita erro "Unread result found"
+            pass
+
+        if resultado_encontrista:
+            dados_encontrista = {
+                "ano_encontro": resultado_encontrista["ano"],
+                "endereco": resultado_encontrista["endereco"],
+                "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+            }
+
+        # 🔍 Buscar na tabela ENCONTREIROS
+        cursor.execute("""
+            SELECT ano, equipe, coordenador, endereco, telefones
+            FROM encontreiros 
+            WHERE nome_ele = %s AND nome_ela = %s
+        """, (nome_ele, nome_ela))
+        resultados_encontreiros = cursor.fetchall()
+
+        if resultados_encontreiros:
+            dados_encontreiros = [{
+                "ano": r["ano"],
+                "equipe": r["equipe"],
+                "coordenador": r["coordenador"]
+            } for r in resultados_encontreiros]
+
+            # Se não encontrou na tabela encontristas, adiciona valor padrão
+            if "ano_encontro" not in dados_encontrista:
+                dados_encontrista["ano_encontro"] = "-"
+
+            # Pega endereço e telefone do ano mais recente
+            mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
+            dados_encontrista["endereco"] = mais_recente["endereco"]
+            dados_encontrista["telefones"] = mais_recente["telefones"]
+
+        # Se nenhum dado encontrado em nenhuma tabela
+        if not resultado_encontrista and not resultados_encontreiros:
+            erro = "Casal não encontrado."
+
+    finally:
+        cursor.close()
+        conn.close()
+
+    return render_template("visao_casal.html",
+                           nome_ele=nome_ele,
+                           nome_ela=nome_ela,
+                           dados_encontrista=dados_encontrista,
+                           dados_encontreiros=dados_encontreiros,
+                           erro=erro)
+
+# -----------------------------
+# Organograma
+# -----------------------------
+@app.route('/organograma')
+def organograma():
+    return render_template('organograma.html')
+
+@app.route('/dados-organograma')
+def dados_organograma():
+    ano = request.args.get("ano")
+    if not ano:
+        return jsonify([])
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT equipe, nome_ele, nome_ela, coordenador FROM encontreiros WHERE ano = %s", (ano,))
+    dados = cursor.fetchall()
+    conn.close()
+    return jsonify(dados)
+
+# -----------------------------
+# Relatório de Casais (impressão nativa do navegador)
+# -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     resultados = []
@@ -199,6 +309,7 @@ def relatorio_casais():
                 if len(partes) == 2:
                     nome_ele, nome_ela = partes[0].strip(), partes[1].strip()
 
+                    # ENCONTRISTAS
                     cursor.execute("""
                         SELECT ano, endereco, telefone_ele, telefone_ela 
                         FROM encontristas 
@@ -206,24 +317,40 @@ def relatorio_casais():
                     """, (nome_ele, nome_ela))
                     dado_encontrista = cursor.fetchone()
 
+                    # ENCONTREIROS (mais recente)
                     cursor.execute("""
-                        SELECT ano, endereco, telefones 
+                        SELECT * 
                         FROM encontreiros 
                         WHERE nome_ele = %s AND nome_ela = %s
-                        ORDER BY ano DESC LIMIT 1
+                        ORDER BY ano DESC
+                        LIMIT 1
                     """, (nome_ele, nome_ela))
                     dado_encontreiros = cursor.fetchone()
 
+                    # Consolidar dados mais recentes
                     if dado_encontreiros:
-                        ano = dado_encontreiros["ano"]
-                        endereco = dado_encontreiros["endereco"]
-                        telefones = dado_encontreiros["telefones"]
+                        ano = dado_encontreiros.get("ano", "")
+                        endereco = dado_encontreiros.get("endereco") or (dado_encontrista["endereco"] if dado_encontrista else "")
+                        # Telefones: tenta campo 'telefones', senão combina ele/dela se existir
+                        if "telefones" in dado_encontreiros and dado_encontreiros.get("telefones"):
+                            telefones = dado_encontreiros.get("telefones")
+                        else:
+                            tel_ele = dado_encontreiros.get("telefone_ele") if "telefone_ele" in dado_encontreiros else None
+                            tel_ela = dado_encontreiros.get("telefone_ela") if "telefone_ela" in dado_encontreiros else None
+                            if tel_ele or tel_ela:
+                                telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
+                            elif dado_encontrista:
+                                telefones = f"{dado_encontrista.get('telefone_ele','') or '—'} / {dado_encontrista.get('telefone_ela','') or '—'}"
+                            else:
+                                telefones = "— / —"
                     elif dado_encontrista:
                         ano = dado_encontrista["ano"]
                         endereco = dado_encontrista["endereco"]
-                        telefones = f"{dado_encontrista['telefone_ele']} / {dado_encontrista['telefone_ela']}"
+                        telefones = f"{dado_encontrista.get('telefone_ele','') or '—'} / {dado_encontrista.get('telefone_ela','') or '—'}"
                     else:
-                        ano = endereco = telefones = "Não encontrado"
+                        ano = "Não encontrado"
+                        endereco = "Não encontrado"
+                        telefones = "Não encontrado"
 
                     resultados.append({
                         "nome": f"{nome_ele} e {nome_ela}",
@@ -236,5 +363,8 @@ def relatorio_casais():
 
     return render_template("relatorio_casais.html", resultados=resultados)
 
+# -----------------------------
+# Main
+# -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
