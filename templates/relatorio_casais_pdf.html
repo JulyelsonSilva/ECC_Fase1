@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>Relatório de Casais</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 11pt; color: #222; }
+  .small { font-size: 9pt; color: #666; }
+  .header-table { width:100%; border-collapse:collapse; margin-bottom: 4mm; }
+  .header-table td { vertical-align: middle; }
+  .title { text-align:center; font-size: 15pt; font-weight: bold; }
+  .subtitle { text-align:center; font-size: 10pt; color:#555; }
+  .logo { height: 48px; }
+  .card { border: 1px solid #bbb; padding: 4mm; margin: 0 0 6mm 0; }
+  .name { font-size: 13pt; font-weight: bold; margin-bottom: 2mm; }
+  .tags { margin: 1mm 0 2mm 0; }
+  .tag { display: inline-block; border: 1px solid #ccd; background: #eef; font-size: 9pt; padding: 1px 4px; margin-right: 2mm; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1.5mm; }
+  th, td { border: 1px solid #ddd; padding: 2mm; vertical-align: top; }
+  th { background: #f5f5f5; }
+  .muted { color: #777; }
+  .footer { font-size: 9pt; color: #666; margin-top: 2mm; }
+</style>
+</head>
+<body>
+
+<table class="header-table">
+  <tr>
+    <td style="width:60px; text-align:left;">
+      <img class="logo" src="{{ url_for('static', filename='img/brasao_divino.jpg') }}">
+    </td>
+    <td>
+      <div class="title">Relatório de Casais — ECC</div>
+      <div class="subtitle">Paróquia Divino Espírito Santo — Maceió</div>
+      <div class="small">Gerado em: {{ data_geracao }}</div>
+    </td>
+    <td style="width:60px; text-align:right;">
+      <img class="logo" src="{{ url_for('static', filename='img/brasao_ecc.jpg') }}">
+    </td>
+  </tr>
+</table>
+
+{% for r in registros %}
+  <div class="card">
+    <div class="name">
+      {{ r.nome_usual_ele or r.nome_ele or '—' }} &amp; {{ r.nome_usual_ela or r.nome_ela or '—' }}
+    </div>
+
+    <div class="tags">
+      {% if r.ano_encontro %}<span class="tag">Ano do Encontro: {{ r.ano_encontro }}</span>{% endif %}
+      {% if r.encontro %}<span class="tag">Turma: {{ r.encontro }}</span>{% endif %}
+      {% if r.fonte_contato %}<span class="tag">Contato mais recente: {{ r.fonte_contato }}</span>{% endif %}
+    </div>
+
+    <table>
+      <tr>
+        <th style="width:35%;">Telefone dele</th>
+        <td>{{ r.telefone_ele or '—' }}</td>
+      </tr>
+      <tr>
+        <th>Telefone dela</th>
+        <td>{{ r.telefone_ela or '—' }}</td>
+      </tr>
+      <tr>
+        <th>Endereço</th>
+        <td>{{ r.endereco or '—' }}</td>
+      </tr>
+    </table>
+
+    <div style="margin-top:3mm;">
+      <div class="small" style="margin-bottom:1mm;">Anos em que trabalhou</div>
+      {% if r.historico and r.historico|length > 0 %}
+        <table>
+          <thead>
+            <tr>
+              <th style="width:20%;">Ano</th>
+              <th style="width:40%;">Equipe</th>
+              <th style="width:40%;">Coordenador</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for h in r.historico %}
+              <tr>
+                <td>{{ h.ano }}</td>
+                <td>{{ h.equipe or '—' }}</td>
+                <td>{{ h.coordenador or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="muted">Sem registros em encontreiros.</div>
+      {% endif %}
+    </div>
+
+    <div class="footer">
+      {{ 'Encontrado em encontristas' if r.base_existe else 'Não encontrado em encontristas' }} —
+      {{ r.matches_work }} registro(s) em encontreiros —
+      Entrada: {{ r.entrada }}
+    </div>
+  </div>
+
+  {% if not loop.last %}<div style="page-break-after: always;"></div>{% endif %}
+{% endfor %}
+
+</body>
+</html>
