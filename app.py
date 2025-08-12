@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, make_response
+from flask import Flask, render_template, request, jsonify, send_file, make_response, url_for
 import mysql.connector
 from collections import defaultdict
 import math
@@ -7,7 +7,6 @@ from datetime import datetime
 from xhtml2pdf import pisa
 import io
 import os
-from flask import url_for
 
 app = Flask(__name__)
 
@@ -19,7 +18,7 @@ DB_CONFIG = {
 }
 
 # -----------------------------
-# Utilidades / DB
+# Funções utilitárias
 # -----------------------------
 def get_db():
     return mysql.connector.connect(**DB_CONFIG)
@@ -28,10 +27,6 @@ def _norm(s: str) -> str:
     return re.sub(r'\s+', ' ', (s or '').strip())
 
 def parse_pasted_couples(raw: str):
-    """
-    Cada linha deve conter ELE e ELA (tab, ponto-e-vírgula, vírgula, hífen ou pipe).
-    Retorna: [{'ele':..., 'ela':..., 'orig':...}, ...]
-    """
     out = []
     if not raw:
         return out
@@ -49,7 +44,6 @@ def parse_pasted_couples(raw: str):
     return out
 
 def buscar_encontristas(ele_like, ela_like):
-    """Busca casal base em ENCONTRISTAS por nomes usuais e completos."""
     conn = get_db()
     cur = conn.cursor(dictionary=True)
     like_ele = f"%{ele_like}%"
@@ -73,7 +67,6 @@ def buscar_encontristas(ele_like, ela_like):
     return rows
 
 def buscar_encontreiros(ele_like, ela_like):
-    """Busca histórico em ENCONTREIROS (pode ter vários anos)."""
     conn = get_db()
     cur = conn.cursor(dictionary=True)
     like_ele = f"%{ele_like}%"
@@ -99,16 +92,9 @@ def buscar_encontreiros(ele_like, ela_like):
     return rows
 
 def consolidar_registro(base_rows, work_rows):
-    """
-    Consolida dados:
-    - Telefones/Endereço do registro mais recente em ENCONTREIROS; se não houver, de ENCONTRISTAS.
-    - Ano do encontro (de ENCONTRISTAS).
-    - Histórico (ENCONTREIROS).
-    """
     base = base_rows[0] if base_rows else None
     latest = work_rows[0] if work_rows else None
 
-    # Telefones / Endereço do mais recente (work), senão do base
     tel_ele = (latest or {}).get('telefone_ele') or (base or {}).get('telefone_ele')
     tel_ela = (latest or {}).get('telefone_ela') or (base or {}).get('telefone_ela')
     endereco = (latest or {}).get('endereco') or (base or {}).get('endereco')
@@ -151,8 +137,17 @@ def _montar_registros(entrada: str):
         registros.append(reg)
     return registros
 
+def link_callback(uri, rel):
+    """Resolve caminho de imagens/CSS locais para o xhtml2pdf."""
+    if uri.startswith('/'):
+        if uri.startswith('/static/'):
+            path = os.path.join(app.root_path, uri.lstrip('/'))
+            return path
+        return os.path.join(app.root_path, uri.lstrip('/'))
+    return uri
+
 # -----------------------------
-# Rotas já existentes + correções
+# Rotas existentes
 # -----------------------------
 @app.route('/')
 def index():
@@ -217,247 +212,9 @@ def encontreiros():
 
     return render_template('encontreiros.html', por_ano=por_ano)
 
-# (REMOVIDA linha duplicada de decorator /visao-equipes)
-@app.route('/visao-equipes')
-def visao_equipes():
-    equipe = request.args.get('equipe', '')
-    tabela = {}
-    colunas = []
-
-    if equipe:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-
-        if equipe == 'Dirigentes':
-            colunas = ['Montagem', 'Fichas', 'Palestra', 'Finanças', 'Pós Encontro']
-            dados = {col: {} for col in colunas}
-
-            for pasta in colunas:
-                cursor.execute(
-                    "SELECT * FROM encontreiros WHERE equipe LIKE '%DIRIGENTE%' AND equipe LIKE %s",
-                    (f"%{pasta.upper()}%",)
-                )
-                for row in cursor.fetchall():
-                    ano = row['ano']
-                    nome = f"*{row['nome_ele']} e {row['nome_ela']}" if row['coordenador'].strip().lower() == 'sim' else f"{row['nome_ele']} e {row['nome_ela']}"
-                    dados[pasta].setdefault(ano, nome)
-
-            anos = sorted({ano for pasta_data in dados.values() for ano in pasta_data})
-            for ano in anos:
-                linha = [dados[col].get(ano, '') for col in colunas]
-                tabela[ano] = linha
-
-        else:
-            cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
-            all_rows = cursor.fetchall()
-
-            # Coordenadores históricos da equipe
-            coordenadores_globais = set(
-                f"{row['nome_ele']} e {row['nome_ela']}" for row in all_rows if row['coordenador'].strip().lower() == 'sim'
-            )
-
-            if equipe == 'Sala':
-                colunas = ['Coordenador', 'Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
-                dados_ano = defaultdict(lambda: {col: '' for col in colunas})
-
-                for row in all_rows:
-                    ano = row['ano']
-                    equipe_txt = row['equipe'].upper()
-                    nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
-                    coordenador = row['coordenador'].strip().lower() == 'sim'
-
-                    if coordenador and all(x not in equipe_txt for x in ['BOA VONTADE', 'CANTO', 'SOM E PROJEÇÃO', 'RECEPÇÃO']):
-                        dados_ano[ano]['Coordenador'] = f"*{nome_chave}"
-                    elif 'BOA VONTADE' in equipe_txt:
-                        dados_ano[ano]['Boa Vontade'] = nome_chave
-                    elif 'CANTO' in equipe_txt:
-                        if not dados_ano[ano]['Canto 1']:
-                            dados_ano[ano]['Canto 1'] = nome_chave
-                        elif not dados_ano[ano]['Canto 2']:
-                            dados_ano[ano]['Canto 2'] = nome_chave
-                    elif 'SOM E PROJEÇÃO' in equipe_txt:
-                        if not dados_ano[ano]['Som e Projeção 1']:
-                            dados_ano[ano]['Som e Projeção 1'] = nome_chave
-                        elif not dados_ano[ano]['Som e Projeção 2']:
-                            dados_ano[ano]['Som e Projeção 2'] = nome_chave
-                    elif 'RECEPÇÃO' in equipe_txt:
-                        dados_ano[ano]['Recepção de Palestras'] = nome_chave
-
-                for ano, linha_dict in dados_ano.items():
-                    linha = []
-                    for col in colunas:
-                        nome = linha_dict[col]
-                        if nome.startswith("*"):
-                            linha.append(nome)
-                        elif nome in coordenadores_globais:
-                            linha.append(f"~{nome}")
-                        else:
-                            linha.append(nome)
-                    tabela[ano] = linha
-
-            else:
-                colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
-                por_ano = defaultdict(list)
-                coordenadores_ano = {}
-
-                for row in all_rows:
-                    ano = row['ano']
-                    nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
-                    if row['coordenador'].strip().lower() == 'sim':
-                        coordenadores_ano[ano] = nome_chave
-                        por_ano[ano].insert(0, f"*{nome_chave}")
-                    else:
-                        por_ano[ano].append(nome_chave)
-
-                for ano, nomes in por_ano.items():
-                    linha = []
-                    for nome in nomes:
-                        if nome.startswith("*"):
-                            linha.append(nome)
-                        elif nome in coordenadores_globais:
-                            linha.append(f"~{nome}")
-                        else:
-                            linha.append(nome)
-                    while len(linha) < len(colunas):
-                        linha.append('')
-                    tabela[ano] = linha
-
-        conn.close()
-
-    return render_template('visao_equipes.html', equipe_selecionada=equipe, tabela=tabela, colunas=colunas)
-
-@app.route('/autocomplete-nomes')
-def autocomplete_nomes():
-    termo = request.args.get("q", "").strip()
-    resultados = set()
-    if termo and len(termo) >= 3:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT nome_ele, nome_ela 
-            FROM encontristas 
-            WHERE nome_ele LIKE %s OR nome_ela LIKE %s
-        """, (f"%{termo}%", f"%{termo}%"))
-        for nome_ele, nome_ela in cursor.fetchall():
-            if nome_ele: resultados.add(nome_ele)
-            if nome_ela: resultados.add(nome_ela)
-        conn.close()
-    return jsonify(sorted(resultados))
-
-@app.route('/visao-casal')
-def visao_casal():
-    nome_ele = request.args.get("nome_ele", "").strip()
-    nome_ela = request.args.get("nome_ela", "").strip()
-
-    dados_encontrista = {}
-    dados_encontreiros = []
-    erro = None
-
-    if not nome_ele or not nome_ela:
-        erro = "Informe ambos os nomes para realizar a busca."
-        return render_template("visao_casal.html",
-                               nome_ele=nome_ele,
-                               nome_ela=nome_ela,
-                               dados_encontrista=None,
-                               dados_encontreiros=[],
-                               erro=erro)
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-
-    try:
-        # ENCONTRISTAS (procura por nomes usuais exatos; ajuste para LIKE se quiser)
-        cursor.execute("""
-            SELECT ano, endereco, telefone_ele, telefone_ela, nome_usual_ele, nome_usual_ela
-            FROM encontristas 
-            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-        """, (nome_ele, nome_ela))
-        resultado_encontrista = cursor.fetchone()
-
-        if resultado_encontrista:
-            dados_encontrista = {
-                "ano_encontro": resultado_encontrista["ano"],
-                "endereco": resultado_encontrista["endereco"],
-                "telefones": f"{resultado_encontrista.get('telefone_ele','') or '—'} / {resultado_encontrista.get('telefone_ela','') or '—'}"
-            }
-
-        # ENCONTREIROS (todos os anos; consolidar mais recente)
-        cursor.execute("""
-            SELECT ano, equipe, coordenador, endereco, telefone_ele, telefone_ela
-            FROM encontreiros 
-            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-            ORDER BY ano DESC
-        """, (nome_ele, nome_ela))
-        resultados_encontreiros = cursor.fetchall()
-
-        if resultados_encontreiros:
-            dados_encontreiros = [{
-                "ano": r["ano"],
-                "equipe": r["equipe"],
-                "coordenador": r["coordenador"]
-            } for r in resultados_encontreiros]
-
-            # Se não encontrou na tabela encontristas, adiciona valor padrão
-            if "ano_encontro" not in dados_encontrista:
-                dados_encontrista["ano_encontro"] = "-"
-
-            # Telefones/Endereço do ano mais recente
-            mais_recente = resultados_encontreiros[0]
-            tel_ele = mais_recente.get("telefone_ele") or ""
-            tel_ela = mais_recente.get("telefone_ela") or ""
-            dados_encontrista["endereco"] = mais_recente.get("endereco") or dados_encontrista.get("endereco")
-            dados_encontrista["telefones"] = f"{tel_ele or '—'} / {tel_ela or '—'}"
-
-        if not resultado_encontrista and not resultados_encontreiros:
-            erro = "Casal não encontrado."
-
-    finally:
-        cursor.close()
-        conn.close()
-
-    return render_template("visao_casal.html",
-                           nome_ele=nome_ele,
-                           nome_ela=nome_ela,
-                           dados_encontrista=dados_encontrista,
-                           dados_encontreiros=dados_encontreiros,
-                           erro=erro)
-
-@app.route('/organograma')
-def organograma():
-    return render_template('organograma.html')
-
-@app.route('/dados-organograma')
-def dados_organograma():
-    ano = request.args.get("ano")
-    if not ano:
-        return jsonify([])
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT equipe, nome_ele, nome_ela, coordenador FROM encontreiros WHERE ano = %s", (ano,))
-    dados = cursor.fetchall()
-    conn.close()
-    return jsonify(dados)
-
 # -----------------------------
-# NOVO: Relatório consolidado (tela)
+# NOVO: Relatório consolidado
 # -----------------------------
-
-def link_callback(uri, rel):
-    """
-    Resolve URLs (ex.: /static/...) para caminho absoluto no disco,
-    para o xhtml2pdf conseguir carregar imagens e CSS locais.
-    """
-    if uri.startswith('/'):
-        # Caminho do static
-        if uri.startswith('/static/'):
-            path = os.path.join(app.root_path, uri.lstrip('/'))
-            return path
-        # Qualquer outro caminho absoluto do app
-        return os.path.join(app.root_path, uri.lstrip('/'))
-    # URLs completas não são baixadas; preferir /static/ + link_callback
-    return uri
-
 @app.route("/relatorio-casais", methods=["GET", "POST"])
 def relatorio_casais():
     if request.method == "GET":
@@ -466,9 +223,6 @@ def relatorio_casais():
     registros = _montar_registros(entrada)
     return render_template("relatorio_casais.html", registros=registros, entrada=entrada)
 
-# -----------------------------
-# NOVO: Download PDF (server-side)
-# -----------------------------
 @app.route("/relatorio-casais.pdf", methods=["POST"])
 def relatorio_casais_pdf():
     entrada = request.form.get("lista", "") or ""
@@ -481,7 +235,7 @@ def relatorio_casais_pdf():
     )
 
     pdf_io = io.BytesIO()
-    pisa_status = pisa.CreatePDF(io.StringIO(html), dest=pdf_io, encoding='utf-8')
+    pisa_status = pisa.CreatePDF(io.StringIO(html), dest=pdf_io, encoding='utf-8', link_callback=link_callback)
     if pisa_status.err:
         return make_response("Erro ao gerar PDF", 500)
 
