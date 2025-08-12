@@ -14,8 +14,8 @@
     .toolbar { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 12px 0 8px; }
     label { display:block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; }
     input, select { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
-    .actions { display: flex; gap: 8px; align-items: end; }
-    .btn { appearance: none; border: 1px solid var(--border); background:#fff; padding:10px 14px; border-radius: 8px; cursor: pointer; }
+    .actions { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+    .btn { appearance: none; border: 1px solid var(--border); background:#fff; padding:10px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; color: inherit; }
     .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
     .banner { margin: 12px 0; padding: 10px 12px; border-radius: 10px; }
     .banner.ok { background: #d1fae5; color:#065f46; border: 1px solid #10b981; }
@@ -38,6 +38,11 @@
   <div class="wrap">
     <h1>Encontristas</h1>
     <p class="muted">Use os filtros abaixo para localizar casais e clique no ✏️ para editar.</p>
+
+    <!-- Botão Voltar -->
+    <div style="margin-bottom: 12px;">
+      <a class="btn" href="{{ url_for('index') }}">← Voltar à Página Inicial</a>
+    </div>
 
     <!-- Banners de feedback -->
     {% if updated %}
