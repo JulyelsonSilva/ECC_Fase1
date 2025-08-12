@@ -6,11 +6,19 @@
 </head>
 <body>
   <h1>Encontreiros</h1>
+
+  <!-- Botão para voltar à página inicial -->
+  <a href="{{ url_for('index') }}">
+    <button type="button">Voltar para Página Inicial</button>
+  </a>
+  <br><br>
+
   <form method="get">
     Nome Ele: <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele', '') }}">
     Nome Ela: <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela', '') }}">
     <button type="submit">Filtrar</button>
   </form>
+
   {% for ano, registros in por_ano.items() %}
     <h2>{{ ano }}</h2>
     <table border="1">
