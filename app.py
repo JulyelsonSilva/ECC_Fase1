@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import mysql.connector
 from collections import defaultdict
 import math
+import re
 
 app = Flask(__name__)
 
@@ -111,6 +112,7 @@ def visao_equipes():
             cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
             all_rows = cursor.fetchall()
 
+            # Coordenadores históricos da equipe
             coordenadores_globais = set(
                 f"{row['nome_ele']} e {row['nome_ela']}" for row in all_rows if row['coordenador'].strip().lower() == 'sim'
             )
@@ -212,7 +214,7 @@ def visao_casal():
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # 🔍 Buscar na tabela ENCONTRISTAS
+        # ENCONTRISTAS
         cursor.execute("""
             SELECT ano, endereco, telefone_ele, telefone_ela
             FROM encontristas 
@@ -230,7 +232,7 @@ def visao_casal():
                 "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
             }
 
-        # 🔍 Buscar na tabela ENCONTREIROS
+        # ENCONTREIROS
         cursor.execute("""
             SELECT ano, equipe, coordenador, endereco, telefones
             FROM encontreiros 
@@ -245,7 +247,6 @@ def visao_casal():
                 "coordenador": r["coordenador"]
             } for r in resultados_encontreiros]
 
-            # Se não encontrou na tabela encontristas, adiciona valor padrão
             if "ano_encontro" not in dados_encontrista:
                 dados_encontrista["ano_encontro"] = "-"
 
@@ -254,7 +255,6 @@ def visao_casal():
             dados_encontrista["endereco"] = mais_recente["endereco"]
             dados_encontrista["telefones"] = mais_recente["telefones"]
 
-        # Se nenhum dado encontrado em nenhuma tabela
         if not resultado_encontrista and not resultados_encontreiros:
             erro = "Casal não encontrado."
 
@@ -290,37 +290,41 @@ def dados_organograma():
     return jsonify(dados)
 
 # -----------------------------
-# Relatório de Casais (impressão nativa do navegador)
+# Relatório de Casais (impressão nativa + robusto)
 # -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
-    import re
     def split_casal(line: str):
-        """Divide em (ele, ela) aceitando ; | ' e ' | 1 espaço."""
+        """Divide em (ele, ela) aceitando ; | ' e ' | 1 espaço (primeiro espaço)."""
         raw = (line or '').strip()
         if not raw:
             return None, None
-        if ";" in raw:  # prioridade 1
+        if ";" in raw:
             a, b = raw.split(";", 1); return a.strip(), b.strip()
-        if re.search(r"\s+e\s+", raw, flags=re.I):  # prioridade 2
+        if re.search(r"\s+e\s+", raw, flags=re.I):
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
-        if " " in raw:  # prioridade 3: primeiro espaço
+        if " " in raw:
             a, b = raw.split(" ", 1); return a.strip(), b.strip()
         return None, None
 
     def cols_existem(cursor, tabela, *cols):
-        """Retorna True se todas as 'cols' existem na tabela."""
-        cursor.execute("""
+        """
+        True se todas as 'cols' existem na tabela.
+        Usa um cursor simples (tuplas) para evitar KeyError com dictionary=True.
+        """
+        cur2 = cursor.connection.cursor()  # sem dictionary=True
+        cur2.execute("""
             SELECT COLUMN_NAME
             FROM information_schema.columns
             WHERE table_schema = %s AND table_name = %s
         """, (DB_CONFIG['database'], tabela))
-        existentes = {r[0] for r in cursor.fetchall()}
+        existentes = {row[0] for row in cur2.fetchall()}
+        cur2.close()
         return all(c in existentes for c in cols)
 
     def escolher_par_nome(cursor, tabela, prefer_usual=True):
         """
-        Retorna um par de colunas para nomes (ele, ela) conforme o que existir.
+        Retorna par (ele_col, ela_col) conforme o que existir na tabela.
         prefer_usual=True tenta ('nome_usual_ele','nome_usual_ela') primeiro.
         """
         pares = [
@@ -330,7 +334,7 @@ def relatorio_casais():
             ('nome_ele', 'nome_ela'),
             ('nome_usual_ele', 'nome_usual_ela')
         ]
-        for a,b in pares:
+        for a, b in pares:
             if cols_existem(cursor, tabela, a, b):
                 return a, b
         return None, None
@@ -338,10 +342,9 @@ def relatorio_casais():
     def buscar_consolidado(cursor, nome_a: str, nome_b: str):
         """
         Busca em ENCONTREIROS (mais recente) e ENCONTRISTAS.
-        Detecta colunas disponíveis, tenta (A,B) e se não achar tenta (B,A).
+        Detecta colunas disponíveis; tenta (A,B) e depois (B,A).
         Consolida telefones/endereço do registro mais recente.
         """
-        # Descobrir quais colunas usar em cada tabela
         work_a, work_b = escolher_par_nome(cursor, 'encontreiros', prefer_usual=False)
         base_a, base_b = escolher_par_nome(cursor, 'encontristas', prefer_usual=True)
 
@@ -356,19 +359,19 @@ def relatorio_casais():
 
             base = None
             if base_a and base_b:
-                cursor.execute(
-                    f"""SELECT endereco, telefone_ele, telefone_ela
-                        FROM encontristas
-                        WHERE ({base_a}=%s AND {base_b}=%s)
-                           OR (nome_ele=%s AND nome_ela=%s)
-                        LIMIT 1""",
-                    (a, b, a, b)
-                )
+                # tenta por nomes usuais; como fallback, tenta por nome_ele/nome_ela se existirem
+                query = f"SELECT endereco, telefone_ele, telefone_ela FROM encontristas WHERE ({base_a}=%s AND {base_b}=%s)"
+                params = [a, b]
+                if cols_existem(cursor, 'encontristas', 'nome_ele', 'nome_ela'):
+                    query += " OR (nome_ele=%s AND nome_ela=%s)"
+                    params += [a, b]
+                query += " LIMIT 1"
+                cursor.execute(query, params)
                 base = cursor.fetchone()
 
             if work:
                 endereco = work.get('endereco') or (base.get('endereco') if base else "")
-                # Telefones: tenta 'telefones', senão ele/dela do work, senão ele/dela do base
+                # Telefones do work -> 'telefones' ou ele/dela; fallback: base
                 if 'telefones' in work and work.get('telefones'):
                     telefones = work['telefones']
                 else:
@@ -380,15 +383,14 @@ def relatorio_casais():
                         telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
                     else:
                         telefones = "— / —"
-                return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
+                return {"endereco": (endereco or "—"), "telefones": (telefones or "— / —")}
 
             if base:
                 telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                return {"endereco": base.get('endereco') or '—', "telefones": telefones}
+                return {"endereco": (base.get('endereco') or '—'), "telefones": telefones}
 
             return None
 
-        # tenta informado; se não achar, tenta invertido
         return _consulta(nome_a, nome_b) or _consulta(nome_b, nome_a)
 
     resultados = []
@@ -414,8 +416,6 @@ def relatorio_casais():
             conn.close()
 
     return render_template("relatorio_casais.html", resultados=resultados)
-
-
 
 # -----------------------------
 # Main
