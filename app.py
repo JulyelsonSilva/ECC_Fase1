@@ -296,70 +296,85 @@ def relatorio_casais():
             return None, None
         if ";" in raw:
             a, b = raw.split(";", 1); return a.strip(), b.strip()
+        import re
         if re.search(r"\s+e\s+", raw, flags=re.I):
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
         if " " in raw:
             a, b = raw.split(" ", 1); return a.strip(), b.strip()
         return None, None
 
-    resultados_ok = []
-    resultados_fail = []
-    titulo = (request.form.get("titulo") or "Relatório de Casais") if request.method == 'POST' else "Relatório de Casais"
+    resultados_ok, resultados_fail = [], []
+    titulo  = (request.form.get("titulo") or "Relatório de Casais") if request.method == 'POST' else "Relatório de Casais"
     entrada = (request.form.get("lista_nomes", "") or "") if request.method == 'POST' else ""
 
     if request.method == 'POST' and entrada.strip():
         linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
 
-        # Conexão simples
-        conn = mysql.connector.connect(**DB_CONFIG)
+        # Conexão com timeouts curtos para não travar o worker
+        conn = mysql.connector.connect(
+            host=DB_CONFIG['host'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            connection_timeout=5,   # conecta rápido ou falha
+            # read_timeout pode não ser suportado em todos ambientes; descomente se necessário:
+            # read_timeout=10,
+        )
         cur = conn.cursor(dictionary=True)
         try:
-            def consulta_like(a: str, b: str):
+            def consulta_prefix_like(a: str, b: str):
                 """
-                Consulta com LIKE (qualquer parte) nas duas tabelas;
-                consolida preferindo ENCONTREIROS (mais recente).
+                LIKE de prefixo (usa índice): 'a%' e 'b%'.
+                Cobre inversão (a,b) OU (b,a) numa única consulta.
+                Consolida preferindo ENCONTREIROS (mais recente).
                 """
-                a_like = f"%{a.strip()}%"
-                b_like = f"%{b.strip()}%"
+                a = (a or "").strip(); b = (b or "").strip()
+                if not a or not b:
+                    return None
+                a_pref, b_pref = f"{a}%", f"{b}%"
 
-                # ENCONTREIROS (mais recente)
+                # ENCONTREIROS (uma única query cobrindo as duas ordens)
                 work = None
                 try:
                     cur.execute(
                         "SELECT ano, nome_ele, nome_ela, endereco, telefones, telefone_ele, telefone_ela "
                         "FROM encontreiros "
-                        "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
+                        "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                        "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
                         "ORDER BY ano DESC LIMIT 1",
-                        (a_like, b_like)
+                        (a_pref, b_pref, b_pref, a_pref)
                     )
                     work = cur.fetchone()
-                except mysql_errors.Error:
+                except mysql.connector.Error:
                     work = None
 
-                # ENCONTRISTAS (base) — tenta usuais + completos; se não existir coluna usual, cai no except
+                # ENCONTRISTAS (tenta usuais + completos; se não existir nome_usual_*, cai no fallback)
                 base = None
                 try:
                     cur.execute(
                         "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
                         "FROM encontristas "
-                        "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                        "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                        "WHERE ((nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                        "    OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                        "    OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                        "    OR (nome_ele LIKE %s AND nome_ela LIKE %s)) "
                         "LIMIT 1",
-                        (a_like, b_like, a_like, b_like)
+                        (a_pref, b_pref, b_pref, a_pref, a_pref, b_pref, b_pref, a_pref)
                     )
                     base = cur.fetchone()
-                except mysql_errors.ProgrammingError:
-                    # fallback: só nome_ele/nome_ela
+                except mysql.connector.errors.ProgrammingError:
+                    # Fallback: só nome_ele/nome_ela (duas ordens) se colunas usuais não existirem
                     try:
                         cur.execute(
                             "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
                             "FROM encontristas "
-                            "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
+                            "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                            "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
                             "LIMIT 1",
-                            (a_like, b_like)
+                            (a_pref, b_pref, b_pref, a_pref)
                         )
                         base = cur.fetchone()
-                    except mysql_errors.Error:
+                    except mysql.connector.Error:
                         base = None
 
                 # Consolidação
@@ -391,7 +406,7 @@ def relatorio_casais():
                         resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
                         continue
 
-                    dados = consulta_like(ele, ela) or consulta_like(ela, ele)
+                    dados = consulta_prefix_like(ele, ela)
                     if dados:
                         resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
                     else:
@@ -406,9 +421,9 @@ def relatorio_casais():
             except Exception:
                 pass
 
-    # Encontrados primeiro; não encontrados por último
-    resultados = resultados_ok + resultados_fail
+    resultados = resultados_ok + resultados_fail  # encontrados primeiro
     return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
+
 
 # -----------------------------
 # Main
