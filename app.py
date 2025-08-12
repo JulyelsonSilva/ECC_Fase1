@@ -301,6 +301,7 @@ def relatorio_casais():
             return None, None
         if ";" in raw:
             a, b = raw.split(";", 1); return a.strip(), b.strip()
+        import re
         if re.search(r"\s+e\s+", raw, flags=re.I):
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
         if " " in raw:
@@ -332,13 +333,17 @@ def relatorio_casais():
                 return a, b
         return None, None
 
-    resultados_ok = []
-    resultados_fail = []
+    # valores padrão de exibição
+    resultados_ok, resultados_fail = [], []
+    titulo = "Relatório de Casais"
+    entrada = ""
 
     if request.method == 'POST':
-        nomes_input = (request.form.get("lista_nomes", "") or "").strip()
-        if nomes_input:
-            linhas = [l.strip() for l in nomes_input.splitlines() if l.strip()]
+        titulo = (request.form.get("titulo") or "Relatório de Casais").strip() or "Relatório de Casais"
+        entrada = (request.form.get("lista_nomes", "") or "").strip()
+
+        if entrada:
+            linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
 
             conn = mysql.connector.connect(
                 host=DB_CONFIG['host'],
@@ -360,18 +365,17 @@ def relatorio_casais():
                     if work_a and work_b:
                         cur.execute(
                             f"SELECT * FROM encontreiros WHERE {work_a} LIKE %s AND {work_b} LIKE %s ORDER BY ano DESC LIMIT 1",
-                            (f"%{a}%", f"%{b}%")
+                            (f\"%{a}%\", f\"%{b}%\")
                         )
                         work = cur.fetchone()
 
                     base = None
                     if base_a and base_b:
                         where_parts = [f"({base_a} LIKE %s AND {base_b} LIKE %s)"]
-                        params = [f"%{a}%", f"%{b}%"]
-                        # Só adiciona OR se as colunas existirem e forem diferentes
+                        params = [f\"%{a}%\", f\"%{b}%\"]
                         if 'nome_ele' in cols_base and 'nome_ela' in cols_base and (base_a, base_b) != ('nome_ele', 'nome_ela'):
                             where_parts.append("(nome_ele LIKE %s AND nome_ela LIKE %s)")
-                            params += [f"%{a}%", f"%{b}%"]
+                            params += [f\"%{a}%\", f\"%{b}%\"]
                         cur.execute(
                             "SELECT endereco, telefone_ele, telefone_ela FROM encontristas WHERE "
                             + " OR ".join(where_parts) + " LIMIT 1",
@@ -423,9 +427,9 @@ def relatorio_casais():
                 except Exception:
                     pass
 
-    # Junta: encontrados primeiro, não-encontrados por último
+    # encontrados primeiro, não encontrados por último
     resultados = resultados_ok + resultados_fail
-    return render_template("relatorio_casais.html", resultados=resultados)
+    return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
 
 # -----------------------------
 # Main
