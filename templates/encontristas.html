@@ -6,6 +6,13 @@
 </head>
 <body>
   <h1>Encontristas</h1>
+
+ <!-- Botão para voltar à página inicial -->
+  <a href="{{ url_for('index') }}">
+    <button type="button">Voltar para Página Inicial</button>
+  </a>
+  <br><br>
+  
   <form method="get">
     Nome Usual Ele: <input type="text" name="nome_usual_ele" value="{{ request.args.get('nome_usual_ele', '') }}">
     Nome Usual Ela: <input type="text" name="nome_usual_ela" value="{{ request.args.get('nome_usual_ela', '') }}">
