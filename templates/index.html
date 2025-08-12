@@ -5,44 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Encontro de Casais com Cristo</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f9f9f9;
-      text-align: center;
-    }
-    header {
-      padding: 2em 1em;
-    }
-    h1 {
-      font-size: 2.5em;
-      margin-bottom: 0.2em;
-    }
-    h2, h3 {
-      font-size: 1.2em;
-      margin: 0.1em 0;
-    }
-    main {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 60vh;
-      gap: 2em;
-    }
-    a {
-      text-decoration: none;
-      font-size: 1.5em;
-      color: white;
-      background-color: #007BFF;
-      padding: 0.8em 2em;
-      border-radius: 8px;
-      transition: background-color 0.3s ease;
-    }
-    a:hover {
-      background-color: #0056b3;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; text-align: center; }
+    header { padding: 2em 1em; }
+    h1 { font-size: 2.5em; margin-bottom: 0.2em; }
+    h2, h3 { font-size: 1.2em; margin: 0.1em 0; }
+    main { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 2em; }
+    a { text-decoration: none; font-size: 1.5em; color: white; background-color: #007BFF; padding: 0.8em 2em; border-radius: 8px; transition: background-color 0.3s ease; }
+    a:hover { background-color: #0056b3; }
   </style>
 </head>
 <body>
@@ -53,14 +22,12 @@
     <h4>Teste</h4>
   </header>
   <main>
-    <a href="/encontristas">Encontristas</a>
-    <a href="/encontreiros">Encontreiros</a>
-    <a href="/visao-equipes">Visão Equipes</a>
-    <a href="/visao-casal">Visão Casal</a>
-    <a href="/organograma">Organograma</a>
-    <a href="/relatorio_casais">Relatório de Casais</a>
-   
-    
+    <a href="{{ url_for('encontristas') }}">Encontristas</a>
+    <a href="{{ url_for('encontreiros') }}">Encontreiros</a>
+    <a href="{{ url_for('visao_equipes') }}">Visão Equipes</a>
+    <a href="{{ url_for('visao_casal') }}">Visão Casal</a>
+    <a href="{{ url_for('organograma') }}">Organograma</a>
+    <a href="{{ url_for('relatorio_casais') }}">Relatório de Casais</a>
   </main>
 </body>
 </html>
