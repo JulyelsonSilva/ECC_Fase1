@@ -290,7 +290,7 @@ def dados_organograma():
     return jsonify(dados)
 
 # -----------------------------
-# Relatório de Casais (LIKE + inversão + não encontrados por último)
+# Relatório de Casais (prefix LIKE + inversão + não encontrados por último)
 # -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
@@ -319,22 +319,29 @@ def relatorio_casais():
         if entrada:
             linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
 
+            # Conexão com timeout curto para não travar worker
             conn = mysql.connector.connect(
                 host=DB_CONFIG['host'],
                 user=DB_CONFIG['user'],
                 password=DB_CONFIG['password'],
                 database=DB_CONFIG['database'],
-                connection_timeout=10,
+                connection_timeout=5
             )
             cur = conn.cursor(dictionary=True)
             try:
                 def consulta_like(a: str, b: str):
                     """
-                    Consulta com LIKE nas duas tabelas; consolida preferindo ENCONTREIROS (mais recente).
-                    Usa colunas que sabemos existir (evita 1054): 
-                    - encontristas: nome_ele/nome_ela e (quando existir) nome_usual_ele/nome_usual_ela
-                    - encontreiros: nome_ele/nome_ela
+                    Busca com LIKE de prefixo (usa índice): 'nome%'.
+                    Consolida preferindo ENCONTREIROS (mais recente).
                     """
+                    a = (a or "").strip()
+                    b = (b or "").strip()
+                    if not a or not b:
+                        return None
+
+                    a_pref = f"{a}%"
+                    b_pref = f"{b}%"
+
                     # ENCONTREIROS (mais recente)
                     work = None
                     try:
@@ -343,15 +350,14 @@ def relatorio_casais():
                             "FROM encontreiros "
                             "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
                             "ORDER BY ano DESC LIMIT 1",
-                            (f"%{a}%", f"%{b}%")
+                            (a_pref, b_pref)
                         )
                         work = cur.fetchone()
                     except mysql.connector.Error:
-                        work = None  # segurança
+                        work = None
 
-                    # ENCONTRISTAS (base) — tenta com nomes usuais + nomes completos via LIKE
+                    # ENCONTRISTAS (base) — tenta nomes usuais + completos; se não existir coluna usual, cai no except
                     base = None
-                    # primeiro, tenta com usuais + completos
                     try:
                         cur.execute(
                             "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
@@ -359,18 +365,17 @@ def relatorio_casais():
                             "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
                             "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
                             "LIMIT 1",
-                            (f"%{a}%", f"%{b}%", f"%{a}%", f"%{b}%")
+                            (a_pref, b_pref, a_pref, b_pref)
                         )
                         base = cur.fetchone()
                     except mysql.connector.errors.ProgrammingError:
-                        # se der 1054 por não existir nome_usual_*, tenta só nome_ele/nome_ela
                         try:
                             cur.execute(
                                 "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
                                 "FROM encontristas "
                                 "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
                                 "LIMIT 1",
-                                (f"%{a}%", f"%{b}%")
+                                (a_pref, b_pref)
                             )
                             base = cur.fetchone()
                         except mysql.connector.Error:
@@ -405,7 +410,6 @@ def relatorio_casais():
                             resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
                             continue
 
-                        # tenta (ele, ela) e depois (ela, ele)
                         dados = consulta_like(ele, ela) or consulta_like(ela, ele)
                         if dados:
                             resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
@@ -421,7 +425,8 @@ def relatorio_casais():
                 except Exception:
                     pass
 
-    resultados = resultados_ok + resultados_fail  # encontrados primeiro
+    # Encontrados primeiro; não encontrados por último
+    resultados = resultados_ok + resultados_fail
     return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
 
 # -----------------------------
