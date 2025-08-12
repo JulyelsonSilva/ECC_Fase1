@@ -29,6 +29,14 @@
 <body>
   <div class="brand-bar">
     <img src="{{ url_for('static', filename='img/brasao_divino.jpg') }}" alt="Paróquia Divino Espírito Santo">
+    <div class="brand-center">
+      <p class="l1">PARÓQUIA DIVINO ESPÍRITO SANTO</p>
+      <p class="l2">Jatiúca - Maceió - AL</p>
+      <p class="l3">Forania Nossa Senhora Mãe do Povo</p>
+      <p class="l4">Arquidiocese de Maceió</p>
+      <p class="l5">Encontro de Casais com Cristo</p>
+      <p class="title-line">{{ titulo or 'Relatório de Casais' }}</p>
+    </div>
     <h2>Relatório de Casais</h2>
     <img src="{{ url_for('static', filename='img/brasao_ecc.jpg') }}" alt="ECC">
   </div>
