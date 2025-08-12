@@ -295,44 +295,41 @@ def dados_organograma():
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     def split_casal(line: str):
-        """Divide a linha em (ele, ela) aceitando ; | ' e ' | espaço único.
-           Regra do espaço: divide no primeiro espaço (útil quando são só primeiros nomes)."""
+        """Divide a linha em (ele, ela) aceitando ; | ' e ' | espaço único."""
         raw = (line or '').strip()
         if not raw:
             return None, None
-        # Prioridade 1: ponto e vírgula
+        # 1) ;
         if ";" in raw:
             a, b = raw.split(";", 1)
             return a.strip(), b.strip()
-        # Prioridade 2: ' e ' (com espaços, case-insensitive)
+        # 2) ' e ' (case-insensitive)
         import re
         if re.search(r"\s+e\s+", raw, flags=re.I):
             parts = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I)
             if len(parts) >= 2:
                 return parts[0].strip(), parts[1].strip()
-        # Prioridade 3: espaço único (divide no primeiro espaço)
+        # 3) espaço único (divide no primeiro espaço)
         if " " in raw:
             a, b = raw.split(" ", 1)
             return a.strip(), b.strip()
-        # Nada reconhecido
         return None, None
 
     def buscar_consolidado(nome_a: str, nome_b: str, cursor):
         """Busca em ENCONTREIROS (mais recente) e ENCONTRISTAS.
-           Tenta (A,B); se não achar nada, tenta (B,A). Consolida telefones/endereço do registro mais recente."""
+           Tenta (A,B); se não achar nada, tenta (B,A)."""
         def _consulta(a: str, b: str):
-            # ENCONTREIROS (prioriza mais recente). Tenta por nome_ele/nome_ela OU nome_usual_ele/nome_usual_ela.
+            # ENCONTREIROS: use apenas nome_ele/nome_ela (essa tabela não tem nome_usual_*)
             cursor.execute("""
                 SELECT *
                 FROM encontreiros
-                WHERE (nome_ele = %s AND nome_ela = %s)
-                   OR (nome_usual_ele = %s AND nome_usual_ela = %s)
+                WHERE nome_ele = %s AND nome_ela = %s
                 ORDER BY ano DESC
                 LIMIT 1
-            """, (a, b, a, b))
+            """, (a, b))
             work = cursor.fetchone()
 
-            # ENCONTRISTAS (base)
+            # ENCONTRISTAS: pode ter nome_usual_* e nome_*
             cursor.execute("""
                 SELECT ano, endereco, telefone_ele, telefone_ela
                 FROM encontristas
@@ -342,10 +339,10 @@ def relatorio_casais():
             """, (a, b, a, b))
             base = cursor.fetchone()
 
-            # Consolidação
+            # Consolidação (preferir dados mais recentes do work)
             if work:
                 endereco = work.get("endereco") or (base["endereco"] if base else "")
-                # Telefones: se houver campo 'telefones', usa; senão tenta ele/dela
+                # Telefones: usar 'telefones' se existir; senão montar com ele/dela; senão cair para base
                 if "telefones" in work and work.get("telefones"):
                     telefones = work["telefones"]
                 else:
@@ -358,18 +355,15 @@ def relatorio_casais():
                     else:
                         telefones = "— / —"
                 return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
-            elif base:
+
+            if base:
                 telefones = f"{base.get('telefone_ele','') or '—'} / {base.get('telefone_ela','') or '—'}"
                 return {"endereco": base.get("endereco") or "—", "telefones": telefones}
-            else:
-                return None
 
-        # Tenta na ordem dada
-        res = _consulta(nome_a, nome_b)
-        if res:
-            return res
-        # Tenta invertido
-        return _consulta(nome_b, nome_a)
+            return None
+
+        # Tenta na ordem informada; se não achar, inverte
+        return _consulta(nome_a, nome_b) or _consulta(nome_b, nome_a)
 
     resultados = []
 
@@ -408,6 +402,7 @@ def relatorio_casais():
             conn.close()
 
     return render_template("relatorio_casais.html", resultados=resultados)
+
 # -----------------------------
 # Main
 # -----------------------------
