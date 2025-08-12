@@ -1,50 +1,160 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <title>Encontristas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+    .wrap { max-width: 1280px; margin: 24px auto; padding: 0 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .muted { color: var(--muted); }
+    .toolbar { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 12px 0 8px; }
+    label { display:block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; }
+    input, select { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+    .actions { display: flex; gap: 8px; align-items: end; }
+    .btn { appearance: none; border: 1px solid var(--border); background:#fff; padding:10px 14px; border-radius: 8px; cursor: pointer; }
+    .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .banner { margin: 12px 0; padding: 10px 12px; border-radius: 10px; }
+    .banner.ok { background: #d1fae5; color:#065f46; border: 1px solid #10b981; }
+    .banner.err { background: #fee2e2; color:#991b1b; border: 1px solid #ef4444; }
+    .table-wrap { overflow:auto; border:1px solid var(--border); border-radius: 12px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1200px; background:#fff; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 14px; }
+    thead th { position: sticky; top:0; background:#f1f5f9; z-index:1; }
+    tbody tr:hover { background:#f9fafb; }
+    .col-edit { width: 48px; text-align: center; white-space: nowrap; }
+    .edit-link { text-decoration:none; font-size: 18px; }
+    .nowrap { white-space: nowrap; }
+    .truncate { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+    .paginate { display:flex; gap:8px; align-items:center; justify-content:flex-end; padding: 12px 4px 0; }
+    .paginate .btn { padding:8px 12px; }
+    .badge { display:inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background:#f8fafc; }
+  </style>
 </head>
 <body>
-  <h1>Encontristas</h1>
+  <div class="wrap">
+    <h1>Encontristas</h1>
+    <p class="muted">Use os filtros abaixo para localizar casais e clique no ✏️ para editar.</p>
 
- <!-- Botão para voltar à página inicial -->
-  <a href="{{ url_for('index') }}">
-    <button type="button">Voltar para Página Inicial</button>
-  </a>
-  <br><br>
-  
-  <form method="get">
-    Nome Usual Ele: <input type="text" name="nome_usual_ele" value="{{ request.args.get('nome_usual_ele', '') }}">
-    Nome Usual Ela: <input type="text" name="nome_usual_ela" value="{{ request.args.get('nome_usual_ela', '') }}">
-    Ano: <input type="text" name="ano" value="{{ request.args.get('ano', '') }}">
-    <button type="submit">Filtrar</button>
-  </form>
-  <table border="1">
-    <thead>
-      <tr>
-        {% for col in dados[0].keys() %}
-          <th>{{ col }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in dados %}
-        <tr>
-          {% for value in row.values() %}
-            <td>{{ value }}</td>
+    <!-- Banners de feedback -->
+    {% if updated %}
+      <div class="banner ok">Registro atualizado com sucesso.</div>
+    {% endif %}
+    {% if notfound %}
+      <div class="banner err">Registro não encontrado.</div>
+    {% endif %}
+
+    <!-- Filtros -->
+    <div class="card">
+      <form method="get" action="{{ url_for('encontristas') }}">
+        <div class="toolbar">
+          <div>
+            <label for="nome_usual_ele">Nome usual (Ele)</label>
+            <input id="nome_usual_ele" name="nome_usual_ele" value="{{ request.args.get('nome_usual_ele','') }}">
+          </div>
+          <div>
+            <label for="nome_usual_ela">Nome usual (Ela)</label>
+            <input id="nome_usual_ela" name="nome_usual_ela" value="{{ request.args.get('nome_usual_ela','') }}">
+          </div>
+          <div>
+            <label for="ano">Ano do encontro</label>
+            <input id="ano" name="ano" type="number" inputmode="numeric" value="{{ request.args.get('ano','') }}">
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="submit">Filtrar</button>
+            <a class="btn" href="{{ url_for('encontristas') }}">Limpar</a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-wrap" style="margin-top:12px;">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-edit" title="Editar">✏️</th>
+            <th>ID</th>
+            <th>Nome completo (Ele)</th>
+            <th>Nome completo (Ela)</th>
+            <th>Nome usual (Ele)</th>
+            <th>Nome usual (Ela)</th>
+            <th>Telefone (Ele)</th>
+            <th>Telefone (Ela)</th>
+            <th>Endereço</th>
+            <th>ECC nº</th>
+            <th class="nowrap">Ano</th>
+            <th>Anos de casados</th>
+            <th>Cor do círculo</th>
+            <th>Casal de visitação</th>
+            <th>Ficha nº</th>
+            <th>Aceitou</th>
+            <th>Observação</th>
+            <th>Observação extra</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in dados %}
+          <tr>
+            <td class="col-edit">
+              <a class="edit-link" href="{{ url_for('editar_encontrista', encontrista_id=r['id']) }}" title="Editar registro {{ r['id'] }}">✏️</a>
+            </td>
+            <td class="nowrap"><span class="badge">{{ r['id'] }}</span></td>
+            <td>{{ r['nome_completo_ele'] or '' }}</td>
+            <td>{{ r['nome_completo_ela'] or '' }}</td>
+            <td>{{ r['nome_usual_ele'] or '' }}</td>
+            <td>{{ r['nome_usual_ela'] or '' }}</td>
+            <td>{{ r['telefone_ele'] or '' }}</td>
+            <td>{{ r['telefone_ela'] or '' }}</td>
+            <td><span class="truncate" title="{{ r['endereco'] or '' }}">{{ r['endereco'] or '' }}</span></td>
+            <td>{{ r['ecc_num'] or '' }}</td>
+            <td class="nowrap">{{ r['ano'] if r['ano'] is not none else '' }}</td>
+            <td>{{ r['anos_casados'] or '' }}</td>
+            <td>{{ r['cor_circulo'] or '' }}</td>
+            <td>{{ r['casal_visitacao'] or '' }}</td>
+            <td>{{ r['ficha_num'] or '' }}</td>
+            <td>{{ r['aceitou'] or '' }}</td>
+            <td><span class="truncate" title="{{ r['observacao'] or '' }}">{{ r['observacao'] or '' }}</span></td>
+            <td>{{ r['observacao_extra'] or '' }}</td>
+          </tr>
           {% endfor %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <div>
-    {% if pagina > 1 %}
-      <a href="{{ url_for('encontristas', pagina=pagina-1, **request.args.to_dict()) }}">Anterior</a>
-    {% endif %}
-    Página {{ pagina }} de {{ total_paginas }}
-    {% if pagina < total_paginas %}
-      <a href="{{ url_for('encontristas', pagina=pagina+1, **request.args.to_dict()) }}">Próxima</a>
-    {% endif %}
+          {% if not dados %}
+          <tr>
+            <td colspan="18" class="muted" style="text-align:center; padding:18px;">Nenhum registro encontrado.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <div class="paginate">
+      {% set q_ele = request.args.get('nome_usual_ele','')|urlencode %}
+      {% set q_ela = request.args.get('nome_usual_ela','')|urlencode %}
+      {% set q_ano = request.args.get('ano','')|urlencode %}
+
+      <span class="muted">Página {{ pagina }} de {{ total_paginas }}</span>
+
+      {% if pagina > 1 %}
+        <a class="btn" href="{{ url_for('encontristas') }}?nome_usual_ele={{ q_ele }}&nome_usual_ela={{ q_ela }}&ano={{ q_ano }}&pagina=1">« Primeira</a>
+        <a class="btn" href="{{ url_for('encontristas') }}?nome_usual_ele={{ q_ele }}&nome_usual_ela={{ q_ela }}&ano={{ q_ano }}&pagina={{ pagina - 1 }}">‹ Anterior</a>
+      {% else %}
+        <button class="btn" disabled>« Primeira</button>
+        <button class="btn" disabled>‹ Anterior</button>
+      {% endif %}
+
+      {% if pagina < total_paginas %}
+        <a class="btn" href="{{ url_for('encontristas') }}?nome_usual_ele={{ q_ele }}&nome_usual_ela={{ q_ela }}&ano={{ q_ano }}&pagina={{ pagina + 1 }}">Próxima ›</a>
+        <a class="btn" href="{{ url_for('encontristas') }}?nome_usual_ele={{ q_ele }}&nome_usual_ela={{ q_ela }}&ano={{ q_ano }}&pagina={{ total_paginas }}">Última »</a>
+      {% else %}
+        <button class="btn" disabled>Próxima ›</button>
+        <button class="btn" disabled>Última »</button>
+      {% endif %}
+    </div>
+
   </div>
 </body>
 </html>
