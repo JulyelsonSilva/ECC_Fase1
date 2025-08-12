@@ -33,12 +33,13 @@
     .controls, .no-print { display:none !important; }
     body{ margin: 10mm; }
     .card{ break-inside: avoid-page; }
+    .brand-bar img{ height:56px; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="brand-bar no-print">
+  <div class="brand-bar">
     <img src="{{ url_for('static', filename='img/brasao_divino.jpg') }}" alt="Paróquia Divino Espírito Santo">
     <div style="flex:1; text-align:center;">
       <h1>Relatório de Casais — ECC<br><span style="font-size:14px;color:#555;">Paróquia Divino Espírito Santo — Maceió</span></h1>
@@ -51,13 +52,12 @@
     <div class="controls">
       <button type="submit">Gerar relatório</button>
       <button type="button" onclick="document.querySelector('textarea').value='';">Limpar</button>
-      <button type="button" onclick="window.print()">Imprimir</button>
-      <button type="button" onclick="baixarPDF()">Baixar PDF</button>
+      <button type="button" onclick="window.print()">Salvar como PDF</button>
     </div>
     <div class="note">Regra: a busca só ocorre quando <strong>ambos os nomes</strong> (Ele e Ela) são informados na mesma linha.</div>
   </form>
 
-  {% if registros is not none %}
+  {% if registros is not None %}
     {% for r in registros %}
       <div class="card">
         <div class="head">
@@ -99,25 +99,5 @@
     {% endfor %}
   {% endif %}
 </div>
-
-<script>
-function baixarPDF(){
-  const ta = document.querySelector('textarea[name="lista"]');
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/relatorio-casais.pdf';
-  form.target = '_blank';
-
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'lista';
-  input.value = ta ? (ta.value || '') : ({{ (entrada|tojson) if entrada is defined else '""' }});
-  form.appendChild(input);
-
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
-}
-</script>
 </body>
 </html>
