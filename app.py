@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import mysql.connector
+from mysql.connector import errors as mysql_errors
 from collections import defaultdict
 import math
 import re
@@ -112,7 +113,6 @@ def visao_equipes():
             cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
             all_rows = cursor.fetchall()
 
-            # Coordenadores históricos da equipe
             coordenadores_globais = set(
                 f"{row['nome_ele']} e {row['nome_ela']}" for row in all_rows if row['coordenador'].strip().lower() == 'sim'
             )
@@ -199,7 +199,6 @@ def visao_casal():
     dados_encontreiros = []
     erro = None
 
-    # Só continua se ambos os nomes forem informados
     if not nome_ele or not nome_ela:
         erro = "Informe ambos os nomes para realizar a busca."
         return render_template("visao_casal.html",
@@ -209,12 +208,10 @@ def visao_casal():
                                dados_encontreiros=[],
                                erro=erro)
 
-    # Conectar ao banco de dados
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # ENCONTRISTAS
         cursor.execute("""
             SELECT ano, endereco, telefone_ele, telefone_ela
             FROM encontristas 
@@ -222,7 +219,7 @@ def visao_casal():
         """, (nome_ele, nome_ela))
         resultado_encontrista = cursor.fetchone()
 
-        while cursor.nextset():  # Evita erro "Unread result found"
+        while cursor.nextset():
             pass
 
         if resultado_encontrista:
@@ -232,7 +229,6 @@ def visao_casal():
                 "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
             }
 
-        # ENCONTREIROS
         cursor.execute("""
             SELECT ano, equipe, coordenador, endereco, telefones
             FROM encontreiros 
@@ -250,7 +246,6 @@ def visao_casal():
             if "ano_encontro" not in dados_encontrista:
                 dados_encontrista["ano_encontro"] = "-"
 
-            # Pega endereço e telefone do ano mais recente
             mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
             dados_encontrista["endereco"] = mais_recente["endereco"]
             dados_encontrista["telefones"] = mais_recente["telefones"]
@@ -290,12 +285,12 @@ def dados_organograma():
     return jsonify(dados)
 
 # -----------------------------
-# Relatório de Casais (prefix LIKE + inversão + não encontrados por último)
+# Relatório de Casais (LIKE + inversão + não encontrados por último)
 # -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     def split_casal(line: str):
-        """Divide em (ele, ela) aceitando ';' | ' e ' | 1º espaço."""
+        """Aceita ';' | ' e ' | 1º espaço."""
         raw = (line or '').strip()
         if not raw:
             return None, None
@@ -309,121 +304,107 @@ def relatorio_casais():
 
     resultados_ok = []
     resultados_fail = []
-    titulo = "Relatório de Casais"
-    entrada = ""
+    titulo = (request.form.get("titulo") or "Relatório de Casais") if request.method == 'POST' else "Relatório de Casais"
+    entrada = (request.form.get("lista_nomes", "") or "") if request.method == 'POST' else ""
 
-    if request.method == 'POST':
-        titulo = (request.form.get("titulo") or "Relatório de Casais").strip() or "Relatório de Casais"
-        entrada = (request.form.get("lista_nomes", "") or "").strip()
+    if request.method == 'POST' and entrada.strip():
+        linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
 
-        if entrada:
-            linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
+        # Conexão simples
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cur = conn.cursor(dictionary=True)
+        try:
+            def consulta_like(a: str, b: str):
+                """
+                Consulta com LIKE (qualquer parte) nas duas tabelas;
+                consolida preferindo ENCONTREIROS (mais recente).
+                """
+                a_like = f"%{a.strip()}%"
+                b_like = f"%{b.strip()}%"
 
-            # Conexão com timeout curto para não travar worker
-            conn = mysql.connector.connect(
-                host=DB_CONFIG['host'],
-                user=DB_CONFIG['user'],
-                password=DB_CONFIG['password'],
-                database=DB_CONFIG['database'],
-                connection_timeout=5
-            )
-            cur = conn.cursor(dictionary=True)
-            try:
-                def consulta_like(a: str, b: str):
-                    """
-                    Busca com LIKE de prefixo (usa índice): 'nome%'.
-                    Consolida preferindo ENCONTREIROS (mais recente).
-                    """
-                    a = (a or "").strip()
-                    b = (b or "").strip()
-                    if not a or not b:
-                        return None
-
-                    a_pref = f"{a}%"
-                    b_pref = f"{b}%"
-
-                    # ENCONTREIROS (mais recente)
+                # ENCONTREIROS (mais recente)
+                work = None
+                try:
+                    cur.execute(
+                        "SELECT ano, nome_ele, nome_ela, endereco, telefones, telefone_ele, telefone_ela "
+                        "FROM encontreiros "
+                        "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
+                        "ORDER BY ano DESC LIMIT 1",
+                        (a_like, b_like)
+                    )
+                    work = cur.fetchone()
+                except mysql_errors.Error:
                     work = None
-                    try:
-                        cur.execute(
-                            "SELECT ano, nome_ele, nome_ela, endereco, telefones, telefone_ele, telefone_ela "
-                            "FROM encontreiros "
-                            "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
-                            "ORDER BY ano DESC LIMIT 1",
-                            (a_pref, b_pref)
-                        )
-                        work = cur.fetchone()
-                    except mysql.connector.Error:
-                        work = None
 
-                    # ENCONTRISTAS (base) — tenta nomes usuais + completos; se não existir coluna usual, cai no except
-                    base = None
+                # ENCONTRISTAS (base) — tenta usuais + completos; se não existir coluna usual, cai no except
+                base = None
+                try:
+                    cur.execute(
+                        "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
+                        "FROM encontristas "
+                        "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                        "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                        "LIMIT 1",
+                        (a_like, b_like, a_like, b_like)
+                    )
+                    base = cur.fetchone()
+                except mysql_errors.ProgrammingError:
+                    # fallback: só nome_ele/nome_ela
                     try:
                         cur.execute(
                             "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
                             "FROM encontristas "
-                            "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                            "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                            "WHERE nome_ele LIKE %s AND nome_ela LIKE %s "
                             "LIMIT 1",
-                            (a_pref, b_pref, a_pref, b_pref)
+                            (a_like, b_like)
                         )
                         base = cur.fetchone()
-                    except mysql.connector.errors.ProgrammingError:
-                        try:
-                            cur.execute(
-                                "SELECT nome_ele, nome_ela, endereco, telefone_ele, telefone_ela "
-                                "FROM encontristas "
-                                "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                                "LIMIT 1",
-                                (a_pref, b_pref)
-                            )
-                            base = cur.fetchone()
-                        except mysql.connector.Error:
-                            base = None
+                    except mysql_errors.Error:
+                        base = None
 
-                    # Consolidação
-                    if work:
-                        endereco = work.get('endereco') or (base.get('endereco') if base else "")
-                        if work.get('telefones'):
-                            telefones = work['telefones']
+                # Consolidação
+                if work:
+                    endereco = work.get('endereco') or (base.get('endereco') if base else "")
+                    if work.get('telefones'):
+                        telefones = work['telefones']
+                    else:
+                        tel_ele = work.get('telefone_ele')
+                        tel_ela = work.get('telefone_ela')
+                        if tel_ele or tel_ela:
+                            telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
+                        elif base:
+                            telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
                         else:
-                            tel_ele = work.get('telefone_ele')
-                            tel_ela = work.get('telefone_ela')
-                            if tel_ele or tel_ela:
-                                telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
-                            elif base:
-                                telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                            else:
-                                telefones = "— / —"
-                        return {"endereco": (endereco or "—"), "telefones": (telefones or "— / —")}
+                            telefones = "— / —"
+                    return {"endereco": (endereco or "—"), "telefones": (telefones or "— / —")}
 
-                    if base:
-                        telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                        return {"endereco": (base.get('endereco') or '—'), "telefones": telefones}
+                if base:
+                    telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                    return {"endereco": (base.get('endereco') or '—'), "telefones": telefones}
 
-                    return None
+                return None
 
-                for linha in linhas:
-                    try:
-                        ele, ela = split_casal(linha)
-                        if not ele or not ela:
-                            resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
-                            continue
-
-                        dados = consulta_like(ele, ela) or consulta_like(ela, ele)
-                        if dados:
-                            resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
-                        else:
-                            resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
-                    except Exception as e:
-                        app.logger.exception(f"Falha ao processar linha: {linha}")
-                        resultados_fail.append({"nome": linha, "endereco": "Erro ao processar", "telefones": str(e)})
-            finally:
+            for linha in linhas:
                 try:
-                    cur.close()
-                    conn.close()
-                except Exception:
-                    pass
+                    ele, ela = split_casal(linha)
+                    if not ele or not ela:
+                        resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
+                        continue
+
+                    dados = consulta_like(ele, ela) or consulta_like(ela, ele)
+                    if dados:
+                        resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
+                    else:
+                        resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
+                except Exception as e:
+                    app.logger.exception(f"Falha ao processar linha: {linha}")
+                    resultados_fail.append({"nome": linha, "endereco": "Erro ao processar", "telefones": str(e)})
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
 
     # Encontrados primeiro; não encontrados por último
     resultados = resultados_ok + resultados_fail
