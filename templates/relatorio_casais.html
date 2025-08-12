@@ -21,21 +21,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 16px;
         }
-        .header-logos img {
-            height: 80px;
-        }
-        .header-logos h2 {
-            text-align: center;
-            flex: 1;
-        }
+        .header-logos img { height: 80px; object-fit: contain; }
+        .header-logos h2 { text-align: center; flex: 1; margin: 0; }
         @media print {
             textarea, form button, .print-btn { display: none; }
-            body { margin: 0; }
-            .header-logos img {
-                height: 60px; /* reduz tamanho na impressão */
-            }
+            body { margin: 10mm; }
+            .header-logos img { height: 60px; }
         }
     </style>
 </head>
@@ -47,10 +41,11 @@
     </div>
 
     <form method="POST">
-        <label>Cole a lista de nomes (formato: Nome Ele;Nome Ela, um por linha):</label><br>
-        <textarea name="lista_nomes" placeholder="Exemplo:
-João;Maria
-Pedro;Ana"></textarea><br>
+        <label>Cole a lista (separadores: <strong>;</strong>, <strong> e </strong> ou <strong>espaço</strong> entre os dois nomes):</label><br>
+        <textarea name="lista_nomes" placeholder="Exemplos:
+Pedro;Ana
+Pedro e Ana
+Pedro Ana"></textarea><br>
         <button type="submit">Gerar Relatório</button>
     </form>
 
@@ -59,14 +54,12 @@ Pedro;Ana"></textarea><br>
         <table>
             <tr>
                 <th>Casal</th>
-                <th>Ano</th>
                 <th>Endereço</th>
                 <th>Telefones</th>
             </tr>
             {% for r in resultados %}
             <tr>
                 <td>{{ r.nome }}</td>
-                <td>{{ r.ano }}</td>
                 <td>{{ r.endereco }}</td>
                 <td>{{ r.telefones }}</td>
             </tr>
