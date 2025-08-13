@@ -7,19 +7,14 @@
   <style>
     :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; }
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; }
     h1 { margin:0; font-size: 22px; }
+    a.btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .tag { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; text-decoration:none; color:#0f172a; background:#fff; margin:6px 6px 0 0; }
     .muted { color:var(--muted); }
-    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
-    .grid { display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; min-height: 200px; }
-    .card h2 { margin:0 0 8px; font-size:18px; }
-    ul { list-style:none; margin: 8px 0 0; padding: 0; }
-    li { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
-    a.year-link { text-decoration:none; color: var(--brand); font-weight:600; }
-    .empty { color:var(--muted); margin: 4px 0 0; }
-    .kpi { font-size:12px; color:#334155; }
   </style>
 </head>
 <body>
@@ -27,45 +22,34 @@
     <div class="header">
       <h1>Montagem</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('index') }}">← Página Inicial</a>
-        <a class="btn" href="{{ url_for('nova_montagem') }}">＋ Nova Montagem</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <a class="btn" href="{{ url_for('nova_montagem') }}">+ Nova Montagem</a>
       </div>
     </div>
-    <p class="muted">Um ano é <strong>Concluído</strong> quando <em>todos</em> os registros do ano em <code>encontreiros.status</code> estão iguais a <code>Concluido</code>. Caso exista qualquer outro valor, o ano fica em <strong>Aberto</strong>.</p>
 
-    <div class="grid">
-      <!-- Esquerda: ABERTO -->
+    <div class="cols">
       <div class="card">
-        <h2>Aberto</h2>
-        {% if anos_aberto %}
-          <ul>
-            {% for item in anos_aberto %}
-              <li>
-                <a class="year-link" href="{{ url_for('nova_montagem') }}?ano={{ item.ano }}">{{ item.ano }}</a>
-                <span class="kpi">{{ item.qtd_concluido }}/{{ item.total }} concluídos</span>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="empty">Nenhum ano em aberto.</p>
-        {% endif %}
+        <h3 style="margin-top:0;">Aberto</h3>
+        <p class="muted">Anos com pelo menos um registro com status diferente de <b>Concluido</b>.</p>
+        <div>
+          {% for r in anos_aberto %}
+            <a class="tag" href="{{ url_for('nova_montagem') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.qtd_concluido }}/{{ r.total }}</a>
+          {% else %}
+            <span class="muted">Nenhum ano em aberto.</span>
+          {% endfor %}
+        </div>
       </div>
 
-      <!-- Direita: CONCLUÍDO (linka para /encontreiros?ano=YYYY) -->
       <div class="card">
-        <h2>Concluído</h2>
-        {% if anos_concluidos %}
-          <ul>
-            {% for item in anos_concluidos %}
-              <li>
-                <a class="year-link" href="{{ url_for('encontreiros') }}?ano={{ item.ano }}">{{ item.ano }}</a>
-                <span class="kpi">{{ item.qtd_concluido }}/{{ item.total }} concluídos</span>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="empty">Ainda não há anos concluídos.</p>
-        {% endif %}
+        <h3 style="margin-top:0;">Concluído</h3>
+        <p class="muted">Anos em que <b>todos</b> os registros estão com status <b>Concluido</b>.</p>
+        <div>
+          {% for r in anos_concluidos %}
+            <a class="tag" href="{{ url_for('encontreiros') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.qtd_concluido }}/{{ r.total }}</a>
+          {% else %}
+            <span class="muted">Nenhum ano concluído.</span>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
