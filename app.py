@@ -14,7 +14,7 @@ DB_CONFIG = {
 }
 
 # -----------------------------
-# Mapeamento das Equipes (Coord. de Equipe)
+# Mapeamentos de Equipes
 # -----------------------------
 TEAM_MAP = {
     "sala":      {"rotulo": "Equipe de Sala - Coordenador/Apresentador", "filtro": "Sala"},
@@ -27,6 +27,18 @@ TEAM_MAP = {
     "secretaria":{"rotulo": "Equipe Secretaria", "filtro": "Secretaria"},
     "cozinha":   {"rotulo": "Equipe Cozinha", "filtro": "Cozinha"},
     "visitacao": {"rotulo": "Equipe Visitação", "filtro": "Visitação"},
+}
+
+TEAM_LIMITS = {
+    "Circulos": {"min": 5, "max": 5},
+    "Café e Minimercado": {"min": 3, "max": 7},
+    "Compras": {"min": 0, "max": 1},
+    "Acolhida": {"min": 4, "max": 6},
+    "Ordem e Limpeza": {"min": 3, "max": 7},
+    "Liturgia e Vigilia": {"min": 2, "max": 6},
+    "Secretaria": {"min": 3, "max": 5},
+    "Cozinha": {"min": 7, "max": 9},
+    "Visitação": {"min": 6, "max": 10},
 }
 
 # -----------------------------
@@ -287,7 +299,7 @@ def nova_montagem():
     )
 
 # -----------------------------
-# APIs da Montagem – Dirigentes
+# APIs da Montagem – Dirigentes / CG
 # -----------------------------
 @app.route('/api/buscar-casal', methods=['POST'])
 def api_buscar_casal():
@@ -387,16 +399,8 @@ def api_adicionar_dirigente():
         except Exception:
             pass
 
-# -----------------------------
-# APIs da Montagem – Coordenador Geral
-# -----------------------------
 @app.route('/api/buscar-cg', methods=['POST'])
 def api_buscar_cg():
-    """
-    Regras:
-    - Só aceita casal que JÁ TRABALHOU (existe na tabela ENCONTREIROS em qualquer ano).
-    - Se o casal JÁ FOI Coordenador Geral, bloquear.
-    """
     data = request.get_json(silent=True) or {}
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
@@ -544,7 +548,6 @@ def encontreiros():
 @app.route('/visao-equipes')
 def visao_equipes():
     equipe = request.args.get('equipe', '')
-    # Se vier de nova_montagem, estes parâmetros existirão:
     target = request.args.get('target', '')
     ano_montagem = request.args.get('ano_montagem', '')
     tabela = {}
@@ -648,13 +651,28 @@ def visao_equipes():
         cursor.close()
         conn.close()
 
-    # target/ano_montagem são lidos pelo template para decidir se mostra links
+    # target/ano_montagem vão para o template para decidir se mostra links
     return render_template(
         'visao_equipes.html',
         equipe_selecionada=equipe,
         tabela=tabela,
-        colunas=colunas
+        colunas=colunas,
+        target=target,
+        ano_montagem=ano_montagem
     )
+
+# Link a partir da visão de equipes de volta para nova_montagem
+@app.route('/visao-equipes/select')
+def visao_equipes_select():
+    ano_montagem = request.args.get('ano_montagem', type=int)
+    target = request.args.get('target', '')
+    ele = request.args.get('ele', '')
+    ela = request.args.get('ela', '')
+    if not (ano_montagem and target and ele and ela):
+        return redirect(url_for('visao_equipes'))
+    # volta para nova_montagem preenchendo o alvo
+    return redirect(url_for('nova_montagem', ano=ano_montagem, target=target,
+                            selecionar_ele=ele, selecionar_ela=ela))
 
 # -----------------------------
 # Visão do Casal
@@ -852,21 +870,351 @@ def relatorio_casais():
     return render_template("relatorio_casais.html", resultados=resultados)
 
 # -----------------------------
-# Placeholder: Montagem de Equipe (evita erro de rota)
+# Montagem de Equipe (integrantes)
 # -----------------------------
 @app.route('/equipe-montagem')
 def equipe_montagem():
     """
-    Placeholder para não quebrar os links de 'Montar Equipe' na nova_montagem.
-    Você pode criar o template 'equipe_montagem.html' e evoluir a lógica depois.
+    Página de montagem de equipe:
+    - ?ano=YYYY & ?equipe=<filtro> (ex.: 'Circulos', 'Cozinha'...)
+    - Resolve equipe_final (rótulo da tabela) a partir do TEAM_MAP
+    - Envia limites, membros_existentes (status aberto/aceito), sugestões do ano anterior (encontristas do ano-1)
     """
     ano = request.args.get('ano', type=int)
-    equipe = request.args.get('equipe', '')
-    return render_template('equipe_montagem.html', ano=ano, equipe=equipe)
+    equipe_filtro = (request.args.get('equipe') or '').strip()
+
+    # Resolve rótulo final
+    equipe_final = None
+    for _key, info in TEAM_MAP.items():
+        if info['filtro'].lower() == equipe_filtro.lower():
+            equipe_final = info['rotulo']
+            break
+    if not equipe_final:
+        equipe_final = equipe_filtro or 'Equipe'
+
+    limites = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final))
+
+    # Carrega membros existentes (não coordenadores) status aberto/aceito no ano
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    membros_existentes = []
+    try:
+        cur.execute("""
+            SELECT id, nome_ele, nome_ela, telefones, endereco, status
+              FROM encontreiros
+             WHERE ano = %s
+               AND equipe = %s
+               AND (coordenador IS NULL OR UPPER(coordenador) <> 'SIM')
+               AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO'))
+             ORDER BY id ASC
+        """, (ano, equipe_final))
+        membros_existentes = cur.fetchall()
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    # Sugestões do ano anterior (ENCONTRISTAS ano-1)
+    sugestoes_prev_ano = []
+    if ano:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cur = conn.cursor(dictionary=True)
+        try:
+            cur.execute("""
+                SELECT nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
+                  FROM encontristas
+                 WHERE ano = %s
+                 ORDER BY nome_usual_ele, nome_usual_ela
+            """, (ano - 1,))
+            for r in cur.fetchall():
+                tel_ele = (r.get('telefone_ele') or '').strip()
+                tel_ela = (r.get('telefone_ela') or '').strip()
+                tels = " / ".join([t for t in [tel_ele, tel_ela] if t])
+                sugestoes_prev_ano.append({
+                    "nome_ele": r.get('nome_usual_ele') or '',
+                    "nome_ela": r.get('nome_usual_ela') or '',
+                    "telefones": tels,
+                    "endereco": r.get('endereco') or ''
+                })
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
+    return render_template(
+        'equipe_montagem.html',
+        ano=ano,
+        equipe=equipe_filtro,          # ex.: 'Circulos'
+        equipe_final=equipe_final,     # ex.: 'Equipe de Círculos'
+        limites=limites,               # dict {"min":x,"max":y} ou None
+        membros_existentes=membros_existentes,
+        sugestoes_prev_ano=sugestoes_prev_ano
+    )
+
+# --- APIs auxiliares da montagem de equipe ---
+
+def _casal_ja_no_ano(conn, ano:int, nome_ele:str, nome_ela:str) -> bool:
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE ano = %s AND nome_ele = %s AND nome_ela = %s
+               AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
+             LIMIT 1
+        """, (ano, nome_ele, nome_ela))
+        return cur.fetchone() is not None
+    finally:
+        cur.close()
+
+@app.route('/api/check-casal-equipe', methods=['POST'])
+def api_check_casal_equipe():
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    equipe_final = (data.get('equipe_final') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+    if not (ano and equipe_final and nome_ele and nome_ela):
+        return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        # Já coordenou essa equipe?
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+               AND equipe = %s
+               AND UPPER(coordenador) = 'SIM'
+             LIMIT 1
+        """, (nome_ele, nome_ela, equipe_final))
+        ja_coord = cur.fetchone() is not None
+
+        # Já trabalhou nessa equipe (qualquer ano)?
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+               AND equipe = %s
+             LIMIT 1
+        """, (nome_ele, nome_ela, equipe_final))
+        trabalhou_antes = cur.fetchone() is not None
+
+        # Já está montado no ano atual (qualquer equipe)?
+        ja_no_ano = _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela)
+
+        # Telefones/endereço mais recentes
+        # 1) encontreiros
+        cur.execute("""
+            SELECT telefones, endereco
+              FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+             ORDER BY ano DESC
+             LIMIT 1
+        """, (nome_ele, nome_ela))
+        r = cur.fetchone()
+        telefones = (r.get('telefones') if r else '') or ''
+        endereco = (r.get('endereco') if r else '') or ''
+
+        if not r:
+            # 2) encontristas
+            cur.execute("""
+                SELECT telefone_ele, telefone_ela, endereco
+                  FROM encontristas
+                 WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+                 ORDER BY ano DESC
+                 LIMIT 1
+            """, (nome_ele, nome_ela))
+            r2 = cur.fetchone()
+            if r2:
+                tel_ele = (r2.get('telefone_ele') or '').strip()
+                tel_ela = (r2.get('telefone_ela') or '').strip()
+                telefones = " / ".join([t for t in [tel_ele, tel_ela] if t])
+                endereco = r2.get('endereco') or ''
+
+        return jsonify({
+            "ok": True,
+            "ja_coordenador": ja_coord,
+            "trabalhou_antes": trabalhou_antes,
+            "ja_no_ano": ja_no_ano,
+            "telefones": telefones,
+            "endereco": endereco
+        })
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+@app.route('/api/add-membro-equipe', methods=['POST'])
+def api_add_membro_equipe():
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    equipe_final = (data.get('equipe_final') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+    telefones = (data.get('telefones') or '').strip()
+    endereco = (data.get('endereco') or '').strip()
+    confirmar_repeticao = bool(data.get('confirmar_repeticao'))
+
+    if not (ano and equipe_final and nome_ele and nome_ela):
+        return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        # Já coordenador dessa equipe? Bloqueia.
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+               AND equipe = %s
+               AND UPPER(coordenador) = 'SIM'
+             LIMIT 1
+        """, (nome_ele, nome_ela, equipe_final))
+        if cur.fetchone():
+            return jsonify({"ok": False, "msg": "Casal já foi coordenador desta equipe."}), 409
+
+        # Já montado no ano atual? Bloqueia.
+        if _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela):
+            return jsonify({"ok": False, "msg": "Casal já está montado neste ano."}), 409
+
+        # Já trabalhou nessa equipe antes (como membro)? Solicita confirmação.
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+               AND equipe = %s
+             LIMIT 1
+        """, (nome_ele, nome_ela, equipe_final))
+        if cur.fetchone() and not confirmar_repeticao:
+            return jsonify({"ok": False, "needs_confirm": True,
+                            "msg": "Casal já trabalhou na equipe. Confirmar para montar novamente?"})
+
+        # Insere membro
+        cur2 = conn.cursor()
+        cur2.execute("""
+            INSERT INTO encontreiros
+                (ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador, status)
+            VALUES
+                (%s,  %s,     %s,       %s,       %s,         %s,       'Não',      'Aberto')
+        """, (int(ano), equipe_final, nome_ele, nome_ela, telefones, endereco))
+        conn.commit()
+        cur2.close()
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+# Alterar status (Recusou/Desistiu) com justificativa obrigatória
+@app.route('/api/marcar-status-dirigente', methods=['POST'])
+def api_marcar_status_dirigente():
+    """
+    Marca o registro ABERTO de um ano/equipe (dirigente ou coord. de equipe) como Recusou/Desistiu com observação.
+    Body: {ano, equipe, novo_status, observacao}
+    """
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    equipe = (data.get('equipe') or '').strip()
+    novo_status = (data.get('novo_status') or '').strip()
+    observacao = (data.get('observacao') or '').strip()
+
+    if not (ano and equipe and novo_status in ('Recusou','Desistiu') and observacao):
+        return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE encontreiros
+               SET status = %s, observacao = %s
+             WHERE ano = %s
+               AND equipe = %s
+               AND UPPER(status) = 'ABERTO'
+             ORDER BY id DESC
+             LIMIT 1
+        """, (novo_status, observacao, int(ano), equipe))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"ok": False, "msg": "Nenhum registro ABERTO encontrado para alterar."}), 404
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+@app.route('/api/marcar-status-membro', methods=['POST'])
+def api_marcar_status_membro():
+    """
+    Marca um membro específico por ID como Recusou/Desistiu com observação.
+    Body: {id, novo_status, observacao}
+    """
+    data = request.get_json(silent=True) or {}
+    _id = data.get('id')
+    novo_status = (data.get('novo_status') or '').strip()
+    observacao = (data.get('observacao') or '').strip()
+
+    if not (_id and novo_status in ('Recusou','Desistiu') and observacao):
+        return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE encontreiros
+               SET status = %s, observacao = %s
+             WHERE id = %s
+               AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO'))
+             LIMIT 1
+        """, (novo_status, observacao, int(_id)))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"ok": False, "msg": "Registro não encontrado ou não alterável."}), 404
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+# (Opcional futuro) concluir montagem do ANO inteiro
+@app.route('/api/concluir-montagem-ano', methods=['POST'])
+def api_concluir_montagem_ano():
+    """
+    Marca TODOS os registros 'Aberto' do ano como 'Concluido'.
+    """
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    if not ano:
+        return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE encontreiros
+               SET status = 'Concluido'
+             WHERE ano = %s
+               AND UPPER(status) = 'ABERTO'
+        """, (int(ano),))
+        conn.commit()
+        return jsonify({"ok": True, "alterados": cur.rowcount})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
 # -----------------------------
 # Main
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
