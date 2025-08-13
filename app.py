@@ -211,6 +211,14 @@ def nova_montagem():
     ano_preselecionado = request.args.get('ano', type=int)
     initial_data = {"dirigentes": {}, "cg": None, "coords": {}}
 
+    # presets opcionais vindos da seleção na visão de equipes
+    pre_target = (request.args.get('target') or '').strip()
+    pre_ele = (request.args.get('ele') or '').strip()
+    pre_ela = (request.args.get('ela') or '').strip()
+    pre_tel = (request.args.get('tel') or '').strip()
+    pre_end = (request.args.get('end') or '').strip()
+    notfound = request.args.get('notfound')
+
     if ano_preselecionado:
         equipes_dir = [
             "Equipe Dirigente - MONTAGEM",
@@ -222,7 +230,7 @@ def nova_montagem():
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
-            # Dirigentes (somente registros ABERTOS)
+            # Dirigentes (somente ABERTOS)
             for equipe in equipes_dir:
                 cur.execute("""
                     SELECT id, nome_ele, nome_ela, telefones, endereco
@@ -280,10 +288,20 @@ def nova_montagem():
         finally:
             cur.close(); conn.close()
 
+    # injeta preset clicado na visão de equipes (se houver)
+    initial_data["preset_from_visao"] = {
+        "target": pre_target,
+        "ele": pre_ele,
+        "ela": pre_ela,
+        "telefones": pre_tel,
+        "endereco": pre_end
+    } if pre_target and pre_ele and pre_ela else None
+
     return render_template('nova_montagem.html',
                            ano_preselecionado=ano_preselecionado,
                            initial_data=initial_data,
-                           team_map=TEAM_MAP)
+                           team_map=TEAM_MAP,
+                           notfound=notfound)
 
 # -----------------------------
 # Seleção via Visão de Equipes (preenche e volta)
@@ -799,7 +817,8 @@ def api_adicionar_integrante():
 
         cur.execute("""
             SELECT 1 FROM encontreiros
-             WHERE nome_ele=%s AND nome_ela=%s AND equipe=%s LIMIT 1
+             WHERE nome_ele=%s AND nome_ela=%s AND equipe=%s
+             LIMIT 1
         """, (nome_ele, nome_ela, equipe_final))
         worked_before = bool(cur.fetchone())
         if worked_before and not force:
@@ -831,11 +850,27 @@ def api_adicionar_integrante():
 
 @app.route('/api/concluir-equipe', methods=['POST'], endpoint='api_concluir_equipe')
 def api_concluir_equipe():
+    """
+    ATENÇÃO: Agora NÃO altera status. Apenas valida e retorna OK.
+    A conclusão real da montagem é por ano (endpoint api_concluir_montagem_ano).
+    """
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
     equipe_final = (data.get('equipe_final') or '').strip()
     if not (isinstance(ano, int) and equipe_final):
         return jsonify({"ok": False, "msg": "Parâmetros inválidos."}), 400
+    # Nenhuma alteração em banco.
+    return jsonify({"ok": True, "note": "Equipe validada. Status permanece 'Aberto'."})
+
+# ---- NOVO: Concluir Montagem do Ano (troca todos 'Aberto' -> 'Concluido') ----
+@app.route('/api/concluir-montagem-ano', methods=['POST'], endpoint='api_concluir_montagem_ano')
+def api_concluir_montagem_ano():
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    try:
+        ano = int(ano)
+    except Exception:
+        return jsonify({"ok": False, "msg": "Ano inválido."}), 400
 
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor()
@@ -843,8 +878,8 @@ def api_concluir_equipe():
         cur.execute("""
             UPDATE encontreiros
                SET status='Concluido'
-             WHERE ano=%s AND equipe=%s AND LOWER(TRIM(status))='aberto'
-        """, (ano, equipe_final))
+             WHERE ano=%s AND LOWER(TRIM(status))='aberto'
+        """, (ano,))
         conn.commit()
         return jsonify({"ok": True, "updated": cur.rowcount})
     finally:
@@ -1067,3 +1102,4 @@ def handle_build_error(e):
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
