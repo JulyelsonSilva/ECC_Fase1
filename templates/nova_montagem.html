@@ -13,6 +13,7 @@
     .muted { color:var(--muted); }
     .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
     .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .btn.small { padding:6px 10px; font-size:13px; }
     .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
     label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
@@ -28,7 +29,7 @@
     .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index: 50; }
     .modal-card { background:#fff; padding:16px; border-radius:12px; width:90%; max-width:360px; border:1px solid var(--border); }
     .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
-    .card-title { margin:0 0 8px; font-weight:700; }
+    .card-title { margin:0 0 8px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; }
     .card-title a { color:inherit; text-decoration:none; border-bottom:1px dashed #cbd5e1; }
   </style>
 </head>
@@ -41,9 +42,8 @@
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
     </div>
-    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois escolha o <b>Casal Coordenador Geral</b>. Só então aparecerão as caixas de <b>Coordenadores de Equipe</b>.</p>
+    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois escolha o <b>Casal Coordenador Geral</b>. Só então aparecerão as caixas de <b>Coordenadores de Equipe</b>. Cada coordenador definido mostra o botão <b>Montar Equipe</b>.</p>
 
-    <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
       <label for="ano">Ano do Encontro</label>
       <div class="row">
@@ -53,44 +53,28 @@
       <div class="status" id="ano-msg"></div>
     </div>
 
-    <!-- Indicador -->
     <p class="counter" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
 
-    <!-- 5 caixas Dirigentes -->
     <div class="grid" id="dirigentes-grid" style="display:none;"></div>
 
-    <!-- Coordenador Geral -->
     <div class="card disabled" id="coordenador-geral" style="margin-top:12px; display:none;">
       <h3 style="margin:0 0 8px;">Coordenador Geral</h3>
       <div class="row">
-        <div>
-          <label for="cg_nome_ele">Nome (Ele)</label>
-          <input id="cg_nome_ele" placeholder="— habilita após 5/5 —" disabled>
-        </div>
-        <div>
-          <label for="cg_nome_ela">Nome (Ela)</label>
-          <input id="cg_nome_ela" placeholder="— habilita após 5/5 —" disabled>
-        </div>
+        <div><label for="cg_nome_ele">Nome (Ele)</label><input id="cg_nome_ele" placeholder="— habilita após 5/5 —" disabled></div>
+        <div><label for="cg_nome_ela">Nome (Ela)</label><input id="cg_nome_ela" placeholder="— habilita após 5/5 —" disabled></div>
       </div>
       <div class="row" style="margin-top:8px;">
-        <div>
-          <label for="cg_telefones">Telefones</label>
-          <input id="cg_telefones" placeholder="(preenchido pela busca)" disabled>
-        </div>
-        <div>
-          <label for="cg_endereco">Endereço</label>
-          <input id="cg_endereco" placeholder="(preenchido pela busca)" disabled>
-        </div>
+        <div><label for="cg_telefones">Telefones</label><input id="cg_telefones" placeholder="(preenchido pela busca)" disabled></div>
+        <div><label for="cg_endereco">Endereço</label><input id="cg_endereco" placeholder="(preenchido pela busca)" disabled></div>
       </div>
       <div class="row" style="margin-top:8px;">
         <button class="btn" id="cg_buscar" disabled>Buscar</button>
         <button class="btn primary" id="cg_add" disabled>Adicionar</button>
       </div>
       <div class="status" id="cg_status"></div>
-      <p class="small muted" style="margin-top:8px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
+      <p class="small muted" style="margin-top:8px;">Regra: já ter trabalhado e nunca ter sido “Casal Coordenador Geral”.</p>
     </div>
 
-    <!-- Coordenadores de Equipe (apenas após CG escolhido) -->
     <h3 id="coords-title" style="margin:18px 0 8px; display:none;">Coordenadores de Equipe</h3>
     <div class="grid" id="coords-grid" style="display:none;"></div>
   </div>
@@ -99,8 +83,6 @@
     const initialData = {{ (initial_data or {}) | tojson }};
     const anoPre = {{ ano_preselecionado | tojson }};
     const TEAM_MAP = {{ (team_map or {}) | tojson }};
-
-    // Retorno da visão de equipes (via seletor do backend)
     const qs = new URLSearchParams(location.search);
     const retTarget = qs.get('target') || null;
     const retEle = qs.get('ele') || null;
@@ -109,16 +91,10 @@
     const retEnd = qs.get('end') || null;
 
     const equipesDir = [
-      "Equipe Dirigente - MONTAGEM",
-      "Equipe Dirigente -FICHAS",
-      "Equipe Dirigente - FINANÇAS",
-      "Equipe Dirigente - PALESTRA",
-      "Equipe Dirigente - PÓS ENCONTRO",
+      "Equipe Dirigente - MONTAGEM","Equipe Dirigente -FICHAS","Equipe Dirigente - FINANÇAS",
+      "Equipe Dirigente - PALESTRA","Equipe Dirigente - PÓS ENCONTRO",
     ];
-    const coordTeams = [
-      "Sala","Círculos","Café e Minimercado","Compras","Acolhida",
-      "Ordem e Limpeza","Liturgia e Vigília","Secretaria","Cozinha","Visitação"
-    ];
+    const coordTeams = ["Sala","Círculos","Café e Minimercado","Compras","Acolhida","Ordem e Limpeza","Liturgia e Vigília","Secretaria","Cozinha","Visitação"];
 
     const gridDir = document.getElementById('dirigentes-grid');
     const coordsTitle = document.getElementById('coords-title');
@@ -130,7 +106,7 @@
     const kpiDone = document.getElementById('kpi-done');
 
     const cg = document.getElementById('coordenador-geral');
-    const cgEle = document.getElementById('cg_nome_ele');
+    const cgEle = document.getElementById('cg_nome_ela'.replace('_ela','_ele'));
     const cgEla = document.getElementById('cg_nome_ela');
     const cgTel = document.getElementById('cg_telefones');
     const cgEnd = document.getElementById('cg_endereco');
@@ -144,8 +120,19 @@
     let currentCGId = null;
     let coordsRendered = false;
 
-    function idSafe(txt){ return (txt || '').replace(/[^a-z0-9]+/gi,'_'); }
+    function idSafe(t){ return (t||'').replace(/[^a-z0-9]+/gi,'_'); }
     function hasCG(){ return !!(currentCGId || (initialData && initialData.cg && initialData.cg.id)); }
+    function makeEquipeURL(teamTitle){
+      const eq = encodeURIComponent(teamTitle);
+      const anoMont = anoSelecionado ? `&ano=${encodeURIComponent(String(anoSelecionado))}` : '';
+      return `{{ url_for('montagem_equipe') }}?equipe=${eq}${anoMont}`;
+    }
+    function makeVisaoEquipeURL(teamTitle){
+      const equipeParam = encodeURIComponent(teamTitle);
+      const target = encodeURIComponent(teamTitle);
+      const anoMont = anoSelecionado ? `&ano_montagem=${encodeURIComponent(String(anoSelecionado))}` : '';
+      return `{{ url_for('visao_equipes') }}?equipe=${equipeParam}&target=${target}${anoMont}`;
+    }
 
     function makeModal(onChoose){
       const m = document.createElement('div');
@@ -161,13 +148,6 @@
       document.body.appendChild(m);
       m.querySelector('#m_rec').onclick = ()=>{ onChoose('Recusou'); document.body.removeChild(m); };
       m.querySelector('#m_des').onclick = ()=>{ onChoose('Desistiu'); document.body.removeChild(m); };
-    }
-
-    function makeEquipeURL(teamTitle){
-      const equipeParam = encodeURIComponent(teamTitle);
-      const target = encodeURIComponent(teamTitle);
-      const anoMont = anoSelecionado ? `&ano_montagem=${encodeURIComponent(String(anoSelecionado))}` : '';
-      return `{{ url_for('visao_equipes') }}?equipe=${equipeParam}&target=${target}${anoMont}`;
     }
 
     function showCoordsSection(){
@@ -231,35 +211,25 @@
       const el = document.createElement('div');
       el.className = 'card';
 
-      const headerLink = isCoordEquipe
-        ? `<a href="${makeEquipeURL(titulo)}">${titulo}</a>`
+      const headerRight = `
+        <span id="${boxId}_teambtn_wrap" style="display:none;">
+          <a class="btn small" id="${boxId}_teambtn" href="#">Montar Equipe</a>
+        </span>
+      `;
+      const headerLeft = isCoordEquipe
+        ? `<a href="${makeVisaoEquipeURL(titulo)}">${titulo}</a>`
         : `${titulo}`;
 
-      const hasPresetBox = preset && (preset.nome_ele || preset.nome_ela);
-      const showForm = !isCoordEquipe || hasPresetBox;
-
       el.innerHTML = `
-        <h3 class="card-title">${headerLink}</h3>
-        <div ${showForm ? '' : 'style="display:none"'} id="${boxId}_form">
+        <h3 class="card-title"><span>${headerLeft}</span>${headerRight}</h3>
+        <div ${isCoordEquipe && !(preset && (preset.nome_ele||preset.nome_ela)) ? 'style="display:none"' : ''} id="${boxId}_form">
           <div class="row">
-            <div>
-              <label for="${boxId}_ele">Nome (Ele)</label>
-              <input id="${boxId}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
-            </div>
-            <div>
-              <label for="${boxId}_ela">Nome (Ela)</label>
-              <input id="${boxId}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
-            </div>
+            <div><label for="${boxId}_ele">Nome (Ele)</label><input id="${boxId}_ele" value="${preset?.nome_ele || ''}" placeholder="Ex.: João"></div>
+            <div><label for="${boxId}_ela">Nome (Ela)</label><input id="${boxId}_ela" value="${preset?.nome_ela || ''}" placeholder="Ex.: Maria"></div>
           </div>
           <div class="row" style="margin-top:8px;">
-            <div>
-              <label for="${boxId}_telefones">Telefones</label>
-              <input id="${boxId}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
-            </div>
-            <div>
-              <label for="${boxId}_endereco">Endereço</label>
-              <input id="${boxId}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
-            </div>
+            <div><label for="${boxId}_telefones">Telefones</label><input id="${boxId}_telefones" value="${preset?.telefones || ''}" placeholder="Preenchido pela busca (editável)"></div>
+            <div><label for="${boxId}_endereco">Endereço</label><input id="${boxId}_endereco" value="${preset?.endereco || ''}" placeholder="Preenchido pela busca (editável)"></div>
           </div>
           <div class="row" style="margin-top:8px;">
             <button class="btn" id="${boxId}_buscar">Buscar</button>
@@ -267,9 +237,7 @@
           </div>
           <div class="status" id="${boxId}_status"></div>
         </div>
-        <div id="${boxId}_hint" ${showForm ? 'style="display:none"' : ''} class="small muted">
-          Clique no título para escolher um casal na Visão de Equipes.
-        </div>
+        ${isCoordEquipe && !(preset && (preset.nome_ele||preset.nome_ela)) ? '<div class="small muted" id="'+boxId+'_hint">Clique no título para escolher um casal na Visão de Equipes.</div>' : ''}
       `;
 
       setTimeout(()=>{
@@ -281,25 +249,40 @@
         const $buscar = document.getElementById(`${boxId}_buscar`);
         const $action = document.getElementById(`${boxId}_action`);
         const $status = document.getElementById(`${boxId}_status`);
+        const $teamWrap = document.getElementById(`${boxId}_teambtn_wrap`);
+        const $teamBtn = document.getElementById(`${boxId}_teambtn`);
+        const $hint = document.getElementById(`${boxId}_hint`);
 
         let currentId = preset?.id || null;
         let isLocked = !!preset?.id;
+
+        function showTeamButton(){
+          if (!isCoordEquipe) return;
+          if (!anoSelecionado) return;
+          if ($teamWrap){
+            $teamWrap.style.display = '';
+            if ($teamBtn){
+              $teamBtn.href = `{{ url_for('montagem_equipe') }}?ano=${encodeURIComponent(String(anoSelecionado))}&equipe=${encodeURIComponent(boxKey)}`;
+            }
+          }
+        }
 
         function lockCard(){
           [$ele,$ela,$tels,$end,$buscar].forEach(i => i && (i.disabled = true));
           isLocked = true;
           if ($action) $action.textContent = 'Alterar';
+          showTeamButton();
         }
         function unlockAndClearCard(){
           [$ele,$ela,$tels,$end,$buscar].forEach(i => i && (i.disabled = false));
           if ($ele) $ele.value=''; if ($ela) $ela.value='';
           if ($tels) $tels.value=''; if ($end) $end.value='';
-          currentId = null;
-          isLocked = false;
+          currentId = null; isLocked = false;
           if ($action) $action.textContent = 'Adicionar';
+          if ($teamWrap) $teamWrap.style.display = 'none';
         }
 
-        if (hasPresetBox){ lockCard(); }
+        if (preset && (preset.nome_ele || preset.nome_ela)){ lockCard(); }
 
         async function buscar(){
           $status.textContent = '';
@@ -338,37 +321,32 @@
           const telefones = ($tels?.value || '').trim();
           const endereco = ($end?.value || '').trim();
           if (!anoSelecionado){
-            $status.textContent = 'Informe o ano antes.';
-            $status.className = 'status warn';
-            return;
+            $status.textContent = 'Informe o ano antes.'; $status.className = 'status warn'; return;
           }
           if (!nome_ele || !nome_ela){
-            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-            $status.className = 'status warn';
-            return;
+            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $status.className = 'status warn'; return;
           }
           try{
             const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
               method: 'POST', headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({
-                ano: anoSelecionado,
-                equipe: equipeFinalStr,
-                nome_ele, nome_ela, telefones, endereco
-              })
+              body: JSON.stringify({ ano: anoSelecionado, equipe: equipeFinalStr, nome_ele, nome_ela, telefones, endereco })
             });
             const data = await resp.json();
             if (data.ok){
               currentId = data.id || null;
-              $status.textContent = 'Adicionado com sucesso.';
-              $status.className = 'status ok';
+              $status.textContent = 'Adicionado com sucesso.'; $status.className = 'status ok';
               lockCard();
+              if ($hint) $hint.style.display = 'none';
+              if (!isCoordEquipe){
+                // dirigente
+                totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
+                maybeEnableCG();
+              }
             } else {
-              $status.textContent = data.msg || 'Falha ao adicionar.';
-              $status.className = 'status err';
+              $status.textContent = data.msg || 'Falha ao adicionar.'; $status.className = 'status err';
             }
           } catch(e){
-            $status.textContent = 'Erro ao adicionar.';
-            $status.className = 'status err';
+            $status.textContent = 'Erro ao adicionar.'; $status.className = 'status err';
           }
         }
 
@@ -393,8 +371,7 @@
               $status.className = 'status err';
             }
           } catch(err){
-            $status.textContent = 'Erro ao alterar status.';
-            $status.className = 'status err';
+            $status.textContent = 'Erro ao alterar status.'; $status.className = 'status err';
           }
         }
 
@@ -405,19 +382,16 @@
           else { makeModal(choice => marcarStatus(choice)); }
         });
 
-        // Preenchimento automático ao retornar da Visão de Equipes (seleção no backend)
+        // vinda da visão de equipes
         if (isCoordEquipe && retTarget && idSafe(retTarget) === idSafe(boxKey) && retEle && retEla){
           if (hasCG()){
-            const form = document.getElementById(`${boxId}_form`);
-            if (form && form.style.display === 'none'){ form.style.display = ''; }
+            if ($form && $form.style.display === 'none'){ $form.style.display = ''; }
             if ($ele) $ele.value = retEle;
             if ($ela) $ela.value = retEla;
             if ($tels && retTel) $tels.value = retTel;
             if ($end && retEnd) $end.value = retEnd;
-            if (retTel || retEnd){
-              $status.textContent = 'Dados carregados do histórico (encontreiros).';
-              $status.className = 'status ok';
-            }
+            $status.textContent = 'Dados carregados do histórico (encontreiros).';
+            $status.className = 'status ok';
           }
         }
       },0);
@@ -437,14 +411,13 @@
       kpiDone.textContent = String(totalAdicionados);
 
       cg.style.display = '';
+      if (initialData && initialData.cg){ currentCGId = initialData.cg.id || null; }
       renderCGPresetIfAny();
       maybeEnableCG();
 
-      if (hasCG()){
-        showCoordsSection();
-      } else {
-        coordsTitle.style.display = 'none';
-        gridCoords.style.display = 'none';
+      if (hasCG()){ showCoordsSection(); }
+      else {
+        coordsTitle.style.display = 'none'; gridCoords.style.display = 'none';
         coordsRendered = false;
       }
     }
@@ -453,20 +426,15 @@
       e.preventDefault();
       const val = (anoInput.value || '').trim();
       if (!/^\d{4}$/.test(val)){
-        anoMsg.textContent = 'Informe um ano válido (YYYY).';
-        anoMsg.className = 'status err';
-        return;
+        anoMsg.textContent = 'Informe um ano válido (YYYY).'; anoMsg.className = 'status err'; return;
       }
       anoSelecionado = parseInt(val, 10);
-      anoMsg.textContent = `Ano selecionado: ${anoSelecionado}`;
-      anoMsg.className = 'status ok';
+      anoMsg.textContent = `Ano selecionado: ${anoSelecionado}`; anoMsg.className = 'status ok';
       document.getElementById('dirigentes-grid').style.display = '';
       bootAfterAno();
     });
 
-    window.addEventListener('DOMContentLoaded', ()=>{
-      if (anoPre){ btnContinuar.click(); }
-    });
+    window.addEventListener('DOMContentLoaded', ()=>{ if (anoPre){ btnContinuar.click(); } });
 
     cgBuscar.addEventListener('click', async (e)=>{
       e.preventDefault();
@@ -474,9 +442,7 @@
       const nome_ele = (cgEle.value || '').trim();
       const nome_ela = (cgEla.value || '').trim();
       if (!nome_ele || !nome_ela){
-        cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-        cgStatus.className = 'status warn';
-        return;
+        cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className = 'status warn'; return;
       }
       try{
         const resp = await fetch('{{ url_for("api_buscar_cg") }}', {
@@ -485,27 +451,27 @@
         });
         const data = await resp.json();
         if (data.ok){
-          cgTel.value = data.telefones || '';
-          cgEnd.value = data.endereco || '';
-          cgStatus.textContent = 'Dados carregados. Casal é elegível para CG.';
-          cgStatus.className = 'status ok';
-        } else {
-          cgStatus.textContent = data.msg || 'Não permitido.';
-          cgStatus.className = 'status err';
-        }
-      } catch(err){
-        cgStatus.textContent = 'Erro ao buscar.';
-        cgStatus.className = 'status err';
-      }
+          cgTel.value = data.telefones || ''; cgEnd.value = data.endereco || '';
+          cgStatus.textContent = 'Dados carregados. Casal é elegível para CG.'; cgStatus.className = 'status ok';
+        } else { cgStatus.textContent = data.msg || 'Não permitido.'; cgStatus.className = 'status err'; }
+      } catch(err){ cgStatus.textContent = 'Erro ao buscar.'; cgStatus.className = 'status err'; }
     });
 
-    function showCoordsHidden(){ coordsTitle.style.display='none'; gridCoords.style.display='none'; coordsRendered=false; }
+    function hideCoords(){ coordsTitle.style.display='none'; gridCoords.style.display='none'; coordsRendered=false; }
 
     cgAdd.addEventListener('click', async (e)=>{
       e.preventDefault();
       cgStatus.textContent = '';
       if (cgLocked && currentCGId){
-        makeModal(async (choice)=>{
+        // Alterar (Recusou/Desistiu)
+        const m = document.createElement('div');
+        m.className = 'modal-backdrop';
+        m.innerHTML = `<div class="modal-card"><div style="font-weight:600; margin-bottom:8px;">O Casal…</div>
+        <div class="modal-actions"><button id="m_rec" class="btn">Recusou</button><button id="m_des" class="btn">Desistiu</button></div></div>`;
+        document.body.appendChild(m);
+        m.querySelector('#m_rec').onclick = async ()=>{ await mark('Recusou'); document.body.removeChild(m); };
+        m.querySelector('#m_des').onclick = async ()=>{ await mark('Desistiu'); document.body.removeChild(m); };
+        async function mark(choice){
           try{
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
               method:'POST', headers:{'Content-Type':'application/json'},
@@ -515,18 +481,11 @@
             if (data.ok){
               cgStatus.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
               cgStatus.className = 'status ok';
-              cgUnlockAndClear();
-              showCoordsHidden();
+              cgUnlockAndClear(); hideCoords();
               if (initialData && initialData.cg){ initialData.cg = null; }
-            } else {
-              cgStatus.textContent = data.msg || 'Falha ao alterar status.';
-              cgStatus.className = 'status err';
-            }
-          } catch(err){
-            cgStatus.textContent = 'Erro ao alterar status.';
-            cgStatus.className = 'status err';
-          }
-        });
+            } else { cgStatus.textContent = data.msg || 'Falha ao alterar status.'; cgStatus.className = 'status err'; }
+          } catch(err){ cgStatus.textContent = 'Erro ao alterar status.'; cgStatus.className = 'status err'; }
+        }
         return;
       }
 
@@ -534,16 +493,8 @@
       const nome_ela = (cgEla.value || '').trim();
       const telefones = (cgTel.value || '').trim();
       const endereco = (cgEnd.value || '').trim();
-      if (!anoSelecionado){
-        cgStatus.textContent = 'Informe o ano antes.';
-        cgStatus.className = 'status warn';
-        return;
-      }
-      if (!nome_ele || !nome_ela){
-        cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-        cgStatus.className = 'status warn';
-        return;
-      }
+      if (!anoSelecionado){ cgStatus.textContent = 'Informe o ano antes.'; cgStatus.className = 'status warn'; return; }
+      if (!nome_ele || !nome_ela){ cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className = 'status warn'; return; }
       try{
         const resp = await fetch('{{ url_for("api_adicionar_cg") }}', {
           method:'POST', headers:{'Content-Type':'application/json'},
@@ -556,14 +507,8 @@
           cgStatus.className = 'status ok';
           cgLock(); cgAdd.disabled = false;
           showCoordsSection();
-        } else {
-          cgStatus.textContent = data.msg || 'Falha ao adicionar.';
-          cgStatus.className = 'status err';
-        }
-      } catch(err){
-        cgStatus.textContent = 'Erro ao adicionar.';
-        cgStatus.className = 'status err';
-      }
+        } else { cgStatus.textContent = data.msg || 'Falha ao adicionar.'; cgStatus.className = 'status err'; }
+      } catch(err){ cgStatus.textContent = 'Erro ao adicionar.'; cgStatus.className = 'status err'; }
     });
   </script>
 </body>
