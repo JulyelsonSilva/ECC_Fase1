@@ -37,7 +37,7 @@
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
     </div>
-    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois de concluir os 5, defina o <b>Coordenador Geral</b>. Em seguida, você poderá escolher os <b>Coordenadores de Equipe</b> (com link para o histórico) e, quando quiser, montar cada equipe.</p>
+    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois de concluir os 5, defina o <b>Coordenador Geral</b>. Em seguida, escolha os <b>Coordenadores de Equipe</b> (com link para o histórico) e, quando quiser, monte cada equipe.</p>
 
     <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
@@ -89,7 +89,7 @@
     <!-- Coordenadores de Equipe (aparece após CG) -->
     <div class="card disabled" id="coord-equipes-card" style="margin-top:12px; display:none;">
       <h3 style="margin:0 0 8px;">Coordenadores de Equipe</h3>
-      <p class="small muted" style="margin:0 0 8px;">Clique em <b>Escolher no histórico</b> para abrir a Visão de Equipes e selecionar um casal.</p>
+      <p class="small muted" style="margin:0 0 8px;">Clique em <b>Escolher no histórico</b> para abrir a Visão de Equipes e selecionar um casal. Após inserido (ou se já existir), surgirá o botão <b>Montar Equipe</b>.</p>
       <div class="grid" id="coord-equipes-grid"></div>
     </div>
   </div>
@@ -99,9 +99,9 @@
     // CONSTANTES E DADOS INICIAIS
     // ---------------------------
     const initialData = {{ (initial_data or {}) | tojson }};
-    /* CORREÇÃO AQUI: usar tojson para produzir null quando None */
     const anoPre = {{ ano_preselecionado | tojson }};
     const VISAO_EQ_URL = "{{ url_for('visao_equipes') }}";
+    const EQUIPE_MONT_URL = "/equipe-montagem";
 
     // Parâmetros de retorno da visao_equipes
     const ret_target = {{ (request.args.get('target') or '') | tojson }};
@@ -117,7 +117,7 @@
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
-    // Coordenadores de Equipe (mapeamentos)
+    // Coordenadores de Equipe (mesmos rótulos/filtros do backend)
     const TEAM_MAP = {
       sala:      { rotulo:"Equipe de Sala - Coordenador/Apresentador", filtro:"Sala" },
       circulos:  { rotulo:"Equipe de Círculos", filtro:"Circulos" },
@@ -189,7 +189,7 @@
       `;
     }
 
-    function attachBoxHandlers(idSafe, equipeInsert) {
+    function attachBoxHandlers(idSafe, equipeInsert, montarBtn) {
       const $ele = document.getElementById(`${idSafe}_ele`);
       const $ela = document.getElementById(`${idSafe}_ela`);
       const $tels = document.getElementById(`${idSafe}_telefones`);
@@ -260,6 +260,7 @@
             $ele.disabled = true; $ela.disabled = true;
             $tels.disabled = true; $end.disabled = true;
             $buscar.disabled = true; $add.textContent = 'Alterar';
+            if (montarBtn) montarBtn.style.display = 'inline-block';
           } else {
             $status.textContent = data.msg || 'Falha ao inserir.';
             $status.className = 'status err';
@@ -283,9 +284,8 @@
       card.innerHTML = `<h3 style="margin:0 0 8px;">${equipe}</h3>` + makeInputRow(idSafe, preset);
       gridDir.appendChild(card);
 
-      const { $ele, $ela } = attachBoxHandlers(idSafe, equipe);
+      attachBoxHandlers(idSafe, equipe, null);
 
-      // Se veio preset (já existe no ano), deixa bloqueado
       if (preset && (preset.nome_ele || preset.nome_ela)) {
         ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
           const el = document.getElementById(`${idSafe}_${s}`);
@@ -293,39 +293,55 @@
         });
         totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
       }
-
-      return { idSafe, $ele, $ela };
     }
 
     function renderTeamCoordBox(key) {
       const info = TEAM_MAP[key];
       const idSafe = 'tc_'+key;
+      const preset = (initialData.coord_teams && initialData.coord_teams[key]) ? initialData.coord_teams[key] : null;
+
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
         <div class="inline" style="justify-content:space-between; width:100%;">
           <h3 style="margin:0 0 8px;">${info.rotulo}</h3>
-          <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
+          <div class="inline">
+            <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
+            <a class="btn primary" id="${idSafe}_montar" href="#" style="display:none;">Montar Equipe</a>
+          </div>
         </div>
-        ${makeInputRow(idSafe, null)}
+        ${makeInputRow(idSafe, preset)}
       `;
       coordGrid.appendChild(card);
 
-      const { buscar } = attachBoxHandlers(idSafe, info.rotulo);
+      const montarBtn = document.getElementById(`${idSafe}_montar`);
+      const { buscar } = attachBoxHandlers(idSafe, info.rotulo, montarBtn);
 
-      // botão abre /visao-equipes com equipe, target e ano_montagem
+      // Escolher no histórico
       const chooseBtn = document.getElementById(`${idSafe}_choose`);
       chooseBtn.addEventListener('click', (e)=>{
         e.preventDefault();
-        if (!anoSelecionado) {
-          alert('Informe o ano primeiro.');
-          return;
-        }
+        if (!anoSelecionado) { alert('Informe o ano primeiro.'); return; }
         const url = `${VISAO_EQ_URL}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
         window.location.href = url;
       });
 
-      return { idSafe, buscar };
+      // Link do Montar Equipe
+      function setMontarHref() {
+        if (anoSelecionado) {
+          montarBtn.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
+        }
+      }
+      setMontarHref();
+
+      // Se já existe coordenador salvo (preset), preencher, desabilitar e exibir "Montar Equipe"
+      if (preset) {
+        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
+          const el = document.getElementById(`${idSafe}_${s}`);
+          if (el) { el.value = el.value || (preset[s] || ''); el.disabled = true; if (s==='add') el.textContent = 'Alterar'; }
+        });
+        montarBtn.style.display = 'inline-block';
+      }
     }
 
     function showTeamCoords() {
@@ -386,15 +402,10 @@
       DIRIGENTES.forEach(eq => {
         const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
         renderDirigenteBox(eq, preset);
+        if (preset) totalAdicionados += 1;
       });
-
+      kpiDone.textContent = String(totalAdicionados);
       document.getElementById('dirigentes-grid').style.display = '';
-
-      // Se já tinha presets, ajusta contador
-      if (initialData && initialData.dirigentes) {
-        totalAdicionados = Object.keys(initialData.dirigentes).length;
-        kpiDone.textContent = String(totalAdicionados);
-      }
 
       // CG: mostrar e/ou pré-preencher
       cgCard.style.display = '';
@@ -478,7 +489,7 @@
       }
     });
 
-    // Ao voltar da visao_equipes, aplica o casal na caixa correta e busca dados
+    // Aplicar seleção vinda do visao_equipes
     function applySelectedCoupleToTeam(targetId, ele, ela) {
       if (coordCard.style.display === 'none') {
         showTeamCoords();
@@ -486,11 +497,19 @@
       const $ele = document.getElementById(`${targetId}_ele`);
       const $ela = document.getElementById(`${targetId}_ela`);
       const $buscar = document.getElementById(`${targetId}_buscar`);
+      const $montar = document.getElementById(`${targetId}_montar`);
       if ($ele && $ela && $buscar) {
         $ele.value = ele;
         $ela.value = ela;
         $buscar.click();
         document.getElementById(`${targetId}_ele`).scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+      if ($montar && anoSelecionado) {
+        const key = targetId.replace(/^tc_/, '');
+        const info = TEAM_MAP[key];
+        if (info) {
+          $montar.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
+        }
       }
     }
 
