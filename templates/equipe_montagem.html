@@ -24,7 +24,6 @@
     label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
     input, textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    .row3 { display:grid; gap:10px; grid-template-columns: 1fr 1fr 1fr; }
     .status { margin-top:8px; font-size:13px; }
     .ok { color:var(--ok); }
     .warn-t { color:var(--warn); }
@@ -48,7 +47,6 @@
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
-        <a class="btn" href="{{ url_for('montagem', ) }}#ano-{{ ano }}">Ano {{ ano }}</a>
         <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}">↩ Voltar à Nova Montagem</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
@@ -63,13 +61,13 @@
     </div>
 
     <div class="layout" style="margin-top:12px;">
-      <!-- Coluna esquerda: Caixas (slots) -->
+      <!-- Esquerda: slots -->
       <div class="card">
         <h3 style="margin:0 0 12px;">Integrantes da {{ equipe_final }}</h3>
         <div id="slots"></div>
       </div>
 
-      <!-- Coluna direita: Sugestões do ano anterior -->
+      <!-- Direita: sugestões do ano anterior -->
       <div class="card">
         <h3 class="side-title">Encontristas do ano {{ ano - 1 }}</h3>
         <p class="small muted" style="margin-top:0;">Clique em um casal para preencher a próxima caixa vazia. Após inserir com sucesso, ele some desta lista.</p>
@@ -88,23 +86,17 @@
   </div>
 
   <script>
-    // ------------------------------
-    // Dados vindos do servidor
-    // ------------------------------
+    // ----- Dados do servidor -----
     const ANO = {{ ano | int }};
     const EQUIPE_FINAL = {{ equipe_final | tojson }};
     const LIMITES = {{ (limites or {}) | tojson }};
     const EXISTENTES = {{ (membros_existentes or []) | tojson }};
-
-    // Quantidade de slots (usa máx. da equipe; fallback 8)
-   const SLOTS_MAX = ((LIMITES && Number.isInteger(LIMITES.max)) ? LIMITES.max : 8);  // ← FIXO
+    const SLOTS_MAX = ((LIMITES && Number.isInteger(LIMITES.max)) ? LIMITES.max : 8); // SEMPRE renderiza todas as caixas
 
     const slotsWrap = document.getElementById('slots');
     const kpiAtual = document.getElementById('kpi-atual');
 
-    // ------------------------------
-    // Utilidades
-    // ------------------------------
+    // ----- Utils -----
     function h(tag, attrs={}, html='') {
       const el = document.createElement(tag);
       for (const [k,v] of Object.entries(attrs||{})) {
@@ -116,15 +108,6 @@
       if (html !== undefined && html !== null) el.innerHTML = html;
       return el;
     }
-
-    function firstEmptySlotIndex() {
-      for (let i=0; i<SLOTS_MAX; i++) {
-        const slot = document.getElementById(`slot_${i}`);
-        if (slot && !slot.dataset.locked) return i;
-      }
-      return -1;
-    }
-
     function updateKPI() {
       let count = 0;
       for (let i=0; i<SLOTS_MAX; i++) {
@@ -133,7 +116,10 @@
       }
       kpiAtual.textContent = String(count);
     }
-
+    async function postJSON(url, body) {
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
+      return await r.json();
+    }
     function fillSlot(i, data) {
       const $ele = document.getElementById(`ele_${i}`);
       const $ela = document.getElementById(`ela_${i}`);
@@ -144,7 +130,6 @@
       if ($tel) $tel.value = data.telefones || '';
       if ($end) $end.value = data.endereco || '';
     }
-
     function lockSlot(i, locked, memberId=null) {
       const slot = document.getElementById(`slot_${i}`);
       const $ele = document.getElementById(`ele_${i}`);
@@ -153,6 +138,8 @@
       const $end = document.getElementById(`end_${i}`);
       const $buscar = document.getElementById(`buscar_${i}`);
       const $add = document.getElementById(`add_${i}`);
+      const j = document.getElementById(`justify_wrap_${i}`);
+      const jt = document.getElementById(`justify_${i}`);
 
       if (locked) {
         slot.dataset.locked = '1';
@@ -172,55 +159,26 @@
         if ($end) { $end.disabled = false; $end.value = ''; }
         if ($buscar) $buscar.disabled = false;
         if ($add) { $add.textContent = 'Adicionar'; $add.dataset.mode = 'add'; }
-        // Esconde e limpa caixa de justificativa se existir
-        const j = document.getElementById(`justify_wrap_${i}`);
-        const jt = document.getElementById(`justify_${i}`);
         if (j) j.style.display = 'none';
         if (jt) jt.value = '';
       }
       updateKPI();
     }
 
-    async function postJSON(url, body) {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(body || {})
-      });
-      return await r.json();
-    }
-
-    // ------------------------------
-    // Render de um slot
-    // ------------------------------
-    function renderSlot(i, preset) {
+    // ----- Render slot -----
+    function renderSlot(i) {
       const slot = h('div', {class:'slot', id:`slot_${i}`});
       slot.dataset.locked = '';
       slot.dataset.memberId = '';
 
-      const title = h('div', {style:'display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;'},
-        `<div><b>Casal #${i+1}</b></div>`);
-
       const rowNomes = h('div', {class:'row'});
-      const gEle = h('div', {}, `
-        <label for="ele_${i}">Nome (Ele)</label>
-        <input id="ele_${i}" placeholder="Ex.: João">
-      `);
-      const gEla = h('div', {}, `
-        <label for="ela_${i}">Nome (Ela)</label>
-        <input id="ela_${i}" placeholder="Ex.: Maria">
-      `);
+      const gEle = h('div', {}, `<label for="ele_${i}">Nome (Ele)</label><input id="ele_${i}" placeholder="Ex.: João">`);
+      const gEla = h('div', {}, `<label for="ela_${i}">Nome (Ela)</label><input id="ela_${i}" placeholder="Ex.: Maria">`);
       rowNomes.append(gEle, gEla);
 
       const rowCont = h('div', {class:'row', style:'margin-top:8px;'});
-      const gTel = h('div', {}, `
-        <label for="tel_${i}">Telefones</label>
-        <input id="tel_${i}" placeholder="Preenchido pela busca (editável)">
-      `);
-      const gEnd = h('div', {}, `
-        <label for="end_${i}">Endereço</label>
-        <input id="end_${i}" placeholder="Preenchido pela busca (editável)">
-      `);
+      const gTel = h('div', {}, `<label for="tel_${i}">Telefones</label><input id="tel_${i}" placeholder="Preenchido pela busca (editável)">`);
+      const gEnd = h('div', {}, `<label for="end_${i}">Endereço</label><input id="end_${i}" placeholder="Preenchido pela busca (editável)">`);
       rowCont.append(gTel, gEnd);
 
       const actions = h('div', {class:'inline-actions', style:'margin-top:8px;'});
@@ -240,15 +198,8 @@
 
       const status = h('div', {class:'status', id:`status_${i}`});
 
-      slot.append(title, rowNomes, rowCont, actions, justifyWrap, status);
-
-      // Se houver preset (membro existente)
-      if (preset) {
-        fillSlot(i, preset);
-        lockSlot(i, true, preset.id);
-        status.textContent = `Integrante já cadastrado (${preset.status || 'Aberto'}).`;
-        status.className = 'status ok';
-      }
+      slot.append(rowNomes, rowCont, actions, justifyWrap, status);
+      slotsWrap.appendChild(slot);
 
       // Handlers
       btnBuscar.addEventListener('click', async (e) => {
@@ -265,27 +216,13 @@
           const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', {
             ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela
           });
-          if (!data.ok) {
-            status.textContent = data.msg || 'Falha ao validar.';
-            status.className = 'status err';
-            return;
-          }
-          // Bloqueios
-          if (data.ja_coordenador) {
-            status.textContent = 'Casal já foi coordenador desta equipe. Não pode ser inserido.';
-            status.className = 'status err';
-            return;
-          }
-          if (data.ja_no_ano) {
-            status.textContent = 'Casal já está montado em alguma equipe deste ano.';
-            status.className = 'status err';
-            return;
-          }
-          // Info
+          if (!data.ok) { status.textContent = data.msg || 'Falha ao validar.'; status.className = 'status err'; return; }
+          if (data.ja_coordenador) { status.textContent = 'Casal já foi coordenador desta equipe.'; status.className = 'status err'; return; }
+          if (data.ja_no_ano) { status.textContent = 'Casal já está montado em alguma equipe deste ano.'; status.className = 'status err'; return; }
           document.getElementById(`tel_${i}`).value = data.telefones || '';
           document.getElementById(`end_${i}`).value = data.endereco || '';
           if (data.trabalhou_antes) {
-            status.textContent = 'Casal já trabalhou nesta equipe. Você ainda pode inserir, será pedido confirmação ao adicionar.';
+            status.textContent = 'Casal já trabalhou nesta equipe. Confirme na hora de adicionar.';
             status.className = 'status warn-t';
             slot.dataset.trabalhouAntes = '1';
           } else {
@@ -293,27 +230,18 @@
             status.className = 'status ok';
             slot.dataset.trabalhouAntes = '';
           }
-        } catch (err) {
-          status.textContent = 'Erro na validação/busca.';
-          status.className = 'status err';
-        }
+        } catch { status.textContent = 'Erro na validação/busca.'; status.className = 'status err'; }
       });
 
       btnAdd.addEventListener('click', async (e) => {
         e.preventDefault();
         const mode = btnAdd.dataset.mode || 'add';
         if (mode === 'add') {
-          // Inserir
-          status.textContent = '';
           const nome_ele = document.getElementById(`ele_${i}`).value.trim();
           const nome_ela = document.getElementById(`ela_${i}`).value.trim();
           const telefones = document.getElementById(`tel_${i}`).value.trim();
           const endereco  = document.getElementById(`end_${i}`).value.trim();
-          if (!nome_ele || !nome_ela) {
-            status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-            status.className = 'status warn-t';
-            return;
-          }
+          if (!nome_ele || !nome_ela) { status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; status.className = 'status warn-t'; return; }
           let confirmar_repeticao = false;
           if (slot.dataset.trabalhouAntes === '1') {
             confirmar_repeticao = window.confirm('Casal já trabalhou na equipe. Confirmar para montar novamente?');
@@ -321,223 +249,124 @@
           }
           try {
             const resp = await postJSON('{{ url_for("api_add_membro_equipe") }}', {
-              ano: ANO, equipe_final: EQUIPE_FINAL,
-              nome_ele, nome_ela, telefones, endereco,
-              confirmar_repeticao
+              ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao
             });
             if (resp.ok) {
-              // trava slot como "inserido", sem id (não sabemos o id que o DB gerou).
-              // Atualiza: vamos refazer a página para puxar ID? Para manter simples, apenas trave localmente.
-              status.textContent = 'Integrante adicionado com sucesso.';
-              status.className = 'status ok';
+              status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok';
               lockSlot(i, true, null);
-              // Remove da lista de sugestões se existir
-              const suggSel = document.querySelector(`.suggest[data-ele="${CSS.escape(nome_ele)}"][data-ela="${CSS.escape(nome_ela)}"]`);
-              if (suggSel) suggSel.remove();
+              // remove da coluna lateral (se veio de lá)
+              const sug = document.querySelector(`.suggest[data-ele="${CSS.escape(nome_ele)}"][data-ela="${CSS.escape(nome_ela)}"]`);
+              if (sug) sug.remove();
             } else if (resp.needs_confirm) {
-              // fallback se o usuário não confirmou antes
               const ok = window.confirm(resp.msg || 'Confirmar?');
               if (ok) {
                 const resp2 = await postJSON('{{ url_for("api_add_membro_equipe") }}', {
-                  ano: ANO, equipe_final: EQUIPE_FINAL,
-                  nome_ele, nome_ela, telefones, endereco,
-                  confirmar_repeticao: true
+                  ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao: true
                 });
-                if (resp2.ok) {
-                  status.textContent = 'Integrante adicionado com sucesso.';
-                  status.className = 'status ok';
-                  lockSlot(i, true, null);
-                  const suggSel = document.querySelector(`.suggest[data-ele="${CSS.escape(nome_ele)}"][data-ela="${CSS.escape(nome_ela)}"]`);
-                  if (suggSel) suggSel.remove();
-                } else {
-                  status.textContent = resp2.msg || 'Falha ao adicionar.';
-                  status.className = 'status err';
-                }
+                if (resp2.ok) { status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok'; lockSlot(i, true, null); }
+                else { status.textContent = resp2.msg || 'Falha ao adicionar.'; status.className = 'status err'; }
               }
             } else {
-              status.textContent = resp.msg || 'Falha ao adicionar.';
-              status.className = 'status err';
+              status.textContent = resp.msg || 'Falha ao adicionar.'; status.className = 'status err';
             }
-          } catch (err) {
-            status.textContent = 'Erro ao adicionar.';
-            status.className = 'status err';
-          }
-        } else {
-          // Alterar (escolha Recusou/Desistiu)
-          const wrap = document.getElementById(`justify_wrap_${i}`);
-          wrap.style.display = 'block';
+          } catch { status.textContent = 'Erro ao adicionar.'; status.className = 'status err'; }
+        } else { // alterar
+          document.getElementById(`justify_wrap_${i}`).style.display = 'block';
         }
       });
 
-      // Botões da caixa de justificativa
-      const btnRec = justifyWrap.querySelector(`#mark_recusou_${i}`);
-      const btnDes = justifyWrap.querySelector(`#mark_desistiu_${i}`);
-      const btnCan = justifyWrap.querySelector(`#cancel_alter_${i}`);
+      // Ações da justificativa (Alterar -> Recusou/Desistiu)
+      justify_wrap_listeners(i, status);
+    }
+
+    function justify_wrap_listeners(i, statusEl) {
+      const btnRec = document.getElementById(`mark_recusou_${i}`);
+      const btnDes = document.getElementById(`mark_desistiu_${i}`);
+      const btnCan = document.getElementById(`cancel_alter_${i}`);
       btnRec.addEventListener('click', async (e) => {
         e.preventDefault();
         const obs = document.getElementById(`justify_${i}`).value.trim();
-        if (!obs) {
-          status.textContent = 'Justificativa é obrigatória.';
-          status.className = 'status err';
-          return;
-        }
+        if (!obs) { statusEl.textContent = 'Justificativa é obrigatória.'; statusEl.className = 'status err'; return; }
         const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
-        if (!memberId) {
-          status.textContent = 'Este integrante não possui ID conhecido. Recarregue a página para sincronizar.';
-          status.className = 'status err';
-          return;
-        }
+        if (!memberId) { statusEl.textContent = 'Sem ID do integrante. Recarregue a página.'; statusEl.className = 'status err'; return; }
         try {
-          const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', {
-            id: parseInt(memberId, 10),
-            novo_status: 'Recusou',
-            observacao: obs
-          });
-          if (resp.ok) {
-            status.textContent = 'Status atualizado para Recusou. Campos liberados para novo cadastro.';
-            status.className = 'status ok';
-            lockSlot(i, false, null);
-          } else {
-            status.textContent = resp.msg || 'Falha ao alterar status.';
-            status.className = 'status err';
-          }
-        } catch (err) {
-          status.textContent = 'Erro ao alterar status.';
-          status.className = 'status err';
-        }
+          const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', { id: parseInt(memberId,10), novo_status:'Recusou', observacao: obs });
+          if (resp.ok) { statusEl.textContent = 'Status atualizado para Recusou. Campos liberados.'; statusEl.className = 'status ok'; lockSlot(i, false, null); }
+          else { statusEl.textContent = resp.msg || 'Falha ao alterar status.'; statusEl.className = 'status err'; }
+        } catch { statusEl.textContent = 'Erro ao alterar status.'; statusEl.className = 'status err'; }
       });
       btnDes.addEventListener('click', async (e) => {
         e.preventDefault();
         const obs = document.getElementById(`justify_${i}`).value.trim();
-        if (!obs) {
-          status.textContent = 'Justificativa é obrigatória.';
-          status.className = 'status err';
-          return;
-        }
+        if (!obs) { statusEl.textContent = 'Justificativa é obrigatória.'; statusEl.className = 'status err'; return; }
         const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
-        if (!memberId) {
-          status.textContent = 'Este integrante não possui ID conhecido. Recarregue a página para sincronizar.';
-          status.className = 'status err';
-          return;
-        }
+        if (!memberId) { statusEl.textContent = 'Sem ID do integrante. Recarregue a página.'; statusEl.className = 'status err'; return; }
         try {
-          const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', {
-            id: parseInt(memberId, 10),
-            novo_status: 'Desistiu',
-            observacao: obs
-          });
-          if (resp.ok) {
-            status.textContent = 'Status atualizado para Desistiu. Campos liberados para novo cadastro.';
-            status.className = 'status ok';
-            lockSlot(i, false, null);
-          } else {
-            status.textContent = resp.msg || 'Falha ao alterar status.';
-            status.className = 'status err';
-          }
-        } catch (err) {
-          status.textContent = 'Erro ao alterar status.';
-          status.className = 'status err';
-        }
+          const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', { id: parseInt(memberId,10), novo_status:'Desistiu', observacao: obs });
+          if (resp.ok) { statusEl.textContent = 'Status atualizado para Desistiu. Campos liberados.'; statusEl.className = 'status ok'; lockSlot(i, false, null); }
+          else { statusEl.textContent = resp.msg || 'Falha ao alterar status.'; statusEl.className = 'status err'; }
+        } catch { statusEl.textContent = 'Erro ao alterar status.'; statusEl.className = 'status err'; }
       });
       btnCan.addEventListener('click', (e) => {
         e.preventDefault();
-        const wrap = document.getElementById(`justify_wrap_${i}`);
-        wrap.style.display = 'none';
+        document.getElementById(`justify_wrap_${i}`).style.display = 'none';
         document.getElementById(`justify_${i}`).value = '';
       });
-
-      // Se preset veio, mas sem id (não deve acontecer pois o back manda id),
-      // mantém bloqueado porém sem permitir "Alterar".
-      if (preset && !preset.id) {
-        btnAdd.disabled = true;
-      }
-
-      return slot;
     }
 
-    // ------------------------------
-    // Render geral
-    // ------------------------------
+    // ----- Render geral -----
     function renderAll() {
+      // 1) cria TODOS os slots vazios primeiro (sempre SLOTS_MAX)
       slotsWrap.innerHTML = '';
-      // Pré preenche com EXISTENTES no topo
-      let idx = 0;
-      for (; idx < Math.min(EXISTENTES.length, SLOTS_MAX); idx++) {
-        const p = EXISTENTES[idx];
-        const slot = renderSlot(idx, p);
-        slotsWrap.appendChild(slot);
-      }
-      // Slots vazios restantes
-      for (; idx < SLOTS_MAX; idx++) {
-        const slot = renderSlot(idx, null);
-        slotsWrap.appendChild(slot);
+      for (let i=0; i<SLOTS_MAX; i++) renderSlot(i);
+
+      // 2) pré-preenche e trava os existentes por índice (um por um)
+      for (let i=0; i<Math.min(EXISTENTES.length, SLOTS_MAX); i++) {
+        const p = EXISTENTES[i];
+        fillSlot(i, p);
+        lockSlot(i, true, p.id || null);
+        const st = document.getElementById(`status_${i}`);
+        st.textContent = `Integrante já cadastrado${p.status ? ' ('+p.status+')' : ''}.`;
+        st.className = 'status ok';
       }
       updateKPI();
     }
 
-    // ------------------------------
-    // Sugestões (lado direito)
-    // ------------------------------
+    // ----- Sugestões (lado direito) -----
     function wireSuggestions() {
       const box = document.getElementById('sugestoes');
       if (!box) return;
       box.addEventListener('click', async (e) => {
-        const a = e.target.closest('.suggest');
-        if (!a) return;
-        e.preventDefault();
+        const a = e.target.closest('.suggest'); if (!a) return; e.preventDefault();
+        // encontra primeiro slot vazio (não travado)
+        let idx = -1;
+        for (let i=0; i<SLOTS_MAX; i++) {
+          const s = document.getElementById(`slot_${i}`);
+          if (s && s.dataset.locked !== '1') { idx = i; break; }
+        }
+        if (idx === -1) { alert('Não há slots vazios. Libere um com Alterar -> Recusou/Desistiu.'); return; }
+
         const nome_ele = a.dataset.ele || '';
         const nome_ela = a.dataset.ela || '';
-        const idx = firstEmptySlotIndex();
-        if (idx === -1) {
-          alert('Não há slots vazios.');
-          return;
-        }
-        // Preenche nomes, busca dados e valida
         fillSlot(idx, {nome_ele, nome_ela});
+
         const status = document.getElementById(`status_${idx}`);
         try {
-          const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', {
-            ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela
-          });
-          if (!data.ok) {
-            status.textContent = data.msg || 'Falha ao validar.';
-            status.className = 'status err';
-            return;
-          }
-          if (data.ja_coordenador) {
-            status.textContent = 'Casal já foi coordenador desta equipe. Não pode ser inserido.';
-            status.className = 'status err';
-            return;
-          }
-          if (data.ja_no_ano) {
-            status.textContent = 'Casal já está montado em alguma equipe deste ano.';
-            status.className = 'status err';
-            return;
-          }
+          const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', { ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela });
+          if (!data.ok) { status.textContent = data.msg || 'Falha ao validar.'; status.className = 'status err'; return; }
+          if (data.ja_coordenador) { status.textContent = 'Casal já foi coordenador desta equipe.'; status.className = 'status err'; return; }
+          if (data.ja_no_ano) { status.textContent = 'Casal já está montado em alguma equipe deste ano.'; status.className = 'status err'; return; }
           document.getElementById(`tel_${idx}`).value = data.telefones || '';
           document.getElementById(`end_${idx}`).value = data.endereco || '';
-          if (data.trabalhou_antes) {
-            status.textContent = 'Casal já trabalhou nesta equipe. Confirme na hora de adicionar.';
-            status.className = 'status warn-t';
-            document.getElementById(`slot_${idx}`).dataset.trabalhouAntes = '1';
-          } else {
-            status.textContent = 'Dados carregados a partir da sugestão.';
-            status.className = 'status ok';
-            document.getElementById(`slot_${idx}`).dataset.trabalhouAntes = '';
-          }
-        } catch (err) {
-          status.textContent = 'Erro na validação/busca.';
-          status.className = 'status err';
-        }
+          if (data.trabalhou_antes) { status.textContent = 'Casal já trabalhou nesta equipe. Confirme ao adicionar.'; status.className = 'status warn-t'; document.getElementById(`slot_${idx}`).dataset.trabalhouAntes='1'; }
+          else { status.textContent = 'Dados carregados a partir da sugestão.'; status.className = 'status ok'; document.getElementById(`slot_${idx}`).dataset.trabalhouAntes=''; }
+        } catch { status.textContent = 'Erro na validação/busca.'; status.className = 'status err'; }
       });
     }
 
-    // ------------------------------
     // Init
-    // ------------------------------
     renderAll();
     wireSuggestions();
   </script>
 </body>
 </html>
-
