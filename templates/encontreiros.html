@@ -21,21 +21,27 @@
 
   {% for ano, registros in por_ano.items() %}
     <h2>{{ ano }}</h2>
+
+    {% set cols = ['id','ano','equipe','nome_ele','nome_ela','telefones','endereco','coordenador'] %}
+
     <table border="1">
       <thead>
         <tr>
-          {% for col in registros[0].keys() %}
-            <th>{{ col }}</th>
+          {% for c in cols %}
+            <th>{{ c }}</th>
           {% endfor %}
         </tr>
       </thead>
       <tbody>
         {% for row in registros %}
-          <tr>
-            {% for value in row.values() %}
-              <td>{{ value }}</td>
-            {% endfor %}
-          </tr>
+          {% set s = (row.get('status','') or '') | trim | lower %}
+          {% if s in ['aberto','concluido'] %}
+            <tr>
+              {% for c in cols %}
+                <td>{{ row.get(c, '') }}</td>
+              {% endfor %}
+            </tr>
+          {% endif %}
         {% endfor %}
       </tbody>
     </table>
