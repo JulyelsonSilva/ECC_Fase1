@@ -18,18 +18,15 @@ DB_CONFIG = {
 TEAM_MAP = {
     "Sala": "Equipe de Sala - Coordenador/Apresentador",
     "Círculos": "Equipe de Círculos",
-    "Circulos": "Equipe de Círculos",
     "Café e Minimercado": "Equipe Café e Minimercado",
     "Compras": "Equipe Compras",
     "Acolhida": "Equipe Acolhida",
     "Ordem e Limpeza": "Equipe Ordem e Limpeza",
     "Liturgia e Vigília": "Equipe Liturgia e Vigília",
-    "Liturgia e Vigilia": "Equipe Liturgia e Vigília",
     "Secretaria": "Equipe Secretaria",
     "Cozinha": "Equipe Cozinha",
     "Visitação": "Equipe Visitação",
-    "Visitacao": "Equipe Visitação",
-}
+    }
 
 # Limites por equipe (min, max)
 TEAM_LIMITS = {
