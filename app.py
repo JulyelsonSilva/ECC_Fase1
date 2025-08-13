@@ -50,7 +50,7 @@ def encontristas():
     cursor.execute(query, params)
     todos = cursor.fetchall()
     total_paginas = max(1, math.ceil(len(todos) / por_pagina))
-    dados = todos[(pagina-1)*por_pagina : pagina*por_pagina]
+    dados = todos[(pagina-1)*por_pagina: pagina*por_pagina]
 
     updated = request.args.get('updated')
     notfound = request.args.get('notfound')
@@ -185,8 +185,8 @@ def montagem():
 def nova_montagem():
     ano_preselecionado = request.args.get('ano', type=int)
     initial_data = {
-        "dirigentes": {},  # chave = nome da equipe
-        "cg": None         # dict ou None
+        "dirigentes": {},  # chave = nome da equipe -> {id, nome_ele, nome_ela, telefones, endereco}
+        "cg": None         # dict com {id, nome_ele, nome_ela, telefones, endereco} ou None
     }
 
     if ano_preselecionado:
@@ -200,10 +200,10 @@ def nova_montagem():
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
-            # Pré-preenche os 5 dirigentes (se já existirem para o ano)
+            # Pré-preenche os 5 dirigentes (se já existirem para o ano) — com ID
             for equipe in equipes:
                 cur.execute("""
-                    SELECT nome_ele, nome_ela, telefones, endereco
+                    SELECT id, nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
                      WHERE ano = %s AND equipe = %s
                      ORDER BY id ASC
@@ -212,15 +212,16 @@ def nova_montagem():
                 r = cur.fetchone()
                 if r:
                     initial_data["dirigentes"][equipe] = {
+                        "id": r.get("id"),
                         "nome_ele": r.get("nome_ele") or "",
                         "nome_ela": r.get("nome_ela") or "",
                         "telefones": r.get("telefones") or "",
                         "endereco": r.get("endereco") or ""
                     }
 
-            # Pré-preenche Coordenador Geral do ano (se existir)
+            # Pré-preenche Coordenador Geral do ano (se existir) — com ID
             cur.execute("""
-                SELECT nome_ele, nome_ela, telefones, endereco
+                SELECT id, nome_ele, nome_ela, telefones, endereco
                   FROM encontreiros
                  WHERE ano = %s AND UPPER(equipe) LIKE 'CASAL COORDENADOR GERAL'
                  ORDER BY id ASC
@@ -229,6 +230,7 @@ def nova_montagem():
             r_cg = cur.fetchone()
             if r_cg:
                 initial_data["cg"] = {
+                    "id": r_cg.get("id"),
                     "nome_ele": r_cg.get("nome_ele") or "",
                     "nome_ela": r_cg.get("nome_ela") or "",
                     "telefones": r_cg.get("telefones") or "",
@@ -253,7 +255,7 @@ def nova_montagem():
 def api_buscar_casal():
     """
     Busca p/ Dirigentes:
-    1) encontr(ei)ros (mais recente) -> 2) encontristas (nomes usuais).
+    1) ENCONTREIROS (mais recente) -> 2) ENCONTRISTAS (nomes usuais).
     """
     data = request.get_json(silent=True) or {}
     nome_ele = (data.get('nome_ele') or '').strip()
@@ -315,6 +317,9 @@ def api_buscar_casal():
 
 @app.route('/api/adicionar-dirigente', methods=['POST'])
 def api_adicionar_dirigente():
+    """
+    Insere registro de Dirigente e retorna o ID.
+    """
     data = request.get_json(silent=True) or {}
     ano = (str(data.get('ano') or '')).strip()
     equipe = (data.get('equipe') or '').strip()
@@ -323,7 +328,6 @@ def api_adicionar_dirigente():
     telefones = (data.get('telefones') or '').strip()
     endereco = (data.get('endereco') or '').strip()
 
-    # validações simples
     if not ano.isdigit() or len(ano) != 4:
         return jsonify({"ok": False, "msg": "Ano inválido."}), 400
     if not equipe:
@@ -340,6 +344,38 @@ def api_adicionar_dirigente():
             VALUES
                 (%s,  %s,     %s,       %s,       %s,         %s,       'Sim',      'Aberto')
         """, (int(ano), equipe, nome_ele, nome_ela, telefones, endereco))
+        inserted_id = cur.lastrowid
+        conn.commit()
+        return jsonify({"ok": True, "id": inserted_id})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/marcar-status', methods=['POST'])
+def api_marcar_status():
+    """
+    Altera status de um registro existente (Recusou/Desistiu).
+    Não apaga o registro.
+    """
+    data = request.get_json(silent=True) or {}
+    rec_id = data.get('id')
+    novo_status = (data.get('status') or '').strip()
+
+    if not rec_id or str(rec_id).isdigit() is False:
+        return jsonify({"ok": False, "msg": "ID inválido."}), 400
+    if novo_status not in ('Recusou', 'Desistiu'):
+        return jsonify({"ok": False, "msg": "Status inválido."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE encontreiros SET status=%s WHERE id=%s", (novo_status, int(rec_id)))
+        if cur.rowcount == 0:
+            return jsonify({"ok": False, "msg": "Registro não encontrado."}), 404
         conn.commit()
         return jsonify({"ok": True})
     finally:
@@ -357,7 +393,7 @@ def api_adicionar_dirigente():
 def api_buscar_cg():
     """
     Regras:
-    - Só aceita casal que JÁ TRABALHOU (existe na tabela ENCONTREIROS em qualquer ano).
+    - Só aceita casal que JÁ TRABALHOU (existe em ENCONTREIROS em qualquer ano).
     - Se o casal JÁ FOI Coordenador Geral (equipe 'Casal Coordenador Geral'), alertar e bloquear.
     """
     data = request.get_json(silent=True) or {}
@@ -414,6 +450,7 @@ def api_adicionar_cg():
     Insere o 'Casal Coordenador Geral' se:
     - casal já trabalhou (existe em ENCONTREIROS);
     - casal nunca foi CG antes.
+    Retorna o ID inserido.
     """
     data = request.get_json(silent=True) or {}
     ano = (str(data.get('ano') or '')).strip()
@@ -431,19 +468,15 @@ def api_adicionar_cg():
     cur = conn.cursor(dictionary=True)
     try:
         # 1) valida "já trabalhou"
-        cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             LIMIT 1
-        """, (nome_ele, nome_ela))
+        cur.execute("SELECT 1 FROM encontreiros WHERE nome_ele=%s AND nome_ela=%s LIMIT 1", (nome_ele, nome_ela))
         if not cur.fetchone():
             return jsonify({"ok": False, "msg": "Casal nunca trabalhou no ECC."}), 404
 
         # 2) valida "nunca foi CG"
         cur.execute("""
             SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-               AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
+             WHERE nome_ele=%s AND nome_ela=%s
+               AND UPPER(equipe)='CASAL COORDENADOR GERAL'
              LIMIT 1
         """, (nome_ele, nome_ela))
         if cur.fetchone():
@@ -457,9 +490,10 @@ def api_adicionar_cg():
             VALUES
                 (%s,  'Casal Coordenador Geral', %s, %s, %s, %s, 'Sim', 'Aberto')
         """, (int(ano), nome_ele, nome_ela, telefones, endereco))
+        inserted_id = cur2.lastrowid
         conn.commit()
         cur2.close()
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "id": inserted_id})
     finally:
         try:
             cur.close()
@@ -860,4 +894,3 @@ def relatorio_casais():
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
