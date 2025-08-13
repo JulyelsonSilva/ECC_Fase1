@@ -13,18 +13,20 @@ DB_CONFIG = {
     'database': 'eccdivinomcz2'
 }
 
-# Equipes (chaves canônicas -> string escrita no banco)
+# -----------------------------
+# Mapeamento das Equipes (Coord. de Equipe)
+# -----------------------------
 TEAM_MAP = {
-    "Sala": "Equipe de Sala - Coordenador/Apresentador",
-    "Circulos": "Equipe de Círculos",
-    "Café e Minimercado": "Equipe Café e Minimercado",
-    "Compras": "Equipe Compras",
-    "Acolhida": "Equipe Acolhida",
-    "Ordem e Limpeza": "Equipe Ordem e Limpeza",
-    "Liturgia e Vigilia": "Equipe Liturgia e Vigília",
-    "Secretaria": "Equipe Secretaria",
-    "Cozinha": "Equipe Cozinha",
-    "Visitação": "Equipe Visitação",
+    "sala":      {"rotulo": "Equipe de Sala - Coordenador/Apresentador", "filtro": "Sala"},
+    "circulos":  {"rotulo": "Equipe de Círculos", "filtro": "Circulos"},
+    "cafe":      {"rotulo": "Equipe Café e Minimercado", "filtro": "Café e Minimercado"},
+    "compras":   {"rotulo": "Equipe Compras", "filtro": "Compras"},
+    "acolhida":  {"rotulo": "Equipe Acolhida", "filtro": "Acolhida"},
+    "ordem":     {"rotulo": "Equipe Ordem e Limpeza", "filtro": "Ordem e Limpeza"},
+    "liturgia":  {"rotulo": "Equipe Liturgia e Vigilia", "filtro": "Liturgia e Vigilia"},
+    "secretaria":{"rotulo": "Equipe Secretaria", "filtro": "Secretaria"},
+    "cozinha":   {"rotulo": "Equipe Cozinha", "filtro": "Cozinha"},
+    "visitacao": {"rotulo": "Equipe Visitação", "filtro": "Visitação"},
 }
 
 # -----------------------------
@@ -33,7 +35,6 @@ TEAM_MAP = {
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 # -----------------------------
 # ENCONTRISTAS (listagem + edição)
@@ -81,30 +82,28 @@ def encontristas():
         notfound=notfound
     )
 
-
 @app.route('/encontristas/<int:encontrista_id>/editar', methods=['GET', 'POST'])
 def editar_encontrista(encontrista_id):
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
     if request.method == 'POST':
-        # Campos conforme estrutura informada
-        nome_completo_ele = request.form.get('nome_completo_ele', '').strip()
-        nome_completo_ela = request.form.get('nome_completo_ela', '').strip()
-        nome_usual_ele = request.form.get('nome_usual_ele', '').strip()
-        nome_usual_ela = request.form.get('nome_usual_ela', '').strip()
-        telefone_ele = request.form.get('telefone_ele', '').strip()
-        telefone_ela = request.form.get('telefone_ela', '').strip()
-        endereco = request.form.get('endereco', '').strip()
-        ecc_num = request.form.get('ecc_num', '').strip()
-        ano_raw = request.form.get('ano', '').strip()
-        anos_casados = request.form.get('anos_casados', '').strip()
-        cor_circulo = request.form.get('cor_circulo', '').strip()
-        casal_visitacao = request.form.get('casal_visitacao', '').strip()
-        ficha_num = request.form.get('ficha_num', '').strip()
-        aceitou = request.form.get('aceitou', '').strip()
-        observacao = request.form.get('observacao', '').strip()
-        observacao_extra = request.form.get('observacao_extra', '').strip()
+        nome_completo_ele  = request.form.get('nome_completo_ele', '').strip()
+        nome_completo_ela  = request.form.get('nome_completo_ela', '').strip()
+        nome_usual_ele     = request.form.get('nome_usual_ele', '').strip()
+        nome_usual_ela     = request.form.get('nome_usual_ela', '').strip()
+        telefone_ele       = request.form.get('telefone_ele', '').strip()
+        telefone_ela       = request.form.get('telefone_ela', '').strip()
+        endereco           = request.form.get('endereco', '').strip()
+        ecc_num            = request.form.get('ecc_num', '').strip()
+        ano_raw            = request.form.get('ano', '').strip()
+        anos_casados       = request.form.get('anos_casados', '').strip()
+        cor_circulo        = request.form.get('cor_circulo', '').strip()
+        casal_visitacao    = request.form.get('casal_visitacao', '').strip()
+        ficha_num          = request.form.get('ficha_num', '').strip()
+        aceitou            = request.form.get('aceitou', '').strip()
+        observacao         = request.form.get('observacao', '').strip()
+        observacao_extra   = request.form.get('observacao_extra', '').strip()
 
         try:
             ano = int(ano_raw) if ano_raw else None
@@ -142,7 +141,6 @@ def editar_encontrista(encontrista_id):
         conn.close()
         return redirect(url_for('encontristas') + '?updated=1')
 
-    # GET: carrega registro
     cursor.execute("SELECT * FROM encontristas WHERE id = %s", (encontrista_id,))
     registro = cursor.fetchone()
     cursor.close()
@@ -153,16 +151,14 @@ def editar_encontrista(encontrista_id):
 
     return render_template('editar_encontrista.html', r=registro)
 
-
 # -----------------------------
-# MONTAGEM (Aberto x Concluído + contadores)
+# MONTAGEM (Aberto x Concluído)
 # -----------------------------
 @app.route('/montagem')
 def montagem():
     """
     Esquerda: 'Aberto' -> anos com pelo menos 1 registro status != 'Concluido'
     Direita:  'Concluído' -> anos onde TODOS têm status = 'Concluido'
-    Exibe contadores 'qtd_concluido/total' por ano.
     """
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -179,8 +175,8 @@ def montagem():
     cursor.close()
     conn.close()
 
-    anos_concluidos = []   # [{ano, qtd_concluido, total}]
-    anos_aberto = []       # [{ano, qtd_concluido, total}]
+    anos_concluidos = []
+    anos_aberto = []
 
     for r in rows:
         item = {"ano": r["ano"], "qtd_concluido": int(r["qtd_concluido"]), "total": int(r["total"])}
@@ -193,25 +189,19 @@ def montagem():
                            anos_aberto=anos_aberto,
                            anos_concluidos=anos_concluidos)
 
-
 # -----------------------------
-# Página "Nova Montagem"
+# Nova Montagem (pré-preenche dirigentes/CG/coord_equipes)
 # -----------------------------
 @app.route('/montagem/nova')
 def nova_montagem():
     ano_preselecionado = request.args.get('ano', type=int)
-    # seleção vinda da visão de equipes
-    sel_ele = request.args.get('selecionar_ele', type=str)
-    sel_ela = request.args.get('selecionar_ela', type=str)
-    target = request.args.get('target', type=str)
 
     initial_data = {
-        "dirigentes": {},   # chave = nome da equipe dirigente
-        "cg": None,         # dict ou None
-        "coords": {},       # chave = teamKey; valor = registro em Aberto (se houver)
+        "dirigentes": {},   # {nome_equipe: {nome_ele, nome_ela, telefones, endereco}}
+        "cg": None,         # {nome_ele, nome_ela, telefones, endereco}
+        "coord_teams": {}   # { key_do_TEAM_MAP: {nome_ele, nome_ela, telefones, endereco} }
     }
 
-    # Pré-preenche dirigentes + CG + coordenadores de equipe (apenas status = Aberto)
     if ano_preselecionado:
         equipes_dir = [
             "Equipe Dirigente - MONTAGEM",
@@ -223,115 +213,65 @@ def nova_montagem():
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
-            # Dirigentes (somente Aberto)
+            # Dirigentes (qualquer status exceto Recusou/Desistiu)
             for equipe in equipes_dir:
                 cur.execute("""
-                    SELECT id, nome_ele, nome_ela, telefones, endereco, status
+                    SELECT nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
                      WHERE ano = %s AND equipe = %s
-                       AND TRIM(LOWER(status)) = 'aberto'
-                     ORDER BY id DESC
+                       AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
+                     ORDER BY id ASC
                      LIMIT 1
                 """, (ano_preselecionado, equipe))
                 r = cur.fetchone()
                 if r:
                     initial_data["dirigentes"][equipe] = {
-                        "id": r.get("id"),
                         "nome_ele": r.get("nome_ele") or "",
                         "nome_ela": r.get("nome_ela") or "",
                         "telefones": r.get("telefones") or "",
-                        "endereco": r.get("endereco") or "",
-                        "status": r.get("status") or ""
+                        "endereco": r.get("endereco") or ""
                     }
 
-            # Coordenador Geral (somente Aberto)
+            # Coordenador Geral (apenas ABERTO)
             cur.execute("""
-                SELECT id, nome_ele, nome_ela, telefones, endereco, status
+                SELECT nome_ele, nome_ela, telefones, endereco
                   FROM encontreiros
                  WHERE ano = %s
                    AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
-                   AND TRIM(LOWER(status)) = 'aberto'
+                   AND UPPER(status) = 'ABERTO'
                  ORDER BY id DESC
                  LIMIT 1
             """, (ano_preselecionado,))
             r_cg = cur.fetchone()
             if r_cg:
                 initial_data["cg"] = {
-                    "id": r_cg.get("id"),
                     "nome_ele": r_cg.get("nome_ele") or "",
                     "nome_ela": r_cg.get("nome_ela") or "",
                     "telefones": r_cg.get("telefones") or "",
                     "endereco": r_cg.get("endereco") or "",
-                    "status": r_cg.get("status") or ""
                 }
 
-            # Coordenadores de Equipe (somente Aberto)
-            for team_key, equipe_banco in TEAM_MAP.items():
+            # Coordenadores de Equipe existentes (status ABERTO)
+            for key, info in TEAM_MAP.items():
+                rotulo = info["rotulo"]
                 cur.execute("""
-                    SELECT id, nome_ele, nome_ela, telefones, endereco, status
+                    SELECT nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
                      WHERE ano = %s
                        AND equipe = %s
-                       AND TRIM(LOWER(status)) = 'aberto'
-                       AND TRIM(LOWER(coordenador)) = 'sim'
+                       AND UPPER(coordenador) = 'SIM'
+                       AND UPPER(status) = 'ABERTO'
                      ORDER BY id DESC
                      LIMIT 1
-                """, (ano_preselecionado, equipe_banco))
-                rr = cur.fetchone()
-                if rr:
-                    initial_data["coords"][team_key] = {
-                        "id": rr.get("id"),
-                        "nome_ele": rr.get("nome_ele") or "",
-                        "nome_ela": rr.get("nome_ela") or "",
-                        "telefones": rr.get("telefones") or "",
-                        "endereco": rr.get("endereco") or "",
-                        "status": rr.get("status") or ""
+                """, (ano_preselecionado, rotulo))
+                r_team = cur.fetchone()
+                if r_team:
+                    initial_data["coord_teams"][key] = {
+                        "nome_ele": r_team.get("nome_ele") or "",
+                        "nome_ela": r_team.get("nome_ela") or "",
+                        "telefones": r_team.get("telefones") or "",
+                        "endereco": r_team.get("endereco") or "",
                     }
-
-            # Caso venha seleção da visão de equipes: buscar mais recente no ENCONTREIROS; se não achar, tenta ENCONTRISTAS
-            if sel_ele and sel_ela and target:
-                # 1) ENCONTREIROS (mais recente)
-                cur.execute("""
-                    SELECT ano, nome_ele, nome_ela, telefones, endereco
-                      FROM encontreiros
-                     WHERE nome_ele = %s AND nome_ela = %s
-                     ORDER BY ano DESC
-                     LIMIT 1
-                """, (sel_ele, sel_ela))
-                s = cur.fetchone()
-                if s:
-                    initial_data["preset_from_visao"] = {
-                        "target": target,
-                        "ele": s.get("nome_ele") or sel_ele,
-                        "ela": s.get("nome_ela") or sel_ela,
-                        "telefones": s.get("telefones") or "",
-                        "endereco": s.get("endereco") or ""
-                    }
-                else:
-                    # 2) ENCONTRISTAS (nomes usuais)
-                    cur.execute("""
-                        SELECT nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
-                          FROM encontristas
-                         WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-                         ORDER BY ano DESC
-                         LIMIT 1
-                    """, (sel_ele, sel_ela))
-                    s2 = cur.fetchone()
-                    if s2:
-                        tel_ele = (s2.get('telefone_ele') or '').strip()
-                        tel_ela = (s2.get('telefone_ela') or '').strip()
-                        tels = " / ".join([t for t in [tel_ele, tel_ela] if t])
-                        initial_data["preset_from_visao"] = {
-                            "target": target,
-                            "ele": s2.get("nome_usual_ele") or sel_ele,
-                            "ela": s2.get("nome_usual_ela") or sel_ela,
-                            "telefones": tels or "",
-                            "endereco": s2.get("endereco") or ""
-                        }
-                    else:
-                        # preset não encontrado
-                        pass
-
         finally:
             try:
                 cur.close()
@@ -339,19 +279,20 @@ def nova_montagem():
             except Exception:
                 pass
 
-    return render_template('nova_montagem.html',
-                           ano_preselecionado=ano_preselecionado,
-                           initial_data=initial_data,
-                           team_map=TEAM_MAP)
-
+    return render_template(
+        'nova_montagem.html',
+        ano_preselecionado=ano_preselecionado,
+        initial_data=initial_data,
+        team_map=TEAM_MAP
+    )
 
 # -----------------------------
-# APIs da Montagem – Dirigentes e Coordenadores de Equipe
+# APIs da Montagem – Dirigentes
 # -----------------------------
 @app.route('/api/buscar-casal', methods=['POST'])
 def api_buscar_casal():
     """
-    Busca p/ Dirigentes & Coord. Equipe:
+    Busca p/ Dirigentes e Coord. de Equipe:
     1) encontreiros (mais recente) -> 2) encontristas (nomes usuais).
     """
     data = request.get_json(silent=True) or {}
@@ -363,7 +304,7 @@ def api_buscar_casal():
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     try:
-        # 1) procura no ENCONTREIROS (mais recente)
+        # 1) ENCONTREIROS (mais recente)
         cur.execute("""
             SELECT ano, telefones, endereco
               FROM encontreiros
@@ -381,7 +322,7 @@ def api_buscar_casal():
                 "endereco": r.get("endereco") or ""
             })
 
-        # 2) procura no ENCONTRISTAS (nomes usuais)
+        # 2) ENCONTRISTAS (nomes usuais)
         cur.execute("""
             SELECT telefone_ele, telefone_ela, endereco, ano
               FROM encontristas
@@ -411,7 +352,6 @@ def api_buscar_casal():
         except Exception:
             pass
 
-
 @app.route('/api/adicionar-dirigente', methods=['POST'])
 def api_adicionar_dirigente():
     data = request.get_json(silent=True) or {}
@@ -439,14 +379,13 @@ def api_adicionar_dirigente():
                 (%s,  %s,     %s,       %s,       %s,         %s,       'Sim',      'Aberto')
         """, (int(ano), equipe, nome_ele, nome_ela, telefones, endereco))
         conn.commit()
-        return jsonify({"ok": True, "id": cur.lastrowid})
+        return jsonify({"ok": True})
     finally:
         try:
             cur.close()
             conn.close()
         except Exception:
             pass
-
 
 # -----------------------------
 # APIs da Montagem – Coordenador Geral
@@ -456,7 +395,7 @@ def api_buscar_cg():
     """
     Regras:
     - Só aceita casal que JÁ TRABALHOU (existe na tabela ENCONTREIROS em qualquer ano).
-    - Se o casal JÁ FOI Coordenador Geral (equipe 'Casal Coordenador Geral'), alertar e bloquear.
+    - Se o casal JÁ FOI Coordenador Geral, bloquear.
     """
     data = request.get_json(silent=True) or {}
     nome_ele = (data.get('nome_ele') or '').strip()
@@ -479,7 +418,7 @@ def api_buscar_cg():
         if not r:
             return jsonify({"ok": False, "msg": "Casal nunca trabalhou no ECC."}), 404
 
-        # Já foi Coordenador Geral alguma vez?
+        # Já foi Coordenador Geral?
         cur.execute("""
             SELECT 1
               FROM encontreiros
@@ -491,7 +430,6 @@ def api_buscar_cg():
         if r2:
             return jsonify({"ok": False, "msg": "Casal já foi Coordenador Geral."}), 409
 
-        # Ok para prosseguir: retorna dados mais recentes
         return jsonify({
             "ok": True,
             "ano_ref": r["ano"],
@@ -505,14 +443,8 @@ def api_buscar_cg():
         except Exception:
             pass
 
-
 @app.route('/api/adicionar-cg', methods=['POST'])
 def api_adicionar_cg():
-    """
-    Insere o 'Casal Coordenador Geral' se:
-    - casal já trabalhou (existe em ENCONTREIROS);
-    - casal nunca foi CG antes.
-    """
     data = request.get_json(silent=True) or {}
     ano = (str(data.get('ano') or '')).strip()
     nome_ele = (data.get('nome_ele') or '').strip()
@@ -556,9 +488,8 @@ def api_adicionar_cg():
                 (%s,  'Casal Coordenador Geral', %s, %s, %s, %s, 'Sim', 'Aberto')
         """, (int(ano), nome_ele, nome_ela, telefones, endereco))
         conn.commit()
-        new_id = cur2.lastrowid
         cur2.close()
-        return jsonify({"ok": True, "id": new_id})
+        return jsonify({"ok": True})
     finally:
         try:
             cur.close()
@@ -566,68 +497,8 @@ def api_adicionar_cg():
         except Exception:
             pass
 
-
 # -----------------------------
-# Marcar status (com justificativa obrigatória p/ Recusou/Desistiu)
-# -----------------------------
-@app.route('/api/marcar-status', methods=['POST'], endpoint='api_marcar_status')
-def api_marcar_status():
-    data = request.get_json(silent=True) or {}
-    rec_id = data.get('id')
-    status = (data.get('status') or '').strip()
-    observacao = (data.get('observacao') or '').strip()
-
-    if not rec_id or status not in ('Recusou', 'Desistiu', 'Concluido', 'Aberto'):
-        return jsonify({"ok": False, "msg": "Parâmetros inválidos."}), 400
-
-    # Justificativa obrigatória para Recusou/Desistiu
-    if status in ('Recusou', 'Desistiu') and not observacao:
-        return jsonify({"ok": False, "msg": "Justificativa é obrigatória para Recusou/Desistiu."}), 400
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    try:
-        if status in ('Recusou', 'Desistiu'):
-            cur.execute("UPDATE encontreiros SET status=%s, observacao=%s WHERE id=%s",
-                        (status, observacao, rec_id))
-        else:
-            cur.execute("UPDATE encontreiros SET status=%s WHERE id=%s",
-                        (status, rec_id))
-        conn.commit()
-        return jsonify({"ok": True})
-    finally:
-        cur.close(); conn.close()
-
-
-# -----------------------------
-# Concluir montagem do ano (fecha todos em Aberto -> Concluido)
-# -----------------------------
-@app.route('/api/concluir-montagem-ano', methods=['POST'])
-def api_concluir_montagem_ano():
-    data = request.get_json(silent=True) or {}
-    ano = data.get('ano')
-    try:
-        ano = int(ano)
-    except Exception:
-        return jsonify({"ok": False, "msg": "Ano inválido."}), 400
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    try:
-        cur.execute("""
-            UPDATE encontreiros
-               SET status='Concluido'
-             WHERE ano=%s AND TRIM(LOWER(status))='aberto'
-        """, (ano,))
-        conn.commit()
-        updated = cur.rowcount
-        return jsonify({"ok": True, "updated": updated})
-    finally:
-        cur.close(); conn.close()
-
-
-# -----------------------------
-# ENCONTREIROS (listagem por ano/nome; sem edição)
+# ENCONTREIROS (listagem – sem edição)
 # -----------------------------
 @app.route('/encontreiros')
 def encontreiros():
@@ -636,9 +507,14 @@ def encontreiros():
 
     nome_ele = request.args.get('nome_ele', '')
     nome_ela = request.args.get('nome_ela', '')
-    ano = request.args.get('ano', '')  # filtro por ano
+    ano = request.args.get('ano', '')
 
-    query = "SELECT * FROM encontreiros WHERE 1=1"
+    query = """
+        SELECT id, ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador
+          FROM encontreiros
+         WHERE 1=1
+           AND (status IS NULL OR UPPER(status) IN ('ABERTO','CONCLUIDO','ACEITO'))
+    """
     params = []
     if nome_ele:
         query += " AND nome_ele LIKE %s"
@@ -650,9 +526,6 @@ def encontreiros():
         query += " AND ano = %s"
         params.append(ano)
 
-    # filtra fora recusou/desistiu
-    query += " AND TRIM(LOWER(status)) IN ('aberto','concluido')"
-
     query += " ORDER BY ano DESC, equipe ASC"
     cursor.execute(query, params)
     todos = cursor.fetchall()
@@ -661,18 +534,19 @@ def encontreiros():
 
     por_ano = defaultdict(list)
     for row in todos:
-        # remove a coluna status da exibição (mantemos no dict se quiser usar depois)
         por_ano[row['ano']].append(row)
 
     return render_template('encontreiros.html', por_ano=por_ano)
 
-
 # -----------------------------
-# Visão Equipes (sem mudanças estruturais aqui)
+# Visão Equipes (com/sem links)
 # -----------------------------
 @app.route('/visao-equipes')
 def visao_equipes():
     equipe = request.args.get('equipe', '')
+    # Se vier de nova_montagem, estes parâmetros existirão:
+    target = request.args.get('target', '')
+    ano_montagem = request.args.get('ano_montagem', '')
     tabela = {}
     colunas = []
 
@@ -695,9 +569,9 @@ def visao_equipes():
                     dados[pasta].setdefault(ano, nome)
 
             anos = sorted({ano for pasta_data in dados.values() for ano in pasta_data})
-            for ano in anos:
-                linha = [dados[col].get(ano, '') for col in colunas]
-                tabela[ano] = linha
+            for a in anos:
+                linha = [dados[col].get(a, '') for col in colunas]
+                tabela[a] = linha
 
         else:
             cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
@@ -712,29 +586,29 @@ def visao_equipes():
                 dados_ano = defaultdict(lambda: {col: '' for col in colunas})
 
                 for row in all_rows:
-                    ano = row['ano']
+                    a = row['ano']
                     equipe_txt = (row['equipe'] or '').upper()
                     nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
                     coordenador = (row.get('coordenador') or '').strip().lower() == 'sim'
 
                     if coordenador and all(x not in equipe_txt for x in ['BOA VONTADE', 'CANTO', 'SOM E PROJEÇÃO', 'RECEPÇÃO']):
-                        dados_ano[ano]['Coordenador'] = f"*{nome_chave}"
+                        dados_ano[a]['Coordenador'] = f"*{nome_chave}"
                     elif 'BOA VONTADE' in equipe_txt:
-                        dados_ano[ano]['Boa Vontade'] = nome_chave
+                        dados_ano[a]['Boa Vontade'] = nome_chave
                     elif 'CANTO' in equipe_txt:
-                        if not dados_ano[ano]['Canto 1']:
-                            dados_ano[ano]['Canto 1'] = nome_chave
-                        elif not dados_ano[ano]['Canto 2']:
-                            dados_ano[ano]['Canto 2'] = nome_chave
+                        if not dados_ano[a]['Canto 1']:
+                            dados_ano[a]['Canto 1'] = nome_chave
+                        elif not dados_ano[a]['Canto 2']:
+                            dados_ano[a]['Canto 2'] = nome_chave
                     elif 'SOM E PROJEÇÃO' in equipe_txt:
-                        if not dados_ano[ano]['Som e Projeção 1']:
-                            dados_ano[ano]['Som e Projeção 1'] = nome_chave
-                        elif not dados_ano[ano]['Som e Projeção 2']:
-                            dados_ano[ano]['Som e Projeção 2'] = nome_chave
+                        if not dados_ano[a]['Som e Projeção 1']:
+                            dados_ano[a]['Som e Projeção 1'] = nome_chave
+                        elif not dados_ano[a]['Som e Projeção 2']:
+                            dados_ano[a]['Som e Projeção 2'] = nome_chave
                     elif 'RECEPÇÃO' in equipe_txt:
-                        dados_ano[ano]['Recepção de Palestras'] = nome_chave
+                        dados_ano[a]['Recepção de Palestras'] = nome_chave
 
-                for ano, linha_dict in dados_ano.items():
+                for a, linha_dict in dados_ano.items():
                     linha = []
                     for col in colunas:
                         nome = linha_dict[col]
@@ -744,21 +618,21 @@ def visao_equipes():
                             linha.append(f"~{nome}")
                         else:
                             linha.append(nome)
-                    tabela[ano] = linha
+                    tabela[a] = linha
 
             else:
                 colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
                 por_ano = defaultdict(list)
 
                 for row in all_rows:
-                    ano = row['ano']
+                    a = row['ano']
                     nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
                     if (row.get('coordenador') or '').strip().lower() == 'sim':
-                        por_ano[ano].insert(0, f"*{nome_chave}")
+                        por_ano[a].insert(0, f"*{nome_chave}")
                     else:
-                        por_ano[ano].append(nome_chave)
+                        por_ano[a].append(nome_chave)
 
-                for ano, nomes in por_ano.items():
+                for a, nomes in por_ano.items():
                     linha = []
                     for nome in nomes:
                         if nome.startswith("*"):
@@ -769,29 +643,18 @@ def visao_equipes():
                             linha.append(nome)
                     while len(linha) < len(colunas):
                         linha.append('')
-                    tabela[ano] = linha
+                    tabela[a] = linha
 
         cursor.close()
         conn.close()
 
-    # Quando vier da nova_montagem, o template (visao_equipes.html) deve usar os params:
-    #   target=<teamKey> e ano_montagem=<ano>
-    # para transformar nomes clicáveis e redirecionar de volta para /montagem/nova
-    return render_template('visao_equipes.html',
-                           equipe_selecionada=equipe,
-                           tabela=tabela,
-                           colunas=colunas)
-
-
-# -----------------------------
-# Stub para Montagem de Equipe (evita erro de url_for)
-# -----------------------------
-@app.route('/montagem/equipe')
-def montagem_equipe():
-    ano = request.args.get('ano', '')
-    equipe = request.args.get('equipe', '')
-    return f"<h2>Montagem da equipe '{equipe}' para o ano {ano} — (em construção)</h2>"
-
+    # target/ano_montagem são lidos pelo template para decidir se mostra links
+    return render_template(
+        'visao_equipes.html',
+        equipe_selecionada=equipe,
+        tabela=tabela,
+        colunas=colunas
+    )
 
 # -----------------------------
 # Visão do Casal
@@ -818,7 +681,6 @@ def visao_casal():
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # ENCONTRISTAS
         cursor.execute("""
             SELECT ano, endereco, telefone_ele, telefone_ela
             FROM encontristas 
@@ -836,7 +698,6 @@ def visao_casal():
                 "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
             }
 
-        # ENCONTREIROS
         cursor.execute("""
             SELECT ano, equipe, coordenador, endereco, telefones
             FROM encontreiros 
@@ -854,7 +715,6 @@ def visao_casal():
             if "ano_encontro" not in dados_encontrista:
                 dados_encontrista["ano_encontro"] = "-"
 
-            # Pega endereço e telefone do ano mais recente
             mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
             dados_encontrista["endereco"] = mais_recente["endereco"]
             dados_encontrista["telefones"] = mais_recente["telefones"]
@@ -872,7 +732,6 @@ def visao_casal():
                            dados_encontrista=dados_encontrista,
                            dados_encontreiros=dados_encontreiros,
                            erro=erro)
-
 
 # -----------------------------
 # Organograma
@@ -895,14 +754,12 @@ def dados_organograma():
     conn.close()
     return jsonify(dados)
 
-
 # -----------------------------
-# Relatório de Casais (LIKE + inversão + não encontrados por último)
+# Relatório de Casais
 # -----------------------------
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     def split_casal(line: str):
-        """Divide em (ele, ela) aceitando ';' | ' e ' | 1º espaço."""
         raw = (line or '').strip()
         if not raw:
             return None, None
@@ -912,31 +769,6 @@ def relatorio_casais():
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
         if " " in raw:
             a, b = raw.split(" ", 1); return a.strip(), b.strip()
-        return None, None
-
-    def get_table_columns(conn, table_name: str) -> set:
-        cur = conn.cursor()
-        try:
-            cur.execute("""
-                SELECT COLUMN_NAME
-                FROM information_schema.columns
-                WHERE table_schema=%s AND table_name=%s
-            """, (DB_CONFIG['database'], table_name))
-            return {row[0] for row in cur.fetchall()}
-        finally:
-            cur.close()
-
-    def escolher_par(colunas: set, prefer_usual=True):
-        pares = [
-            ('nome_usual_ele', 'nome_usual_ela'),
-            ('nome_ele', 'nome_ela'),
-        ] if prefer_usual else [
-            ('nome_ele', 'nome_ela'),
-            ('nome_usual_ele', 'nome_usual_ela'),
-        ]
-        for a, b in pares:
-            if a in colunas and b in colunas:
-                return a, b
         return None, None
 
     resultados_ok = []
@@ -955,39 +787,26 @@ def relatorio_casais():
                 connection_timeout=10,
             )
             try:
-                cols_work = get_table_columns(conn, 'encontreiros')
-                cols_base = get_table_columns(conn, 'encontristas')
-                work_a, work_b = escolher_par(cols_work, prefer_usual=False)
-                base_a, base_b = escolher_par(cols_base, prefer_usual=True)
                 cur = conn.cursor(dictionary=True)
 
                 def consulta_like(a: str, b: str):
-                    """Consulta com LIKE nas duas tabelas; consolida preferindo ENCONTREIROS mais recente."""
                     work = None
-                    if work_a and work_b:
-                        cur.execute(
-                            f"SELECT * FROM encontreiros WHERE {work_a} LIKE %s AND {work_b} LIKE %s ORDER BY ano DESC LIMIT 1",
-                            (f"%{a}%", f"%{b}%")
-                        )
-                        work = cur.fetchone()
+                    cur.execute(
+                        "SELECT * FROM encontreiros WHERE nome_ele LIKE %s AND nome_ela LIKE %s ORDER BY ano DESC LIMIT 1",
+                        (f"%{a}%", f"%{b}%")
+                    )
+                    work = cur.fetchone()
 
                     base = None
-                    if base_a and base_b:
-                        where_parts = [f"({base_a} LIKE %s AND {base_b} LIKE %s)"]
-                        params = [f"%{a}%", f"%{b}%"]
-                        if 'nome_ele' in cols_base and 'nome_ela' in cols_base and (base_a, base_b) != ('nome_ele', 'nome_ela'):
-                            where_parts.append("(nome_ele LIKE %s AND nome_ela LIKE %s)")
-                            params += [f"%{a}%", f"%{b}%"]
-                        cur.execute(
-                            "SELECT endereco, telefone_ele, telefone_ela FROM encontristas WHERE "
-                            + " OR ".join(where_parts) + " LIMIT 1",
-                            tuple(params)
-                        )
-                        base = cur.fetchone()
+                    cur.execute(
+                        "SELECT endereco, telefone_ele, telefone_ela FROM encontristas WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) OR (nome_ele LIKE %s AND nome_ela LIKE %s) LIMIT 1",
+                        (f"%{a}%", f"%{b}%", f"%{a}%", f"%{b}%")
+                    )
+                    base = cur.fetchone()
 
                     if work:
                         endereco = work.get('endereco') or (base.get('endereco') if base else "")
-                        if 'telefones' in work and work.get('telefones'):
+                        if work.get('telefones'):
                             telefones = work['telefones']
                         else:
                             tel_ele = work.get('telefone_ele')
@@ -1032,9 +851,22 @@ def relatorio_casais():
     resultados = resultados_ok + resultados_fail
     return render_template("relatorio_casais.html", resultados=resultados)
 
+# -----------------------------
+# Placeholder: Montagem de Equipe (evita erro de rota)
+# -----------------------------
+@app.route('/equipe-montagem')
+def equipe_montagem():
+    """
+    Placeholder para não quebrar os links de 'Montar Equipe' na nova_montagem.
+    Você pode criar o template 'equipe_montagem.html' e evoluir a lógica depois.
+    """
+    ano = request.args.get('ano', type=int)
+    equipe = request.args.get('equipe', '')
+    return render_template('equipe_montagem.html', ano=ano, equipe=equipe)
 
 # -----------------------------
 # Main
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
