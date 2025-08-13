@@ -97,7 +97,7 @@
     const EXISTENTES = {{ (membros_existentes or []) | tojson }};
 
     // Quantidade de slots (usa máx. da equipe; fallback 8)
-    const SLOTS_MAX = Math.max(((LIMITES && LIMITES.max) ? LIMITES.max : 8), (EXISTENTES ? EXISTENTES.length : 0), 1);
+   const SLOTS_MAX = ((LIMITES && Number.isInteger(LIMITES.max)) ? LIMITES.max : 8);  // ← FIXO
 
     const slotsWrap = document.getElementById('slots');
     const kpiAtual = document.getElementById('kpi-atual');
