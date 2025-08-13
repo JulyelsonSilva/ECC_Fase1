@@ -20,6 +20,10 @@ DB_CONFIG = {
 def index():
     return render_template('index.html')
 
+
+# -----------------------------
+# ENCONTRISTAS (listagem + edição)
+# -----------------------------
 @app.route('/encontristas')
 def encontristas():
     conn = mysql.connector.connect(**DB_CONFIG)
@@ -48,7 +52,6 @@ def encontristas():
     total_paginas = max(1, math.ceil(len(todos) / por_pagina))
     dados = todos[(pagina-1)*por_pagina : pagina*por_pagina]
 
-    # flags opcionais para feedback no template
     updated = request.args.get('updated')
     notfound = request.args.get('notfound')
 
@@ -64,9 +67,7 @@ def encontristas():
         notfound=notfound
     )
 
-# -----------------------------
-# Edição de Encontrista (GET/POST)
-# -----------------------------
+
 @app.route('/encontristas/<int:encontrista_id>/editar', methods=['GET', 'POST'])
 def editar_encontrista(encontrista_id):
     conn = mysql.connector.connect(**DB_CONFIG)
@@ -125,10 +126,9 @@ def editar_encontrista(encontrista_id):
         conn.commit()
         cursor.close()
         conn.close()
-        # volta para listagem com flag de sucesso
         return redirect(url_for('encontristas') + '?updated=1')
 
-    # GET: carrega registro para o formulário
+    # GET: carrega registro
     cursor.execute("SELECT * FROM encontristas WHERE id = %s", (encontrista_id,))
     registro = cursor.fetchone()
     cursor.close()
@@ -139,6 +139,46 @@ def editar_encontrista(encontrista_id):
 
     return render_template('editar_encontrista.html', r=registro)
 
+
+# -----------------------------
+# MONTAGEM (anos abertos x concluídos)
+# -----------------------------
+@app.route('/montagem')
+def montagem():
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
+    # status 'Concluido' marca item concluído; qualquer outro valor conta como aberto
+    cursor.execute("""
+        SELECT 
+            ano,
+            SUM(CASE WHEN status = 'Concluido' THEN 1 ELSE 0 END) AS qtd_concluido,
+            COUNT(*) AS total
+        FROM encontreiros
+        GROUP BY ano
+        ORDER BY ano DESC
+    """)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    anos_concluidos = []
+    anos_aberto = []
+
+    for r in rows:
+        if r['total'] > 0 and r['qtd_concluido'] == r['total']:
+            anos_concluidos.append(r['ano'])
+        else:
+            anos_aberto.append(r['ano'])
+
+    return render_template('montagem.html',
+                           anos_aberto=anos_aberto,
+                           anos_concluidos=anos_concluidos)
+
+
+# -----------------------------
+# ENCONTREIROS (listagem por ano/nome; sem edição)
+# -----------------------------
 @app.route('/encontreiros')
 def encontreiros():
     conn = mysql.connector.connect(**DB_CONFIG)
@@ -146,6 +186,7 @@ def encontreiros():
 
     nome_ele = request.args.get('nome_ele', '')
     nome_ela = request.args.get('nome_ela', '')
+    ano = request.args.get('ano', '')  # filtro por ano
 
     query = "SELECT * FROM encontreiros WHERE 1=1"
     params = []
@@ -155,8 +196,11 @@ def encontreiros():
     if nome_ela:
         query += " AND nome_ela LIKE %s"
         params.append(f"%{nome_ela}%")
+    if ano:
+        query += " AND ano = %s"
+        params.append(ano)
 
-    query += " ORDER BY ano DESC"
+    query += " ORDER BY ano DESC, equipe ASC"
     cursor.execute(query, params)
     todos = cursor.fetchall()
     cursor.close()
@@ -168,6 +212,10 @@ def encontreiros():
 
     return render_template('encontreiros.html', por_ano=por_ano)
 
+
+# -----------------------------
+# Visão Equipes
+# -----------------------------
 @app.route('/visao-equipes')
 def visao_equipes():
     equipe = request.args.get('equipe', '')
@@ -275,8 +323,9 @@ def visao_equipes():
 
     return render_template('visao_equipes.html', equipe_selecionada=equipe, tabela=tabela, colunas=colunas)
 
+
 # -----------------------------
-# ROTA RECUPERADA: /visao-casal
+# Visão do Casal
 # -----------------------------
 @app.route('/visao-casal')
 def visao_casal():
@@ -287,7 +336,6 @@ def visao_casal():
     dados_encontreiros = []
     erro = None
 
-    # Só continua se ambos os nomes forem informados
     if not nome_ele or not nome_ela:
         erro = "Informe ambos os nomes para realizar a busca."
         return render_template("visao_casal.html",
@@ -297,7 +345,6 @@ def visao_casal():
                                dados_encontreiros=[],
                                erro=erro)
 
-    # Conectar ao banco de dados
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
@@ -310,7 +357,7 @@ def visao_casal():
         """, (nome_ele, nome_ela))
         resultado_encontrista = cursor.fetchone()
 
-        while cursor.nextset():  # Evita erro "Unread result found"
+        while cursor.nextset():
             pass
 
         if resultado_encontrista:
@@ -357,6 +404,7 @@ def visao_casal():
                            dados_encontreiros=dados_encontreiros,
                            erro=erro)
 
+
 # -----------------------------
 # Organograma
 # -----------------------------
@@ -377,6 +425,7 @@ def dados_organograma():
     cursor.close()
     conn.close()
     return jsonify(dados)
+
 
 # -----------------------------
 # Relatório de Casais (LIKE + inversão + não encontrados por último)
@@ -457,7 +506,6 @@ def relatorio_casais():
                     if base_a and base_b:
                         where_parts = [f"({base_a} LIKE %s AND {base_b} LIKE %s)"]
                         params = [f"%{a}%", f"%{b}%"]
-                        # Só adiciona OR se as colunas existirem e forem diferentes
                         if 'nome_ele' in cols_base and 'nome_ela' in cols_base and (base_a, base_b) != ('nome_ele', 'nome_ela'):
                             where_parts.append("(nome_ele LIKE %s AND nome_ela LIKE %s)")
                             params += [f"%{a}%", f"%{b}%"]
@@ -512,13 +560,12 @@ def relatorio_casais():
                 except Exception:
                     pass
 
-    # Junta: encontrados primeiro, não-encontrados por último
     resultados = resultados_ok + resultados_fail
     return render_template("relatorio_casais.html", resultados=resultados)
+
 
 # -----------------------------
 # Main
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
