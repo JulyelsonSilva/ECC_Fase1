@@ -878,7 +878,8 @@ def equipe_montagem():
     Página de montagem de equipe:
     - ?ano=YYYY & ?equipe=<filtro> (ex.: 'Circulos', 'Cozinha'...)
     - Resolve equipe_final (rótulo da tabela) a partir do TEAM_MAP
-    - Envia limites, membros_existentes (status aberto/aceito), sugestões do ano anterior (encontristas do ano-1)
+    - Envia limites, membros_existentes (inclui ABERTO/ACEITO/CONCLUIDO), sugestões do ano anterior
+      já EXCLUINDO casais que estejam montados no ano atual (qualquer equipe) com status diferente de Recusou/Desistiu.
     """
     ano = request.args.get('ano', type=int)
     equipe_filtro = (request.args.get('equipe') or '').strip()
@@ -894,7 +895,7 @@ def equipe_montagem():
 
     limites = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final))
 
-    # Carrega membros existentes (não coordenadores) status aberto/aceito no ano
+    # Carrega membros existentes (não coordenadores) com status ABERTO/ACEITO/CONCLUIDO no ano
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     membros_existentes = []
@@ -905,7 +906,7 @@ def equipe_montagem():
              WHERE ano = %s
                AND equipe = %s
                AND (coordenador IS NULL OR UPPER(coordenador) <> 'SIM')
-               AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO'))
+               AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO','CONCLUIDO'))
              ORDER BY id ASC
         """, (ano, equipe_final))
         membros_existentes = cur.fetchall()
@@ -916,18 +917,27 @@ def equipe_montagem():
         except Exception:
             pass
 
-    # Sugestões do ano anterior (ENCONTRISTAS ano-1)
+    # Sugestões do ano anterior (ENCONTRISTAS ano-1), EXCLUINDO quem já está montado no ano atual (qualquer equipe),
+    # considerando montado quem tem status != Recusou/Desistiu.
     sugestoes_prev_ano = []
     if ano:
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute("""
-                SELECT nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
-                  FROM encontristas
-                 WHERE ano = %s
-                 ORDER BY nome_usual_ele, nome_usual_ela
-            """, (ano - 1,))
+                SELECT e.nome_usual_ele, e.nome_usual_ela, e.telefone_ele, e.telefone_ela, e.endereco
+                  FROM encontristas e
+                 WHERE e.ano = %s
+                   AND NOT EXISTS (
+                         SELECT 1
+                           FROM encontreiros w
+                          WHERE w.ano = %s
+                            AND w.nome_ele = e.nome_usual_ele
+                            AND w.nome_ela = e.nome_usual_ela
+                            AND (w.status IS NULL OR UPPER(w.status) NOT IN ('RECUSOU','DESISTIU'))
+                       )
+                 ORDER BY e.nome_usual_ele, e.nome_usual_ela
+            """, (ano - 1, ano))
             for r in cur.fetchall():
                 tel_ele = (r.get('telefone_ele') or '').strip()
                 tel_ela = (r.get('telefone_ela') or '').strip()
