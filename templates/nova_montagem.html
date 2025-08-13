@@ -16,7 +16,7 @@
     .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
     label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
-    input, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
     .small { font-size:12px; color:#475569; }
     .status { margin-top:8px; font-size:13px; }
@@ -28,7 +28,7 @@
     .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index: 50; }
     .modal-card { background:#fff; padding:16px; border-radius:12px; width:90%; max-width:360px; border:1px solid var(--border); }
     .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
-    .card-title { margin:0 0 8px; font-weight:700; cursor:pointer; color:#0f172a; }
+    .card-title { margin:0 0 8px; font-weight:700; }
     .card-title a { color:inherit; text-decoration:none; border-bottom:1px dashed #cbd5e1; }
   </style>
 </head>
@@ -96,16 +96,17 @@
   </div>
 
   <script>
-    // Dados do servidor
-     initialData = {{ (initial_data or {}) | tojson }};
-    const anoPre = {{ ano_preselecionado | default(none) | tojson }};
+    const initialData = {{ (initial_data or {}) | tojson }};
+    const anoPre = {{ ano_preselecionado | tojson }};
     const TEAM_MAP = {{ (team_map or {}) | tojson }};
 
-    // Parâmetros de retorno da visão de equipes
+    // Retorno da visão de equipes (via seletor do backend)
     const qs = new URLSearchParams(location.search);
     const retTarget = qs.get('target') || null;
     const retEle = qs.get('ele') || null;
     const retEla = qs.get('ela') || null;
+    const retTel = qs.get('tel') || null;
+    const retEnd = qs.get('end') || null;
 
     const equipesDir = [
       "Equipe Dirigente - MONTAGEM",
@@ -119,7 +120,6 @@
       "Ordem e Limpeza","Liturgia e Vigília","Secretaria","Cozinha","Visitação"
     ];
 
-    // Elementos
     const gridDir = document.getElementById('dirigentes-grid');
     const coordsTitle = document.getElementById('coords-title');
     const gridCoords = document.getElementById('coords-grid');
@@ -129,7 +129,6 @@
     const kpi = document.getElementById('kpi-total');
     const kpiDone = document.getElementById('kpi-done');
 
-    // CG
     const cg = document.getElementById('coordenador-geral');
     const cgEle = document.getElementById('cg_nome_ele');
     const cgEla = document.getElementById('cg_nome_ela');
@@ -148,7 +147,6 @@
     function idSafe(txt){ return (txt || '').replace(/[^a-z0-9]+/gi,'_'); }
     function hasCG(){ return !!(currentCGId || (initialData && initialData.cg && initialData.cg.id)); }
 
-    // Modal
     function makeModal(onChoose){
       const m = document.createElement('div');
       m.className = 'modal-backdrop';
@@ -165,16 +163,15 @@
       m.querySelector('#m_des').onclick = ()=>{ onChoose('Desistiu'); document.body.removeChild(m); };
     }
 
-    // URL para visão de equipes
     function makeEquipeURL(teamTitle){
       const equipeParam = encodeURIComponent(teamTitle);
       const target = encodeURIComponent(teamTitle);
-      return `{{ url_for('visao_equipes') }}?equipe=${equipeParam}&target=${target}`;
+      const anoMont = anoSelecionado ? `&ano_montagem=${encodeURIComponent(String(anoSelecionado))}` : '';
+      return `{{ url_for('visao_equipes') }}?equipe=${equipeParam}&target=${target}${anoMont}`;
     }
 
-    // Exibição dos Coordenadores de Equipe (somente após CG confirmado)
     function showCoordsSection(){
-      if (!hasCG()) return; // segurança extra
+      if (!hasCG()) return;
       coordsTitle.style.display = '';
       gridCoords.style.display = '';
       if (coordsRendered) return;
@@ -188,7 +185,6 @@
       coordsRendered = true;
     }
 
-    // CG helpers
     function cgLock(){
       cgEle.disabled = true; cgEla.disabled = true;
       cgTel.disabled = true; cgEnd.disabled = true;
@@ -216,7 +212,7 @@
         cgLock(); cgAdd.disabled = false;
         cgStatus.textContent = 'Já existe “Casal Coordenador Geral” (Aberto) para este ano.';
         cgStatus.className = 'status ok';
-        showCoordsSection();  // <- garante exibição
+        showCoordsSection();
       }
     }
     function maybeEnableCG(){
@@ -230,7 +226,6 @@
       }
     }
 
-    // Caixa reusável (Dirigentes / Coordenadores de Equipe)
     function renderPessoaBox(boxKey, titulo, equipeFinalStr, preset, isCoordEquipe){
       const boxId = idSafe(boxKey);
       const el = document.createElement('div');
@@ -279,7 +274,6 @@
 
       setTimeout(()=>{
         const $form = document.getElementById(`${boxId}_form`);
-        const $hint = document.getElementById(`${boxId}_hint`);
         const $ele = document.getElementById(`${boxId}_ele`);
         const $ela = document.getElementById(`${boxId}_ela`);
         const $tels = document.getElementById(`${boxId}_telefones`);
@@ -411,14 +405,19 @@
           else { makeModal(choice => marcarStatus(choice)); }
         });
 
-        // Preenchimento automático ao retornar da Visão de Equipes
+        // Preenchimento automático ao retornar da Visão de Equipes (seleção no backend)
         if (isCoordEquipe && retTarget && idSafe(retTarget) === idSafe(boxKey) && retEle && retEla){
-          // Só permite se CG existir:
           if (hasCG()){
-            if ($form && $form.style.display === 'none'){ $form.style.display = ''; }
+            const form = document.getElementById(`${boxId}_form`);
+            if (form && form.style.display === 'none'){ form.style.display = ''; }
             if ($ele) $ele.value = retEle;
             if ($ela) $ela.value = retEla;
-            buscar();
+            if ($tels && retTel) $tels.value = retTel;
+            if ($end && retEnd) $end.value = retEnd;
+            if (retTel || retEnd){
+              $status.textContent = 'Dados carregados do histórico (encontreiros).';
+              $status.className = 'status ok';
+            }
           }
         }
       },0);
@@ -426,9 +425,7 @@
       return el;
     }
 
-    // Fluxo principal
     function bootAfterAno(){
-      // Dirigentes
       gridDir.innerHTML = '';
       totalAdicionados = 0; kpiDone.textContent = '0'; kpi.style.display = '';
       equipesDir.forEach(eq => {
@@ -439,21 +436,19 @@
       });
       kpiDone.textContent = String(totalAdicionados);
 
-      // CG
       cg.style.display = '';
       renderCGPresetIfAny();
       maybeEnableCG();
 
-      // Coordenadores de Equipe só aparecem se já houver CG aberto
       if (hasCG()){
         showCoordsSection();
       } else {
         coordsTitle.style.display = 'none';
         gridCoords.style.display = 'none';
+        coordsRendered = false;
       }
     }
 
-    // Handlers
     btnContinuar.addEventListener('click', (e)=>{
       e.preventDefault();
       const val = (anoInput.value || '').trim();
@@ -469,12 +464,10 @@
       bootAfterAno();
     });
 
-    // Auto-continuar se ano na URL
     window.addEventListener('DOMContentLoaded', ()=>{
       if (anoPre){ btnContinuar.click(); }
     });
 
-    // CG buscar/adicionar/alterar
     cgBuscar.addEventListener('click', async (e)=>{
       e.preventDefault();
       cgStatus.textContent = '';
@@ -506,6 +499,8 @@
       }
     });
 
+    function showCoordsHidden(){ coordsTitle.style.display='none'; gridCoords.style.display='none'; coordsRendered=false; }
+
     cgAdd.addEventListener('click', async (e)=>{
       e.preventDefault();
       cgStatus.textContent = '';
@@ -521,10 +516,7 @@
               cgStatus.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
               cgStatus.className = 'status ok';
               cgUnlockAndClear();
-              coordsTitle.style.display = 'none';
-              gridCoords.style.display = 'none';
-              coordsRendered = false;
-              // Também removemos referência de CG pré-existente para o hasCG()
+              showCoordsHidden();
               if (initialData && initialData.cg){ initialData.cg = null; }
             } else {
               cgStatus.textContent = data.msg || 'Falha ao alterar status.';
@@ -563,7 +555,7 @@
           cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
           cgStatus.className = 'status ok';
           cgLock(); cgAdd.disabled = false;
-          showCoordsSection(); // <- garante exibição após adicionar CG
+          showCoordsSection();
         } else {
           cgStatus.textContent = data.msg || 'Falha ao adicionar.';
           cgStatus.className = 'status err';
