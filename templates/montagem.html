@@ -1,52 +1,66 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Montagem - Encontro de Casais com Cristo</title>
+  <meta charset="utf-8">
+  <title>Montagem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; text-align: center; }
-    header { padding: 2em 1em; }
-    h1 { font-size: 2.5em; margin-bottom: 0.2em; }
-    h2, h3 { font-size: 1.2em; margin: 0.1em 0; }
-    main { padding: 2em; }
-    table { border-collapse: collapse; width: 100%; max-width: 1000px; margin: auto; background-color: white; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background-color: #007BFF; color: white; }
-    tr:nth-child(even) { background-color: #f2f2f2; }
-    a { display: inline-block; margin-top: 2em; text-decoration: none; font-size: 1.2em; color: white; background-color: #007BFF; padding: 0.6em 1.5em; border-radius: 8px; transition: background-color 0.3s ease; }
-    a:hover { background-color: #0056b3; }
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; }
+    h1 { margin:0; font-size: 22px; }
+    .muted { color:var(--muted); }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .grid { display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; min-height: 200px; }
+    .card h2 { margin:0 0 8px; font-size:18px; }
+    ul { list-style:none; margin: 8px 0 0; padding: 0; }
+    li { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+    a.year-link { text-decoration:none; color: var(--brand); font-weight:600; }
+    .empty { color:var(--muted); margin: 4px 0 0; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Equipe Montagem</h1>
-    <h2>Encontro de Casais com Cristo</h2>
-  </header>
-  <main>
-    <table>
-      <thead>
-        <tr>
-          <th>Ele</th>
-          <th>Ela</th>
-          <th>Telefone</th>
-          <th>Endereço</th>
-          <th>Coordenador</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for casal in casais %}
-        <tr>
-          <td>{{ casal.nome_ele }}</td>
-          <td>{{ casal.nome_ela }}</td>
-          <td>{{ casal.telefone }}</td>
-          <td>{{ casal.endereco }}</td>
-          <td>{{ casal.coordenador }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <a href="{{ url_for('index') }}">Voltar</a>
-  </main>
+  <div class="wrap">
+    <div class="header">
+      <h1>Montagem</h1>
+      <a class="btn" href="{{ url_for('index') }}">← Voltar à Página Inicial</a>
+    </div>
+    <p class="muted">Um ano é <strong>Concluído</strong> quando <em>todos</em> os registros do ano em <code>encontreiros.status</code> estão iguais a <code>Concluido</code>. Caso exista qualquer outro valor, o ano fica em <strong>Aberto</strong>.</p>
+
+    <div class="grid">
+      <!-- Esquerda: ABERTO -->
+      <div class="card">
+        <h2>Aberto</h2>
+        {% if anos_aberto %}
+          <ul>
+            {% for ano in anos_aberto %}
+              <li><span>{{ ano }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty">Nenhum ano em aberto.</p>
+        {% endif %}
+      </div>
+
+      <!-- Direita: CONCLUÍDO (com link para /encontreiros?ano=YYYY) -->
+      <div class="card">
+        <h2>Concluído</h2>
+        {% if anos_concluidos %}
+          <ul>
+            {% for ano in anos_concluidos %}
+              <li>
+                <a class="year-link" href="{{ url_for('encontreiros') }}?ano={{ ano }}">{{ ano }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty">Ainda não há anos concluídos.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </body>
 </html>
+
