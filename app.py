@@ -876,26 +876,31 @@ def relatorio_casais():
 def equipe_montagem():
     """
     Página de montagem de equipe:
-    - ?ano=YYYY & ?equipe=<filtro> (ex.: 'Circulos', 'Cozinha'...)
-    - Resolve equipe_final (rótulo da tabela) a partir do TEAM_MAP
-    - Envia limites, membros_existentes (inclui ABERTO/ACEITO/CONCLUIDO), sugestões do ano anterior
-      já EXCLUINDO casais que estejam montados no ano atual (qualquer equipe) com status diferente de Recusou/Desistiu.
+    - ?ano=YYYY & ?equipe=<filtro>
+    - Resolve equipe_final a partir do TEAM_MAP
+    - Retorna:
+        limites -> com max dinâmico (>= número de membros já existentes)
+        membros_existentes -> inclui ABERTO/ACEITO/CONCLUIDO
+        sugestoes_prev_ano -> casais de ENCONTRISTAS(ano-1) que ainda NÃO estão montados no ano atual
+                              (exclui quem tem status != Recusou/Desistiu em QUALQUER equipe no ano atual)
     """
     ano = request.args.get('ano', type=int)
     equipe_filtro = (request.args.get('equipe') or '').strip()
 
-    # Resolve rótulo final
+    # Resolve rótulo final (como está no banco) a partir do TEAM_MAP
     equipe_final = None
     for _key, info in TEAM_MAP.items():
         if info['filtro'].lower() == equipe_filtro.lower():
             equipe_final = info['rotulo']
             break
     if not equipe_final:
+        # fallback: usa o próprio filtro
         equipe_final = equipe_filtro or 'Equipe'
 
-    limites = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final))
+    # limites “teóricos” da equipe (podem não existir ou não cobrir casos antigos)
+    limites_cfg = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final, {}))
 
-    # Carrega membros existentes (não coordenadores) com status ABERTO/ACEITO/CONCLUIDO no ano
+    # ----- Membros existentes (não coordenadores) no ANO + EQUIPE
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     membros_existentes = []
@@ -905,8 +910,8 @@ def equipe_montagem():
               FROM encontreiros
              WHERE ano = %s
                AND equipe = %s
-               AND (coordenador IS NULL OR UPPER(coordenador) <> 'SIM')
-               AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO','CONCLUIDO'))
+               AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
+               AND (status IS NULL OR UPPER(TRIM(status)) IN ('ABERTO','ACEITO','CONCLUIDO'))
              ORDER BY id ASC
         """, (ano, equipe_final))
         membros_existentes = cur.fetchall()
@@ -917,8 +922,8 @@ def equipe_montagem():
         except Exception:
             pass
 
-    # Sugestões do ano anterior (ENCONTRISTAS ano-1), EXCLUINDO quem já está montado no ano atual (qualquer equipe),
-    # considerando montado quem tem status != Recusou/Desistiu.
+    # ----- Sugestões (ENCONTRISTAS do ano anterior), excluindo quem JÁ está montado no ANO atual em QUALQUER equipe
+    # (considera montado se status != Recusou/Desistiu)
     sugestoes_prev_ano = []
     if ano:
         conn = mysql.connector.connect(**DB_CONFIG)
@@ -934,7 +939,7 @@ def equipe_montagem():
                           WHERE w.ano = %s
                             AND w.nome_ele = e.nome_usual_ele
                             AND w.nome_ela = e.nome_usual_ela
-                            AND (w.status IS NULL OR UPPER(w.status) NOT IN ('RECUSOU','DESISTIU'))
+                            AND (w.status IS NULL OR UPPER(TRIM(w.status)) NOT IN ('RECUSOU','DESISTIU'))
                        )
                  ORDER BY e.nome_usual_ele, e.nome_usual_ela
             """, (ano - 1, ano))
@@ -955,15 +960,20 @@ def equipe_montagem():
             except Exception:
                 pass
 
+    # ----- Máximo dinâmico de slots: garante que você veja pelo menos todos os existentes
+    dyn_max = max(int(limites_cfg.get('max', 8)), len(membros_existentes) or 0, 1)
+    limites = {"min": int(limites_cfg.get('min', 0)), "max": dyn_max}
+
     return render_template(
         'equipe_montagem.html',
         ano=ano,
         equipe=equipe_filtro,          # ex.: 'Circulos'
         equipe_final=equipe_final,     # ex.: 'Equipe de Círculos'
-        limites=limites,               # dict {"min":x,"max":y} ou None
+        limites=limites,               # dict {"min":x,"max":dyn_max}
         membros_existentes=membros_existentes,
         sugestoes_prev_ano=sugestoes_prev_ano
     )
+
 
 # --- APIs auxiliares da montagem de equipe ---
 
