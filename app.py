@@ -3,6 +3,7 @@ import mysql.connector
 from collections import defaultdict
 import math
 import re
+from werkzeug.routing import BuildError
 
 app = Flask(__name__)
 
@@ -30,7 +31,7 @@ TEAM_MAP = {
     "Visitacao": "Equipe Visitação",
 }
 
-# Limites por equipe
+# Limites por equipe (min, max)
 TEAM_LIMITS = {
     "Círculos": (5, 5),
     "Circulos": (5, 5),
@@ -49,14 +50,14 @@ TEAM_LIMITS = {
 # -----------------------------
 # Rotas principais
 # -----------------------------
-@app.route('/')
+@app.route('/', endpoint='index')
 def index():
     return render_template('index.html')
 
 # -----------------------------
-# ENCONTRISTAS (listagem + edição) – (sem mudanças aqui em relação ao seu último OK)
+# ENCONTRISTAS (listagem + edição)
 # -----------------------------
-@app.route('/encontristas')
+@app.route('/encontristas', endpoint='encontristas')
 def encontristas():
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -99,7 +100,7 @@ def encontristas():
         notfound=notfound
     )
 
-@app.route('/encontristas/<int:encontrista_id>/editar', methods=['GET', 'POST'])
+@app.route('/encontristas/<int:encontrista_id>/editar', methods=['GET', 'POST'], endpoint='editar_encontrista')
 def editar_encontrista(encontrista_id):
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -171,7 +172,7 @@ def editar_encontrista(encontrista_id):
 # -----------------------------
 # MONTAGEM (Aberto x Concluído)
 # -----------------------------
-@app.route('/montagem')
+@app.route('/montagem', endpoint='montagem')
 def montagem():
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -205,7 +206,7 @@ def montagem():
 # -----------------------------
 # Página Nova Montagem
 # -----------------------------
-@app.route('/montagem/nova')
+@app.route('/montagem/nova', endpoint='nova_montagem')
 def nova_montagem():
     ano_preselecionado = request.args.get('ano', type=int)
     initial_data = {"dirigentes": {}, "cg": None, "coords": {}}
@@ -221,12 +222,14 @@ def nova_montagem():
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
+            # Dirigentes (somente registros ABERTOS)
             for equipe in equipes_dir:
                 cur.execute("""
                     SELECT id, nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
                      WHERE ano = %s AND equipe = %s AND TRIM(LOWER(status)) = 'aberto'
-                     ORDER BY id ASC LIMIT 1
+                     ORDER BY id ASC
+                     LIMIT 1
                 """, (ano_preselecionado, equipe))
                 r = cur.fetchone()
                 if r:
@@ -238,7 +241,7 @@ def nova_montagem():
                         "endereco": r.get("endereco") or ""
                     }
 
-            # CG aberto
+            # Coordenador Geral ABERTO
             cur.execute("""
                 SELECT id, nome_ele, nome_ela, telefones, endereco
                   FROM encontreiros
@@ -257,7 +260,7 @@ def nova_montagem():
                     "endereco": r_cg.get("endereco") or "",
                 }
 
-            # Coordenadores de equipe (abertos)
+            # Coordenadores de equipe (somente ABERTOS)
             for team_key, equipe_str in TEAM_MAP.items():
                 cur.execute("""
                     SELECT id, nome_ele, nome_ela, telefones, endereco
@@ -277,16 +280,15 @@ def nova_montagem():
         finally:
             cur.close(); conn.close()
 
-    # parâmetros de retorno da visão de equipes (para preenchimento automático)
     return render_template('nova_montagem.html',
                            ano_preselecionado=ano_preselecionado,
                            initial_data=initial_data,
                            team_map=TEAM_MAP)
 
 # -----------------------------
-# Seleção via Visão de Equipes (preenche volta à Nova Montagem)
+# Seleção via Visão de Equipes (preenche e volta)
 # -----------------------------
-@app.route('/visao-equipes/select')
+@app.route('/visao-equipes/select', endpoint='visao_equipes_select')
 def visao_equipes_select():
     ano_montagem = request.args.get('ano_montagem', type=int)
     target = (request.args.get('target') or '').strip()
@@ -316,9 +318,9 @@ def visao_equipes_select():
     return redirect(url_for('nova_montagem', **params))
 
 # -----------------------------
-# APIs Dirigentes/CG (já existentes)
+# APIs da Montagem – Dirigentes/Status/CG
 # -----------------------------
-@app.route('/api/buscar-casal', methods=['POST'])
+@app.route('/api/buscar-casal', methods=['POST'], endpoint='api_buscar_casal')
 def api_buscar_casal():
     data = request.get_json(silent=True) or {}
     nome_ele = (data.get('nome_ele') or '').strip()
@@ -355,7 +357,7 @@ def api_buscar_casal():
     finally:
         cur.close(); conn.close()
 
-@app.route('/api/adicionar-dirigente', methods=['POST'])
+@app.route('/api/adicionar-dirigente', methods=['POST'], endpoint='api_adicionar_dirigente')
 def api_adicionar_dirigente():
     data = request.get_json(silent=True) or {}
     ano = (str(data.get('ano') or '')).strip()
@@ -386,7 +388,7 @@ def api_adicionar_dirigente():
     finally:
         cur.close(); conn.close()
 
-@app.route('/api/marcar-status', methods=['POST'])
+@app.route('/api/marcar-status', methods=['POST'], endpoint='api_marcar_status')
 def api_marcar_status():
     data = request.get_json(silent=True) or {}
     rec_id = data.get('id')
@@ -403,7 +405,7 @@ def api_marcar_status():
     finally:
         cur.close(); conn.close()
 
-@app.route('/api/buscar-cg', methods=['POST'])
+@app.route('/api/buscar-cg', methods=['POST'], endpoint='api_buscar_cg')
 def api_buscar_cg():
     data = request.get_json(silent=True) or {}
     nome_ele = (data.get('nome_ele') or '').strip()
@@ -436,7 +438,7 @@ def api_buscar_cg():
     finally:
         cur.close(); conn.close()
 
-@app.route('/api/adicionar-cg', methods=['POST'])
+@app.route('/api/adicionar-cg', methods=['POST'], endpoint='api_adicionar_cg')
 def api_adicionar_cg():
     data = request.get_json(silent=True) or {}
     ano = (str(data.get('ano') or '')).strip()
@@ -481,7 +483,7 @@ def api_adicionar_cg():
 # -----------------------------
 # ENCONTREIROS (listagem – só Aberto/Concluido)
 # -----------------------------
-@app.route('/encontreiros')
+@app.route('/encontreiros', endpoint='encontreiros')
 def encontreiros():
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
@@ -514,9 +516,9 @@ def encontreiros():
     return render_template('encontreiros.html', por_ano=por_ano)
 
 # -----------------------------
-# Visão Equipes (com/sem links) – igual à versão enviada antes
+# Visão Equipes (com/sem links)
 # -----------------------------
-@app.route('/visao-equipes')
+@app.route('/visao-equipes', endpoint='visao_equipes')
 def visao_equipes():
     equipe = request.args.get('equipe', '')
     target = request.args.get('target', '')
@@ -629,7 +631,7 @@ def _normalize_team_key(k: str) -> str:
     k = (k or '').strip()
     return {"Circulos":"Círculos", "Liturgia e Vigilia":"Liturgia e Vigília", "Visitacao":"Visitação"}.get(k, k)
 
-@app.route('/montagem/equipe')
+@app.route('/montagem/equipe', endpoint='montagem_equipe')
 def montagem_equipe():
     ano = request.args.get('ano', type=int)
     equipe_key = _normalize_team_key(request.args.get('equipe', ''))
@@ -639,7 +641,6 @@ def montagem_equipe():
     equipe_final = TEAM_MAP[equipe_key]
     min_qtd, max_qtd = TEAM_LIMITS[equipe_key]
 
-    # Verifica se há coordenador definido para essa equipe/ano
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     try:
@@ -650,10 +651,8 @@ def montagem_equipe():
              LIMIT 1
         """, (ano, equipe_final))
         if not cur.fetchone():
-            # Sem coordenador → volta para nova_montagem
             return redirect(url_for('nova_montagem', ano=ano))
 
-        # Integrantes já adicionados (abertos) para preencher os slots
         cur.execute("""
             SELECT id, nome_ele, nome_ela, telefones, endereco
               FROM encontreiros
@@ -665,7 +664,6 @@ def montagem_equipe():
         """, (ano, equipe_final, max_qtd))
         integrantes = cur.fetchall()
 
-        # Conjunto de casais já usados no ano (em qualquer equipe/CG/dirigentes) que não estão recusados/desistiu
         cur.execute("""
             SELECT DISTINCT nome_ele, nome_ela
               FROM encontreiros
@@ -673,7 +671,6 @@ def montagem_equipe():
         """, (ano,))
         usados = {(r['nome_ele'], r['nome_ela']) for r in cur.fetchall()}
 
-        # Lista de candidatos do ano anterior em ENCONTRISTAS
         prev_year = (ano - 1) if ano else None
         candidatos = []
         if prev_year:
@@ -699,7 +696,6 @@ def montagem_equipe():
     finally:
         cur.close(); conn.close()
 
-    # Build slots até max_qtd
     slots = []
     for i in range(max_qtd):
         if i < len(integrantes):
@@ -717,14 +713,8 @@ def montagem_equipe():
                            candidatos=candidatos)
 
 # --- APIs de membros da equipe ---
-@app.route('/api/buscar-integrante', methods=['POST'])
+@app.route('/api/buscar-integrante', methods=['POST'], endpoint='api_buscar_integrante')
 def api_buscar_integrante():
-    """
-    Verifica histórico do casal na equipe:
-    - was_coord: já foi coordenador dessa equipe em algum ano -> BLOQUEAR
-    - worked_before: já trabalhou nessa equipe (qualquer função) -> pedir CONFIRMAÇÃO
-    Também retorna telefones/endereco (preferindo encontreiros; senão encontristas).
-    """
     data = request.get_json(silent=True) or {}
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
@@ -736,7 +726,6 @@ def api_buscar_integrante():
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     try:
-        # Já foi coordenador dessa equipe?
         cur.execute("""
             SELECT 1 FROM encontreiros
              WHERE nome_ele=%s AND nome_ela=%s AND equipe=%s
@@ -744,7 +733,6 @@ def api_buscar_integrante():
         """, (nome_ele, nome_ela, equipe_final))
         was_coord = bool(cur.fetchone())
 
-        # Já trabalhou nessa equipe (qualquer função)?
         cur.execute("""
             SELECT 1 FROM encontreiros
              WHERE nome_ele=%s AND nome_ela=%s AND equipe=%s
@@ -752,7 +740,6 @@ def api_buscar_integrante():
         """, (nome_ele, nome_ela, equipe_final))
         worked_before = bool(cur.fetchone())
 
-        # Dados mais recentes para telefones/endereco
         cur.execute("""
             SELECT telefones, endereco FROM encontreiros
              WHERE nome_ele=%s AND nome_ela=%s
@@ -763,7 +750,6 @@ def api_buscar_integrante():
         endereco = r.get('endereco') if r else ''
 
         if not r:
-            # fallback encontristas
             cur.execute("""
                 SELECT telefone_ele, telefone_ela, endereco
                   FROM encontristas
@@ -782,14 +768,8 @@ def api_buscar_integrante():
     finally:
         cur.close(); conn.close()
 
-@app.route('/api/adicionar-integrante', methods=['POST'])
+@app.route('/api/adicionar-integrante', methods=['POST'], endpoint='api_adicionar_integrante')
 def api_adicionar_integrante():
-    """
-    Insere membro da equipe (coordenador='Não', status='Aberto'), respeitando:
-    - não pode se já foi coordenador dessa equipe (qualquer ano)
-    - se já trabalhou nessa equipe (e não coordenador): requer force=True
-    - não pode se já está em QUALQUER equipe no mesmo ano (status Aberto/Concluido)
-    """
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
     equipe_final = (data.get('equipe_final') or '').strip()
@@ -809,7 +789,6 @@ def api_adicionar_integrante():
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     try:
-        # Já coordenou essa equipe?
         cur.execute("""
             SELECT 1 FROM encontreiros
              WHERE nome_ele=%s AND nome_ela=%s AND equipe=%s
@@ -818,7 +797,6 @@ def api_adicionar_integrante():
         if cur.fetchone():
             return jsonify({"ok": False, "msg": "Casal já foi coordenador desta equipe."}), 409
 
-        # Já trabalhou nessa equipe?
         cur.execute("""
             SELECT 1 FROM encontreiros
              WHERE nome_ele=%s AND nome_ela=%s AND equipe=%s LIMIT 1
@@ -828,7 +806,6 @@ def api_adicionar_integrante():
             return jsonify({"ok": False, "need_confirm": True,
                             "msg": "Casal já trabalhou na equipe. Confirmar para montar novamente?"}), 409
 
-        # Já está montado em qualquer equipe no mesmo ano (inclusive coordenador)?
         cur.execute("""
             SELECT 1 FROM encontreiros
              WHERE ano=%s AND nome_ele=%s AND nome_ela=%s
@@ -838,7 +815,6 @@ def api_adicionar_integrante():
         if cur.fetchone():
             return jsonify({"ok": False, "msg": "Casal já foi montado em alguma equipe neste ano."}), 409
 
-        # Insere
         cur2 = conn.cursor()
         cur2.execute("""
             INSERT INTO encontreiros
@@ -853,7 +829,7 @@ def api_adicionar_integrante():
     finally:
         cur.close(); conn.close()
 
-@app.route('/api/concluir-equipe', methods=['POST'])
+@app.route('/api/concluir-equipe', methods=['POST'], endpoint='api_concluir_equipe')
 def api_concluir_equipe():
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
@@ -875,9 +851,107 @@ def api_concluir_equipe():
         cur.close(); conn.close()
 
 # -----------------------------
-# Relatório de Casais (sem alterações)
+# Visão do Casal
 # -----------------------------
-@app.route('/relatorio-casais', methods=['GET', 'POST'])
+@app.route('/visao-casal', endpoint='visao_casal')
+def visao_casal():
+    nome_ele = request.args.get("nome_ele", "").strip()
+    nome_ela = request.args.get("nome_ela", "").strip()
+
+    dados_encontrista = {}
+    dados_encontreiros = []
+    erro = None
+
+    if not nome_ele or not nome_ela:
+        erro = "Informe ambos os nomes para realizar a busca."
+        return render_template("visao_casal.html",
+                               nome_ele=nome_ele,
+                               nome_ela=nome_ela,
+                               dados_encontrista=None,
+                               dados_encontreiros=[],
+                               erro=erro)
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT ano, endereco, telefone_ele, telefone_ela
+            FROM encontristas 
+            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+        """, (nome_ele, nome_ela))
+        resultado_encontrista = cursor.fetchone()
+
+        while cursor.nextset():
+            pass
+
+        if resultado_encontrista:
+            dados_encontrista = {
+                "ano_encontro": resultado_encontrista["ano"],
+                "endereco": resultado_encontrista["endereco"],
+                "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+            }
+
+        cursor.execute("""
+            SELECT ano, equipe, coordenador, endereco, telefones
+            FROM encontreiros 
+            WHERE nome_ele = %s AND nome_ela = %s
+        """, (nome_ele, nome_ela))
+        resultados_encontreiros = cursor.fetchall()
+
+        if resultados_encontreiros:
+            dados_encontreiros = [{
+                "ano": r["ano"],
+                "equipe": r["equipe"],
+                "coordenador": r["coordenador"]
+            } for r in resultados_encontreiros]
+
+            if "ano_encontro" not in dados_encontrista:
+                dados_encontrista["ano_encontro"] = "-"
+
+            mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
+            dados_encontrista["endereco"] = mais_recente["endereco"]
+            dados_encontrista["telefones"] = mais_recente["telefones"]
+
+        if not resultado_encontrista and not resultados_encontreiros:
+            erro = "Casal não encontrado."
+
+    finally:
+        cursor.close()
+        conn.close()
+
+    return render_template("visao_casal.html",
+                           nome_ele=nome_ele,
+                           nome_ela=nome_ela,
+                           dados_encontrista=dados_encontrista,
+                           dados_encontreiros=dados_encontreiros,
+                           erro=erro)
+
+# -----------------------------
+# Organograma
+# -----------------------------
+@app.route('/organograma', endpoint='organograma')
+def organograma():
+    return render_template('organograma.html')
+
+@app.route('/dados-organograma', endpoint='dados_organograma')
+def dados_organograma():
+    ano = request.args.get("ano")
+    if not ano:
+        return jsonify([])
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT equipe, nome_ele, nome_ela, coordenador FROM encontreiros WHERE ano = %s", (ano,))
+    dados = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(dados)
+
+# -----------------------------
+# Relatório de Casais
+# -----------------------------
+@app.route('/relatorio-casais', methods=['GET', 'POST'], endpoint='relatorio_casais')
 def relatorio_casais():
     def split_casal(line: str):
         raw = (line or '').strip()
@@ -981,9 +1055,15 @@ def relatorio_casais():
     return render_template("relatorio_casais.html", resultados=resultados)
 
 # -----------------------------
+# (Opcional) Handler para BuildError em url_for
+# -----------------------------
+@app.errorhandler(BuildError)
+def handle_build_error(e):
+    app.logger.error("BuildError em url_for: endpoint=%s, values=%s", getattr(e, 'endpoint', None), getattr(e, 'values', None))
+    return redirect(url_for('index'))
+
+# -----------------------------
 # Main
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
-
