@@ -16,16 +16,20 @@
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; min-height: 200px; }
     .card h2 { margin:0 0 8px; font-size:18px; }
     ul { list-style:none; margin: 8px 0 0; padding: 0; }
-    li { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+    li { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
     a.year-link { text-decoration:none; color: var(--brand); font-weight:600; }
     .empty { color:var(--muted); margin: 4px 0 0; }
+    .kpi { font-size:12px; color:#334155; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
       <h1>Montagem</h1>
-      <a class="btn" href="{{ url_for('index') }}">← Voltar à Página Inicial</a>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('index') }}">← Página Inicial</a>
+        <a class="btn" href="{{ url_for('nova_montagem') }}">＋ Nova Montagem</a>
+      </div>
     </div>
     <p class="muted">Um ano é <strong>Concluído</strong> quando <em>todos</em> os registros do ano em <code>encontreiros.status</code> estão iguais a <code>Concluido</code>. Caso exista qualquer outro valor, o ano fica em <strong>Aberto</strong>.</p>
 
@@ -35,8 +39,11 @@
         <h2>Aberto</h2>
         {% if anos_aberto %}
           <ul>
-            {% for ano in anos_aberto %}
-              <li><span>{{ ano }}</span></li>
+            {% for item in anos_aberto %}
+              <li>
+                <span>{{ item.ano }}</span>
+                <span class="kpi">{{ item.qtd_concluido }}/{{ item.total }} concluídos</span>
+              </li>
             {% endfor %}
           </ul>
         {% else %}
@@ -44,14 +51,15 @@
         {% endif %}
       </div>
 
-      <!-- Direita: CONCLUÍDO (com link para /encontreiros?ano=YYYY) -->
+      <!-- Direita: CONCLUÍDO (linka para /encontreiros?ano=YYYY) -->
       <div class="card">
         <h2>Concluído</h2>
         {% if anos_concluidos %}
           <ul>
-            {% for ano in anos_concluidos %}
+            {% for item in anos_concluidos %}
               <li>
-                <a class="year-link" href="{{ url_for('encontreiros') }}?ano={{ ano }}">{{ ano }}</a>
+                <a class="year-link" href="{{ url_for('encontreiros') }}?ano={{ item.ano }}">{{ item.ano }}</a>
+                <span class="kpi">{{ item.qtd_concluido }}/{{ item.total }} concluídos</span>
               </li>
             {% endfor %}
           </ul>
@@ -63,4 +71,5 @@
   </div>
 </body>
 </html>
+
 
