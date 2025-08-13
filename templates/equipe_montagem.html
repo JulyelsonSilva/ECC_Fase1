@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Montagem da Equipe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; }
+    h1 { margin:0; font-size: 22px; }
+    .muted { color:var(--muted); }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .btn.small { padding:6px 10px; font-size:13px; }
+    .cols { display:grid; gap:16px; grid-template-columns: 1fr 340px; align-items:start; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .slot { margin-bottom:12px; }
+    .slot h3 { margin:0 0 8px; font-size:14px; }
+    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .status { margin-top:8px; font-size:13px; }
+    .ok { color:#065f46; } .warn { color:#92400e; } .err { color:#991b1b; }
+    .list { max-height: 70vh; overflow: auto; }
+    .item { display:block; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; text-decoration:none; color:inherit; background:#fff; }
+    .item small { display:block; color:#475569; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index: 50; }
+    .modal-card { background:#fff; padding:16px; border-radius:12px; width:90%; max-width:380px; border:1px solid var(--border); }
+    .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Montagem — {{ equipe_key }} <span class="muted">({{ ano }})</span></h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}">← Voltar à Nova Montagem</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+      </div>
+    </div>
+
+    <div class="cols">
+      <!-- Esquerda: Slots (máximo) -->
+      <div class="card">
+        <div class="muted" style="margin:-4px 0 10px;">Mínimo <b>{{ min_qtd }}</b> • Máximo <b>{{ max_qtd }}</b> integrantes</div>
+        <div id="slots"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+          <button class="btn" id="btn-concluir">Concluir Montagem</button>
+        </div>
+        <div class="status" id="global-status"></div>
+      </div>
+
+      <!-- Direita: Candidatos do ano anterior -->
+      <div class="card">
+        <h3 style="margin:0 0 8px;">Candidatos ({{ ano - 1 }})</h3>
+        <div class="list" id="cand-list">
+          {% for c in candidatos %}
+            <a href="#" class="item" data-ele="{{ c.ele }}" data-ela="{{ c.ela }}" data-tel="{{ c.telefones }}" data-end="{{ c.endereco }}">
+              {{ c.ele }} e {{ c.ela }}
+              {% if c.telefones or c.endereco %}
+                <small>{{ c.telefones }}{% if c.telefones and c.endereco %} • {% endif %}{{ c.endereco }}</small>
+              {% endif %}
+            </a>
+          {% else %}
+            <div class="muted">Sem candidatos do ano anterior disponíveis.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const ano = {{ ano | tojson }};
+  const equipeFinal = {{ equipe_final | tojson }};
+  const minQtd = {{ min_qtd | tojson }};
+  const maxQtd = {{ max_qtd | tojson }};
+  const initialSlots = {{ slots | tojson }};
+
+  const slotsWrap = document.getElementById('slots');
+  const candList = document.getElementById('cand-list');
+  const globalStatus = document.getElementById('global-status');
+  const btnConcluir = document.getElementById('btn-concluir');
+
+  function makeModalConfirm(msg, onYes){
+    const m = document.createElement('div');
+    m.className = 'modal-backdrop';
+    m.innerHTML = `<div class="modal-card">
+      <div>${msg}</div>
+      <div class="modal-actions">
+        <button class="btn" id="m_no">Cancelar</button>
+        <button class="btn primary" id="m_yes">Confirmar</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('#m_no').onclick = ()=>{ document.body.removeChild(m); };
+    m.querySelector('#m_yes').onclick = ()=>{ document.body.removeChild(m); onYes && onYes(); };
+  }
+
+  function slotTemplate(idx, preset){
+    const id = `slot_${idx}`;
+    const filled = !!(preset && (preset.nome_ele || preset.nome_ela));
+    return `
+      <div class="slot card" id="${id}">
+        <h3>Integrante ${idx+1}</h3>
+        <div class="row">
+          <div><label for="${id}_ele">Nome (Ele)</label><input id="${id}_ele" value="${preset?.nome_ele || ''}" ${filled ? 'disabled' : ''}></div>
+          <div><label for="${id}_ela">Nome (Ela)</label><input id="${id}_ela" value="${preset?.nome_ela || ''}" ${filled ? 'disabled' : ''}></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="${id}_tel">Telefones</label><input id="${id}_tel" value="${preset?.telefones || ''}" ${filled ? 'disabled' : ''}></div>
+          <div><label for="${id}_end">Endereço</label><input id="${id}_end" value="${preset?.endereco || ''}" ${filled ? 'disabled' : ''}></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${id}_buscar" ${filled ? 'disabled' : ''}>Buscar</button>
+          <button class="btn primary" id="${id}_action">${filled ? 'Alterar' : 'Adicionar'}</button>
+        </div>
+        <div class="status" id="${id}_status"></div>
+      </div>
+    `;
+  }
+
+  function renderAllSlots(){
+    slotsWrap.innerHTML = '';
+    for (let i=0;i<maxQtd;i++){
+      const preset = initialSlots[i] || null;
+      slotsWrap.insertAdjacentHTML('beforeend', slotTemplate(i, preset));
+      hookSlot(i, preset);
+    }
+  }
+
+  function firstEmptySlotIndex(){
+    for (let i=0;i<maxQtd;i++){
+      const ele = document.getElementById(`slot_${i}_ele`);
+      const ela = document.getElementById(`slot_${i}_ela`);
+      const action = document.getElementById(`slot_${i}_action`);
+      if (ele && !ele.disabled && ela && !ela.disabled && action && action.textContent === 'Adicionar'){
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function hookSlot(i, preset){
+    const id = `slot_${i}`;
+    const $ele = document.getElementById(`${id}_ele`);
+    const $ela = document.getElementById(`${id}_ela`);
+    const $tel = document.getElementById(`${id}_tel`);
+    const $end = document.getElementById(`${id}_end`);
+    const $buscar = document.getElementById(`${id}_buscar`);
+    const $action = document.getElementById(`${id}_action`);
+    const $status = document.getElementById(`${id}_status`);
+    let currentId = preset?.id || null;
+    let locked = !!preset;
+
+    async function buscar(){
+      $status.textContent = '';
+      const nome_ele = ($ele.value || '').trim();
+      const nome_ela = ($ela.value || '').trim();
+      if (!nome_ele || !nome_ela){
+        $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn'; return;
+      }
+      try{
+        const resp = await fetch('{{ url_for("api_buscar_integrante") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ nome_ele, nome_ela, equipe_final: equipeFinal })
+        });
+        const data = await resp.json();
+        if (!data.ok){
+          $status.textContent = data.msg || 'Falha na busca.'; $status.className='status err'; return;
+        }
+        if (data.was_coord){
+          $status.textContent = 'Casal já foi coordenador desta equipe. Não pode ser inserido.'; $status.className='status err'; return;
+        }
+        $tel.value = data.telefones || '';
+        $end.value = data.endereco || '';
+        if (data.worked_before){
+          $status.textContent = 'Casal já trabalhou na equipe. Se prosseguir, será necessária confirmação ao adicionar.'; 
+          $status.className='status warn';
+        } else {
+          $status.textContent = 'Dados carregados.'; $status.className='status ok';
+        }
+      } catch(e){
+        $status.textContent = 'Erro ao buscar.'; $status.className='status err';
+      }
+    }
+
+    async function adicionar(force=false){
+      $status.textContent = '';
+      const nome_ele = ($ele.value || '').trim();
+      const nome_ela = ($ela.value || '').trim();
+      const telefones = ($tel.value || '').trim();
+      const endereco = ($end.value || '').trim();
+      if (!nome_ele || !nome_ela){ $status.textContent='Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn'; return; }
+
+      try{
+        const resp = await fetch('{{ url_for("api_adicionar_integrante") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ano, equipe_final: equipeFinal, nome_ele, nome_ela, telefones, endereco, force })
+        });
+        const data = await resp.json();
+        if (data.ok){
+          currentId = data.id || null;
+          [$ele,$ela,$tel,$end,$buscar].forEach(i => i && (i.disabled = true));
+          $action.textContent = 'Alterar';
+          locked = true;
+          $status.textContent = 'Integrante adicionado com sucesso.'; $status.className='status ok';
+          // remove da lista lateral se achar match
+          const nodes = Array.from(candList.querySelectorAll('.item'));
+          const cmp = `${nome_ele}|||${nome_ela}`.toLowerCase();
+          for (const n of nodes){
+            const ce = (n.getAttribute('data-ele')||'').toLowerCase();
+            const ca = (n.getAttribute('data-ela')||'').toLowerCase();
+            if (`${ce}|||${ca}` === cmp){ n.remove(); break; }
+          }
+        } else if (data.need_confirm){
+          makeModalConfirm(data.msg, ()=> adicionar(true));
+        } else {
+          $status.textContent = data.msg || 'Falha ao adicionar.'; $status.className='status err';
+        }
+      } catch(e){
+        $status.textContent = 'Erro ao adicionar.'; $status.className='status err';
+      }
+    }
+
+    async function alterar(){
+      if (!currentId){
+        $status.textContent = 'Registro sem ID; recarregue a página.'; $status.className='status err'; return;
+      }
+      const m = document.createElement('div');
+      m.className = 'modal-backdrop';
+      m.innerHTML = `<div class="modal-card"><div style="font-weight:600; margin-bottom:8px;">O Casal…</div>
+        <div class="modal-actions">
+          <button id="m_rec" class="btn">Recusou</button>
+          <button id="m_des" class="btn">Desistiu</button>
+        </div></div>`;
+      document.body.appendChild(m);
+      m.querySelector('#m_rec').onclick = ()=> choose('Recusou');
+      m.querySelector('#m_des').onclick = ()=> choose('Desistiu');
+      async function choose(choice){
+        try{
+          const resp = await fetch('{{ url_for("api_marcar_status") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ id: currentId, status: choice })
+          });
+          const data = await resp.json();
+          if (data.ok){
+            [$ele,$ela,$tel,$end,$buscar].forEach(i => i && (i.disabled = false));
+            $ele.value=''; $ela.value=''; $tel.value=''; $end.value='';
+            $action.textContent='Adicionar'; locked=false; currentId=null;
+            $status.textContent = `Registro marcado como "${choice}". Caixa liberada.`; $status.className='status ok';
+          } else {
+            $status.textContent = data.msg || 'Falha ao alterar status.'; $status.className='status err';
+          }
+        } catch(e){
+          $status.textContent = 'Erro ao alterar status.'; $status.className='status err';
+        } finally {
+          document.body.removeChild(m);
+        }
+      }
+    }
+
+    if ($buscar) $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
+    if ($action) $action.addEventListener('click', e=>{
+      e.preventDefault();
+      if (!locked) adicionar(false);
+      else alterar();
+    });
+  }
+
+  renderAllSlots();
+
+  // Clique nos candidatos -> preenche primeira caixa vazia
+  candList.addEventListener('click', (e)=>{
+    const a = e.target.closest('.item');
+    if (!a) return;
+    e.preventDefault();
+    const idx = firstEmptySlotIndex();
+    if (idx < 0){
+      globalStatus.textContent = 'Não há caixas livres.'; globalStatus.className='status warn'; return;
+    }
+    const id = `slot_${idx}`;
+    const $ele = document.getElementById(`${id}_ele`);
+    const $ela = document.getElementById(`${id}_ela`);
+    const $tel = document.getElementById(`${id}_tel`);
+    const $end = document.getElementById(`${id}_end`);
+    const $status = document.getElementById(`${id}_status`);
+    $ele.value = a.getAttribute('data-ele') || '';
+    $ela.value = a.getAttribute('data-ela') || '';
+    $tel.value = a.getAttribute('data-tel') || '';
+    $end.value = a.getAttribute('data-end') || '';
+    $status.textContent = 'Dados preenchidos a partir dos Encontristas do ano anterior.'; $status.className='status ok';
+  });
+
+  // Concluir montagem
+  btnConcluir.addEventListener('click', async ()=>{
+    const lockedCount = Array.from(document.querySelectorAll('[id^="slot_"][id$="_action"]')).filter(b => b.textContent === 'Alterar').length;
+    if (lockedCount < minQtd){
+      makeModalConfirm(`A equipe está com ${lockedCount}/${minQtd} (mínimo). Deseja concluir mesmo assim?`, doFinish);
+    } else {
+      doFinish();
+    }
+
+    async function doFinish(){
+      globalStatus.textContent = '';
+      try{
+        const resp = await fetch('{{ url_for("api_concluir_equipe") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ano, equipe_final: equipeFinal })
+        });
+        const data = await resp.json();
+        if (data.ok){
+          globalStatus.textContent = 'Equipe concluída. Todos os registros em Aberto desta equipe foram marcados como Concluido.';
+          globalStatus.className = 'status ok';
+        } else {
+          globalStatus.textContent = data.msg || 'Falha ao concluir equipe.'; globalStatus.className = 'status err';
+        }
+      } catch(e){
+        globalStatus.textContent = 'Erro ao concluir equipe.'; globalStatus.className = 'status err';
+      }
+    }
+  });
+</script>
+</body>
+</html>
