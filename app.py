@@ -792,6 +792,7 @@ def dados_organograma():
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     def split_casal(line: str):
+        """Aceita ';' | ' e ' | 1º espaço."""
         raw = (line or '').strip()
         if not raw:
             return None, None
@@ -803,85 +804,144 @@ def relatorio_casais():
             a, b = raw.split(" ", 1); return a.strip(), b.strip()
         return None, None
 
-    resultados_ok = []
-    resultados_fail = []
-
-    if request.method == 'POST':
-        nomes_input = (request.form.get("lista_nomes", "") or "").strip()
-        if nomes_input:
-            linhas = [l.strip() for l in nomes_input.splitlines() if l.strip()]
-
-            conn = mysql.connector.connect(
-                host=DB_CONFIG['host'],
-                user=DB_CONFIG['user'],
-                password=DB_CONFIG['password'],
-                database=DB_CONFIG['database'],
-                connection_timeout=10,
+    # --- helpers robustos para diferenças de esquema ---
+    def fetch_encontreiros(cur, a_pref, b_pref):
+        """
+        Tenta consultar ENCONTREIROS usando (nome_ele, nome_ela).
+        Se a coluna não existir, tenta (nome_usual_ele, nome_usual_ela).
+        Retorna dict com chaves padrão: endereco, telefones, telefone_ele, telefone_ela (ou None).
+        """
+        # 1) nome_ele / nome_ela
+        try:
+            cur.execute(
+                "SELECT endereco, telefones, telefone_ele, telefone_ela "
+                "FROM encontreiros "
+                "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                "ORDER BY ano DESC LIMIT 1",
+                (a_pref, b_pref, b_pref, a_pref)
             )
+            row = cur.fetchone()
+            return row
+        except mysql_errors.ProgrammingError as e:
+            # 2) fallback: nome_usual_ele / nome_usual_ela
+            if e.errno != 1054:
+                raise
             try:
-                cur = conn.cursor(dictionary=True)
+                cur.execute(
+                    "SELECT endereco, telefones, telefone_ele, telefone_ela "
+                    "FROM encontreiros "
+                    "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                    "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                    "ORDER BY ano DESC LIMIT 1",
+                    (a_pref, b_pref, b_pref, a_pref)
+                )
+                row = cur.fetchone()
+                return row
+            except mysql_errors.ProgrammingError:
+                return None  # esquema muito diferente
+        except mysql_errors.Error:
+            return None
 
-                def consulta_like(a: str, b: str):
-                    work = None
-                    cur.execute(
-                        "SELECT * FROM encontreiros WHERE nome_ele LIKE %s AND nome_ela LIKE %s ORDER BY ano DESC LIMIT 1",
-                        (f"%{a}%", f"%{b}%")
-                    )
-                    work = cur.fetchone()
+    def fetch_encontristas(cur, a_pref, b_pref):
+        """
+        Tenta consultar ENCONTRISTAS preferindo (nome_usual_ele, nome_usual_ela),
+        caindo para (nome_ele, nome_ela) se necessário.
+        Retorna dict com chaves: endereco, telefone_ele, telefone_ela (ou None).
+        """
+        # 1) nome_usual_ele / nome_usual_ela + nome_ele/nome_ela
+        try:
+            cur.execute(
+                "SELECT endereco, telefone_ele, telefone_ela "
+                "FROM encontristas "
+                "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                "LIMIT 1",
+                (a_pref, b_pref, b_pref, a_pref, a_pref, b_pref, b_pref, a_pref)
+            )
+            row = cur.fetchone()
+            return row
+        except mysql_errors.ProgrammingError as e:
+            # 2) fallback: só nome_ele / nome_ela
+            if e.errno != 1054:
+                raise
+            try:
+                cur.execute(
+                    "SELECT endereco, telefone_ele, telefone_ela "
+                    "FROM encontristas "
+                    "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                    "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                    "LIMIT 1",
+                    (a_pref, b_pref, b_pref, a_pref)
+                )
+                row = cur.fetchone()
+                return row
+            except mysql_errors.Error:
+                return None
+        except mysql_errors.Error:
+            return None
 
-                    base = None
-                    cur.execute(
-                        "SELECT endereco, telefone_ele, telefone_ela FROM encontristas WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) OR (nome_ele LIKE %s AND nome_ela LIKE %s) LIMIT 1",
-                        (f"%{a}%", f"%{b}%", f"%{a}%", f"%{b}%")
-                    )
-                    base = cur.fetchone()
+    resultados_ok, resultados_fail = [], []
+    titulo  = (request.form.get("titulo") or "Relatório de Casais") if request.method == 'POST' else "Relatório de Casais"
+    entrada = (request.form.get("lista_nomes", "") or "") if request.method == 'POST' else ""
 
-                    if work:
-                        endereco = work.get('endereco') or (base.get('endereco') if base else "")
-                        if work.get('telefones'):
-                            telefones = work['telefones']
-                        else:
-                            tel_ele = work.get('telefone_ele')
-                            tel_ela = work.get('telefone_ela')
-                            if tel_ele or tel_ela:
-                                telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
-                            elif base:
-                                telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                            else:
-                                telefones = "— / —"
-                        return {"endereco": (endereco or "—"), "telefones": (telefones or "— / —")}
+    if request.method == 'POST' and entrada.strip():
+        linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
 
-                    if base:
-                        telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                        return {"endereco": (base.get('endereco') or '—'), "telefones": telefones}
-
-                    return None
-
-                for linha in linhas:
-                    try:
-                        ele, ela = split_casal(linha)
-                        if not ele or not ela:
-                            resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
-                            continue
-
-                        dados = consulta_like(ele, ela) or consulta_like(ela, ele)
-                        if dados:
-                            resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": dados["endereco"], "telefones": dados["telefones"]})
-                        else:
-                            resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
-                    except Exception as e:
-                        app.logger.exception(f"Falha ao processar linha: {linha}")
-                        resultados_fail.append({"nome": linha, "endereco": "Erro ao processar", "telefones": str(e)})
-
-                cur.close()
-            finally:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cur = conn.cursor(dictionary=True)
+        try:
+            for linha in linhas:
                 try:
-                    conn.close()
-                except Exception:
-                    pass
+                    ele, ela = split_casal(linha)
+                    if not ele or not ela:
+                        resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
+                        continue
 
+                    # LIKE de prefixo (rápido e aceita primeiros nomes)
+                    a_pref = f"{ele.strip()}%"
+                    b_pref = f"{ela.strip()}%"
+
+                    work = fetch_encontreiros(cur, a_pref, b_pref)
+                    base = fetch_encontristas(cur, a_pref, b_pref)
+
+                    # Consolidação (prefere dados do 'work'; senão usa 'base')
+                    if work or base:
+                        if work:
+                            endereco = (work.get('endereco') if work else None) or (base.get('endereco') if base else "")
+                            if work.get('telefones'):
+                                telefones = work['telefones']
+                            else:
+                                tel_ele = work.get('telefone_ele')
+                                tel_ela = work.get('telefone_ela')
+                                if tel_ele or tel_ela:
+                                    telefones = f"{tel_ele or '—'} / {tel_ela or '—'}"
+                                elif base:
+                                    telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                                else:
+                                    telefones = "— / —"
+                        else:
+                            endereco = base.get('endereco') or "—"
+                            telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                        resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": endereco or "—", "telefones": telefones or "— / —"})
+                    else:
+                        resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
+                except Exception as e:
+                    app.logger.exception(f"Falha ao processar linha: {linha}")
+                    resultados_fail.append({"nome": linha, "endereco": "Erro ao processar", "telefones": str(e)})
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
+    # Encontrados primeiro; não encontrados por último
     resultados = resultados_ok + resultados_fail
-    return render_template("relatorio_casais.html", resultados=resultados)
+    return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
+
 
 # -----------------------------
 # Montagem de Equipe (integrantes)
