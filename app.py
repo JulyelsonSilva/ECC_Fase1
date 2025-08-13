@@ -875,19 +875,15 @@ def relatorio_casais():
 @app.route('/equipe-montagem')
 def equipe_montagem():
     """
-    Página de montagem de equipe:
-    - ?ano=YYYY & ?equipe=<filtro>
-    - Resolve equipe_final a partir do TEAM_MAP
-    - Retorna:
-        limites -> máximo "fixo" vindo do TEAM_LIMITS (não dinâmico)
-        membros_existentes -> inclui todos os ativos na montagem (qualquer status EXCETO Recusou/Desistiu)
-        sugestoes_prev_ano -> casais de ENCONTRISTAS(ano-1) que ainda NÃO estão montados no ano atual
-                              (exclui quem tem status != Recusou/Desistiu em QUALQUER equipe no ano atual)
+    Tela de montagem de equipe (sempre renderiza TODAS as caixas até o máximo teórico da equipe).
+    Parâmetros:
+      - ?ano=YYYY
+      - ?equipe=<Circulos|Cozinha|...>  (chave de filtro da TEAM_MAP)
     """
     ano = request.args.get('ano', type=int)
     equipe_filtro = (request.args.get('equipe') or '').strip()
 
-    # Resolve o rótulo final conforme armazena no banco
+    # Resolve rótulo que é gravado no banco a partir do filtro curto
     equipe_final = None
     for _key, info in TEAM_MAP.items():
         if info['filtro'].lower() == equipe_filtro.lower():
@@ -896,15 +892,15 @@ def equipe_montagem():
     if not equipe_final:
         equipe_final = equipe_filtro or 'Equipe'
 
-    # Limites "fixos" (teóricos) da equipe
+    # Limites FIXOS definidos no dicionário
     limites_cfg = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final, {}))
     limites = {
         "min": int(limites_cfg.get('min', 0)),
-        "max": int(limites_cfg.get('max', 8)),  # ← FIXO: sempre mostrar todas as caixas até o máximo teórico
+        "max": int(limites_cfg.get('max', 8)),
     }
 
-    # Membros existentes (não coordenadores) do ANO + EQUIPE
-    # Inclui todos os status ATIVOS na montagem (qualquer um), exceto Recusou/Desistiu
+    # Membros já montados (não coordenadores) no ano/equipe
+    # Inclui todos os ativos (qualquer status) EXCETO Recusou/Desistiu
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     membros_existentes = []
@@ -915,19 +911,18 @@ def equipe_montagem():
              WHERE ano = %s
                AND equipe = %s
                AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
-               AND (status IS NULL OR NOT (UPPER(TRIM(status)) IN ('RECUSOU','DESISTIU')))
+               AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
              ORDER BY id ASC
         """, (ano, equipe_final))
         membros_existentes = cur.fetchall()
     finally:
         try:
-            cur.close()
-            conn.close()
+            cur.close(); conn.close()
         except Exception:
             pass
 
-    # Sugestões do ano anterior (ENCONTRISTAS ano-1) — exclui quem JÁ está montado no ANO atual em QUALQUER equipe
-    # Consideramos "montado" se status != Recusou/Desistiu
+    # Sugestões do ano anterior (encontristas ano-1) — EXCLUI quem já está montado no ano atual em QUALQUER equipe
+    # (considera montado se status != Recusou/Desistiu)
     sugestoes_prev_ano = []
     if ano:
         conn = mysql.connector.connect(**DB_CONFIG)
@@ -959,20 +954,20 @@ def equipe_montagem():
                 })
         finally:
             try:
-                cur.close()
-                conn.close()
+                cur.close(); conn.close()
             except Exception:
                 pass
 
     return render_template(
         'equipe_montagem.html',
         ano=ano,
-        equipe=equipe_filtro,
-        equipe_final=equipe_final,
-        limites=limites,                       # ← max fixo
-        membros_existentes=membros_existentes, # ← traz todos ativos (não recusou/desistiu)
+        equipe=equipe_filtro,          # ex.: 'Circulos'
+        equipe_final=equipe_final,     # ex.: 'Equipe de Círculos'
+        limites=limites,               # {"min":x,"max":y} (FIXO)
+        membros_existentes=membros_existentes,
         sugestoes_prev_ano=sugestoes_prev_ano
     )
+
 
 
 # --- APIs auxiliares da montagem de equipe ---
