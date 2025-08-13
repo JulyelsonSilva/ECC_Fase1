@@ -718,30 +718,22 @@
     }
 
     function renderCoordsGrid() {
-      coordsGrid.innerHTML = '';
-      const teamKeys = Object.keys(TEAM_MAP);
-      const presetVisao = initialData && initialData.preset_from_visao ? initialData.preset_from_visao : null;
+    coordsGrid.innerHTML = '';
 
-      teamKeys.forEach(teamKey=>{
-        let card;
-        const preset = (initialData.coords && initialData.coords[teamKey]) ? initialData.coords[teamKey] : null;
-
-        if (preset) {
-          card = buildTeamEditor(teamKey, preset);
-        } else if (presetVisao && presetVisao.target === teamKey) {
-          card = buildTeamEditor(teamKey, {
-            id: null,
-            nome_ele: presetVisao.ele || '',
-            nome_ela: presetVisao.ela || '',
-            telefones: presetVisao.telefones || '',
-            endereco: presetVisao.endereco || ''
-          });
-        } else {
-          card = buildTeamChooser(teamKey);
-        }
-
-        coordsGrid.appendChild(card);
-      });
+    // Normaliza chaves para evitar duplicatas (remove acentos, baixa, trim)
+    const rawKeys = Object.keys(TEAM_MAP || {});
+    const seen = new Set();
+    const teamKeys = rawKeys.filter(k => {
+      const norm = (k || '')
+        .normalize('NFD')                // separa acentos
+        .replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (seen.has(norm)) return false;
+      seen.add(norm);
+      return true;
+    });
     }
 
     // =========================
