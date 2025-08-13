@@ -506,41 +506,55 @@ def api_adicionar_cg():
 # -----------------------------
 @app.route('/encontreiros')
 def encontreiros():
+    """
+    Lista Encontreiros (somente registros ativos):
+      - Inclui: status NULL, Aberto, Concluido
+      - Exclui: Recusou, Desistiu
+    Filtros opcionais: nome_ele, nome_ela, ano
+    Agrupa por ano (desc) e ordena por equipe.
+    """
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
-    nome_ele = request.args.get('nome_ele', '')
-    nome_ela = request.args.get('nome_ela', '')
-    ano = request.args.get('ano', '')
+    nome_ele = (request.args.get('nome_ele', '') or '').strip()
+    nome_ela = (request.args.get('nome_ela', '') or '').strip()
+    ano_filtro = (request.args.get('ano', '') or '').strip()
 
     query = """
         SELECT id, ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador
           FROM encontreiros
-         WHERE 1=1
-           AND (status IS NULL OR UPPER(status) IN ('ABERTO','CONCLUIDO','ACEITO'))
+         WHERE (status IS NULL OR UPPER(TRIM(status)) IN ('ABERTO','CONCLUIDO'))
     """
     params = []
+
     if nome_ele:
         query += " AND nome_ele LIKE %s"
         params.append(f"%{nome_ele}%")
     if nome_ela:
         query += " AND nome_ela LIKE %s"
         params.append(f"%{nome_ela}%")
-    if ano:
+    if ano_filtro:
         query += " AND ano = %s"
-        params.append(ano)
+        params.append(ano_filtro)
 
-    query += " ORDER BY ano DESC, equipe ASC"
+    query += " ORDER BY ano DESC, equipe ASC, id ASC"
+
     cursor.execute(query, params)
     todos = cursor.fetchall()
     cursor.close()
     conn.close()
 
+    # Agrupa por ano
     por_ano = defaultdict(list)
     for row in todos:
         por_ano[row['ano']].append(row)
 
-    return render_template('encontreiros.html', por_ano=por_ano)
+    # Colunas visíveis (sem 'status')
+    colunas_visiveis = ['equipe', 'nome_ele', 'nome_ela', 'telefones', 'endereco', 'coordenador']
+
+    return render_template('encontreiros.html',
+                           por_ano=por_ano,
+                           colunas_visiveis=colunas_visiveis)
 
 # -----------------------------
 # Visão Equipes (com/sem links)
