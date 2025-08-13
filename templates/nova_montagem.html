@@ -97,8 +97,8 @@
 
   <script>
     // Dados do servidor
-    const initialData = {{ (initial_data or {}) | tojson }};
-    const anoPre = {{ (ano_preselecionado if ano_preselecionado is not None else None) | tojson }};
+     initialData = {{ (initial_data or {}) | tojson }};
+    const anoPre = {{ ano_preselecionado | default(none) | tojson }};
     const TEAM_MAP = {{ (team_map or {}) | tojson }};
 
     // Parâmetros de retorno da visão de equipes
