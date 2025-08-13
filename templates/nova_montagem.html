@@ -71,7 +71,6 @@
     <div class="card disabled" id="coordenador-geral" style="margin-top:12px; display:none;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
         <h3 style="margin:0;">Coordenador Geral</h3>
-        <div id="cg-actions" style="display:flex; gap:8px;"></div>
       </div>
       <div class="row">
         <div>
@@ -125,6 +124,12 @@
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
+    // Fallback de equipes (caso TEAM_MAP não chegue por algum motivo)
+    const FALLBACK_TEAMS = [
+      "Sala","Circulos","Café e Minimercado","Compras","Acolhida",
+      "Ordem e Limpeza","Liturgia e Vigilia","Secretaria","Cozinha","Visitação"
+    ];
+
     // =========================
     // Utils
     // =========================
@@ -133,7 +138,6 @@
     function setDisabled(el, val) { el.disabled = !!val; }
     function show(el, on=true) { el.style.display = on ? '' : 'none'; }
     function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
-    // ✅ Helper compatível para inserir após um nó (evita usar .after())
     function insertAfter(referenceNode, newNode) {
       if (referenceNode && referenceNode.parentNode) {
         referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
@@ -170,11 +174,11 @@
     // =========================
     let anoSelecionado = null;
     let totalDirigentesAdicionados = 0;
-    let cgId = null;  // id do registro CG em aberto
+    let cgId = null;  // id do registro CG em Aberto
     let cgAdded = false;
 
     // =========================
-    // Caixa de escolha (Recusou/Desistiu) c/ justificativa obrigatória
+    // Caixa de escolha (Recusou/Desistiu) com justificativa
     // =========================
     function buildStatusChoice(onConfirm) {
       const box = makeEl(`
@@ -341,7 +345,7 @@
 
       function askAlterar() {
         if (!recId) return;
-        card.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
+        card.querySelectorAll('.choice-box').forEach(n=>n.remove());
         const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
           try {
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
@@ -428,9 +432,11 @@
     // COORDENADOR GERAL
     // =========================
     function renderCGPresetIfAny() {
-      if (initialData && initialData.cg) {
+      // Só considera "em aberto" quando vier status Aberto
+      if (initialData && initialData.cg && String((initialData.cg.status || '')).toLowerCase().trim() === 'aberto') {
         cgId = initialData.cg.id || null;
         cgAdded = true;
+
         cgEle.value = initialData.cg.nome_ele || '';
         cgEla.value = initialData.cg.nome_ela || '';
         cgTel.value = initialData.cg.telefones || '';
@@ -441,13 +447,17 @@
         setDisabled(cgTel, true);
         setDisabled(cgEnd, true);
         setDisabled(cgBuscar, true);
-        setDisabled(cgAdd, false);
+        setDisabled(cgAdd, false); // vira "Alterar"
         cgAdd.textContent = 'Alterar';
         cgCard.classList.remove('disabled');
         statusText(cgStatus,'Coordenador Geral em aberto para este ano.','ok');
 
+        // Com CG em Aberto, exibimos coordenadores de equipe
         show(coordsSection, true);
         renderCoordsGrid();
+      } else {
+        cgAdded = false;
+        cgId = null;
       }
     }
 
@@ -569,7 +579,7 @@
 
     function buildTeamEditor(teamKey, preset) {
       const idSafe = idFromLabel(teamKey);
-      const equipeFinal = TEAM_MAP[teamKey] || teamKey;
+      const equipeFinal = TEAM_MAP && TEAM_MAP[teamKey] ? TEAM_MAP[teamKey] : teamKey;
       const card = makeEl(`
         <div class="card" id="coord_${idSafe}">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
@@ -718,22 +728,48 @@
     }
 
     function renderCoordsGrid() {
-    coordsGrid.innerHTML = '';
+      coordsGrid.innerHTML = '';
 
-    // Normaliza chaves para evitar duplicatas (remove acentos, baixa, trim)
-    const rawKeys = Object.keys(TEAM_MAP || {});
-    const seen = new Set();
-    const teamKeys = rawKeys.filter(k => {
-      const norm = (k || '')
-        .normalize('NFD')                // separa acentos
-        .replace(/[\u0300-\u036f]/g, '') // remove acentos
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim();
-      if (seen.has(norm)) return false;
-      seen.add(norm);
-      return true;
-    });
+      // 1) pega chaves do TEAM_MAP; se vazio, usa fallback
+      const rawKeys = (TEAM_MAP && typeof TEAM_MAP === 'object') ? Object.keys(TEAM_MAP) : [];
+      const baseKeys = rawKeys.length ? rawKeys : FALLBACK_TEAMS.slice();
+
+      // 2) dedupe seguro (remove acentos/normaliza)
+      const seen = new Set();
+      const teamKeys = baseKeys.filter(k => {
+        const norm = (k || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (seen.has(norm)) return false;
+        seen.add(norm);
+        return true;
+      });
+
+      const presetVisao = initialData && initialData.preset_from_visao ? initialData.preset_from_visao : null;
+
+      teamKeys.forEach(teamKey=>{
+        let card;
+        const preset = (initialData.coords && initialData.coords[teamKey]) ? initialData.coords[teamKey] : null;
+
+        if (preset) {
+          card = buildTeamEditor(teamKey, preset);
+        } else if (presetVisao && presetVisao.target === teamKey) {
+          card = buildTeamEditor(teamKey, {
+            id: null,
+            nome_ele: presetVisao.ele || '',
+            nome_ela: presetVisao.ela || '',
+            telefones: presetVisao.telefones || '',
+            endereco: presetVisao.endereco || ''
+          });
+        } else {
+          card = buildTeamChooser(teamKey);
+        }
+
+        coordsGrid.appendChild(card);
+      });
     }
 
     // =========================
@@ -786,7 +822,11 @@
       statusText(anoMsg, `Ano selecionado: ${anoSelecionado}`, 'ok');
 
       totalDirigentesAdicionados = 0;
-      kpiDone.textContent = '0';
+      // Conta presets de dirigentes já em Aberto
+      if (initialData && initialData.dirigentes) {
+        totalDirigentesAdicionados = Object.keys(initialData.dirigentes).length;
+      }
+      document.getElementById('kpi-done').textContent = String(totalDirigentesAdicionados);
 
       renderDirigentesEcg();
       showConcluirAnoIfReady();
