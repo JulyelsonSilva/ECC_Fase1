@@ -214,12 +214,14 @@ def nova_montagem():
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
-            # Dirigentes
+            # ---- Dirigentes: só traz se status = 'Aberto'
             for equipe in equipes_dir:
                 cur.execute("""
                     SELECT id, nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
-                     WHERE ano = %s AND equipe = %s
+                     WHERE ano = %s
+                       AND equipe = %s
+                       AND TRIM(LOWER(status)) = 'aberto'
                      ORDER BY id ASC
                      LIMIT 1
                 """, (ano_preselecionado, equipe))
@@ -233,11 +235,13 @@ def nova_montagem():
                         "endereco": r.get("endereco") or ""
                     }
 
-            # CG
+            # ---- Coordenador Geral: só traz se status = 'Aberto'
             cur.execute("""
                 SELECT id, nome_ele, nome_ela, telefones, endereco
                   FROM encontreiros
-                 WHERE ano = %s AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
+                 WHERE ano = %s
+                   AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
+                   AND TRIM(LOWER(status)) = 'aberto'
                  ORDER BY id ASC
                  LIMIT 1
             """, (ano_preselecionado,))
@@ -251,12 +255,14 @@ def nova_montagem():
                     "endereco": r_cg.get("endereco") or "",
                 }
 
-            # Coordenadores de Equipe (10 caixas)
+            # ---- Coordenadores de Equipe: só traz se status = 'Aberto'
             for team_key, equipe_str in TEAM_MAP.items():
                 cur.execute("""
                     SELECT id, nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
-                     WHERE ano = %s AND equipe = %s
+                     WHERE ano = %s
+                       AND equipe = %s
+                       AND TRIM(LOWER(status)) = 'aberto'
                      ORDER BY id ASC
                      LIMIT 1
                 """, (ano_preselecionado, equipe_str))
