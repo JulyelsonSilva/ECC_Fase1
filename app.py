@@ -11,6 +11,8 @@ DB_CONFIG = {
     'user': 'eccdivino2',
     'password': 'eccdivino2025',
     'database': 'eccdivinomcz2'
+    'charset': 'utf8mb4',              
+    'use_unicode': True                
 }
 
 # -----------------------------
