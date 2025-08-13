@@ -1275,6 +1275,39 @@ def api_concluir_montagem_ano():
             conn.close()
         except Exception:
             pass
+# -----------------------------
+# Organograma (endpoints usados pelo index/templating)
+# -----------------------------
+@app.route('/organograma')
+def organograma():
+    # Renderiza o template do organograma (deve existir em templates/organograma.html)
+    return render_template('organograma.html')
+
+@app.route('/dados-organograma')
+def dados_organograma():
+    """
+    Retorna os dados do organograma para um ano (JSON).
+    Espera querystring ?ano=YYYY
+    """
+    ano = request.args.get("ano", type=int)
+    if not ano:
+        return jsonify([])
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT equipe, nome_ele, nome_ela, coordenador
+              FROM encontreiros
+             WHERE ano = %s
+               AND (status IS NULL OR UPPER(TRIM(status)) IN ('ABERTO','CONCLUIDO'))
+        """, (ano,))
+        dados = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+    return jsonify(dados)
 
 # -----------------------------
 # Main
