@@ -10,7 +10,7 @@ DB_CONFIG = {
     'host': 'db4free.net',
     'user': 'eccdivino2',
     'password': 'eccdivino2025',
-    'database': 'eccdivinomcz2'
+    'database': 'eccdivinomcz2',
     'charset': 'utf8mb4',              
     'use_unicode': True                
 }
