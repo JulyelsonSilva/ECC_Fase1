@@ -110,7 +110,9 @@
   </div>
 
   <script>
+    // =========================
     // Dados vindos do servidor
+    // =========================
     const initialData = {{ initial_data | tojson }};
     const anoPre = {{ ano_preselecionado | tojson }};
     const TEAM_MAP = {{ team_map | tojson }};
@@ -123,7 +125,26 @@
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
-    // Elems principais
+    // =========================
+    // Utils
+    // =========================
+    function idFromLabel(lbl) { return lbl.replace(/[^a-z0-9]+/gi, '_'); }
+    function makeEl(html) { const d=document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
+    function setDisabled(el, val) { el.disabled = !!val; }
+    function show(el, on=true) { el.style.display = on ? '' : 'none'; }
+    function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
+    // ✅ Helper compatível para inserir após um nó (evita usar .after())
+    function insertAfter(referenceNode, newNode) {
+      if (referenceNode && referenceNode.parentNode) {
+        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+      } else {
+        document.body.appendChild(newNode);
+      }
+    }
+
+    // =========================
+    // Elementos principais
+    // =========================
     const grid = document.getElementById('dirigentes-grid');
     const anoInput = document.getElementById('ano');
     const btnContinuar = document.getElementById('btn-continuar');
@@ -143,38 +164,18 @@
     const cgBuscar = document.getElementById('cg_buscar');
     const cgAdd = document.getElementById('cg_add');
     const cgStatus = document.getElementById('cg_status');
-    const cgActions = document.getElementById('cg-actions');
 
+    // =========================
     // Estado
+    // =========================
     let anoSelecionado = null;
     let totalDirigentesAdicionados = 0;
-    let cgId = null; // id do registro CG em aberto
-    let cgAdded = false; // se já há CG salvo em Aberto
+    let cgId = null;  // id do registro CG em aberto
+    let cgAdded = false;
 
-    // Utils
-    function idFromLabel(lbl) { return lbl.replace(/[^a-z0-9]+/gi, '_'); }
-    function makeEl(html) { const d=document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
-    function setDisabled(el, val) { el.disabled = !!val; }
-    function show(el, on=true) { el.style.display = on ? '' : 'none'; }
-    function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
-<script>
-  // ... utils existentes:
-  function idFromLabel(lbl) { return lbl.replace(/[^a-z0-9]+/gi, '_'); }
-  function makeEl(html) { const d=document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
-  function setDisabled(el, val) { el.disabled = !!val; }
-  function show(el, on=true) { el.style.display = on ? '' : 'none'; }
-  function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
-
-  // ✅ Helper compatível com todos os navegadores
-  function insertAfter(referenceNode, newNode) {
-    if (referenceNode && referenceNode.parentNode) {
-      referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-    } else {
-      document.body.appendChild(newNode);
-    }
-  }
-</script>
-    // ---- Caixa de escolha com justificativa obrigatória para Recusou/Desistiu ----
+    // =========================
+    // Caixa de escolha (Recusou/Desistiu) c/ justificativa obrigatória
+    // =========================
     function buildStatusChoice(onConfirm) {
       const box = makeEl(`
         <div class="choice-box">
@@ -208,7 +209,6 @@
           const val = b.getAttribute('data-val');
           if (val === 'cancel') { box.remove(); return; }
           picked = val;
-          // mostra textarea obrigatória
           justBox.style.display = '';
           ta.focus();
         });
@@ -231,14 +231,15 @@
       return box;
     }
 
-    // ----- DIRIGENTES -----
+    // =========================
+    // DIRIGENTES
+    // =========================
     function renderDirigenteCard(equipe, preset) {
       const idSafe = idFromLabel(equipe);
       const card = makeEl(`
         <div class="card" id="${idSafe}_card">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
             <h3 style="margin:0;">${equipe}</h3>
-            <div id="${idSafe}_actions" style="display:flex; gap:8px;"></div>
           </div>
 
           <div class="row">
@@ -340,6 +341,7 @@
 
       function askAlterar() {
         if (!recId) return;
+        card.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
         const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
           try {
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
@@ -350,23 +352,20 @@
             if (data.ok) {
               statusText($status, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
               lockBox(false);
-              // limpa campos
               [$ele,$ela,$tels,$end].forEach(i=>i.value='');
               recId = null;
-              // Ajusta KPI (liberou um dirigente)
               if (totalDirigentesAdicionados>0) {
                 totalDirigentesAdicionados -= 1;
                 kpiDone.textContent = String(totalDirigentesAdicionados);
               }
               boxEl.remove();
-              maybeEnableCG(); // revalida ativação do CG
+              maybeEnableCG();
             } else {
               statusText($status, data.msg || 'Falha ao alterar.','err');
             }
           } catch { statusText($status,'Erro ao alterar.','err'); }
         });
-       card.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
-       insertAfter($status, chooser);
+        insertAfter($status, chooser);
       }
 
       $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
@@ -377,7 +376,6 @@
       });
 
       if (preset && (preset.nome_ele || preset.nome_ela)) {
-        // já existe (Aberto) -> bloqueia e conta
         lockBox(true);
         totalDirigentesAdicionados += 1;
         kpiDone.textContent = String(totalDirigentesAdicionados);
@@ -397,7 +395,6 @@
     }
 
     function maybeEnableCG() {
-      // Habilita CG quando 5/5 dirigentes adicionados
       if (totalDirigentesAdicionados >= 5) {
         show(cgCard, true);
         cgCard.classList.remove('disabled');
@@ -413,7 +410,7 @@
         }
       } else {
         if (!cgAdded) {
-          show(cgCard, true); // mostra, mas desabilitado
+          show(cgCard, true);
           cgCard.classList.add('disabled');
           setDisabled(cgEle, true);
           setDisabled(cgEla, true);
@@ -427,7 +424,9 @@
       }
     }
 
-    // ----- Coordenador Geral -----
+    // =========================
+    // COORDENADOR GERAL
+    // =========================
     function renderCGPresetIfAny() {
       if (initialData && initialData.cg) {
         cgId = initialData.cg.id || null;
@@ -442,14 +441,13 @@
         setDisabled(cgTel, true);
         setDisabled(cgEnd, true);
         setDisabled(cgBuscar, true);
-        setDisabled(cgAdd, false); // vira "Alterar"
+        setDisabled(cgAdd, false);
         cgAdd.textContent = 'Alterar';
         cgCard.classList.remove('disabled');
         statusText(cgStatus,'Coordenador Geral em aberto para este ano.','ok');
 
-        // Com CG definido, mostra seção de Coordenadores de Equipe
         show(coordsSection, true);
-        renderCoordsGrid(); // renderiza grid (links ou editores)
+        renderCoordsGrid();
       }
     }
 
@@ -477,6 +475,7 @@
 
     function cgAskAlterar() {
       if (!cgId) return;
+      cgCard.querySelectorAll('.choice-box').forEach(n=>n.remove());
       const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
         try {
           const resp = await fetch('{{ url_for("api_marcar_status") }}', {
@@ -495,7 +494,6 @@
             setDisabled(cgEnd, false);
             cgAdd.textContent = 'Adicionar';
             cgEle.value = ''; cgEla.value = ''; cgTel.value = ''; cgEnd.value = '';
-            // Esconde coordenadores até novo CG ser salvo
             show(coordsSection, false);
             boxEl.remove();
           } else {
@@ -503,17 +501,13 @@
           }
         } catch { statusText(cgStatus, 'Erro ao alterar.', 'err'); }
       });
-      cgCard.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
       insertAfter(cgStatus, chooser);
     }
 
     async function cgAddOrAlter() {
       if (!anoSelecionado) return statusText(cgStatus,'Informe o ano antes.','warn');
-
-      // Modo Alterar (já existe)
       if (cgAdded && cgId) { cgAskAlterar(); return; }
 
-      // Modo Adicionar (novo CG)
       const nome_ele = (cgEle.value||'').trim();
       const nome_ela = (cgEla.value||'').trim();
       const telefones = (cgTel.value||'').trim();
@@ -537,7 +531,6 @@
           setDisabled(cgEnd, true);
           cgAdd.textContent = 'Alterar';
           statusText(cgStatus, 'Casal Coordenador Geral adicionado com sucesso.', 'ok');
-          // Exibe coordenadores de equipe
           show(coordsSection, true);
           renderCoordsGrid();
         } else {
@@ -546,10 +539,12 @@
       } catch { statusText(cgStatus, 'Erro ao adicionar.', 'err'); }
     }
 
-    cgBuscar.addEventListener('click', e=>{ e.preventDefault(); cgBuscarHandler(); });
-    cgAdd.addEventListener('click', e=>{ e.preventDefault(); cgAddOrAlter(); });
+    document.getElementById('cg_buscar').addEventListener('click', e=>{ e.preventDefault(); cgBuscarHandler(); });
+    document.getElementById('cg_add').addEventListener('click', e=>{ e.preventDefault(); cgAddOrAlter(); });
 
-    // ----- COORDENADORES DE EQUIPE -----
+    // =========================
+    // COORDENADORES DE EQUIPE
+    // =========================
     function buildTeamChooser(teamKey) {
       const card = makeEl(`
         <div class="card" id="coord_${idFromLabel(teamKey)}">
@@ -574,7 +569,7 @@
 
     function buildTeamEditor(teamKey, preset) {
       const idSafe = idFromLabel(teamKey);
-      const equipeFinal = TEAM_MAP[teamKey] || teamKey; // string do banco
+      const equipeFinal = TEAM_MAP[teamKey] || teamKey;
       const card = makeEl(`
         <div class="card" id="coord_${idSafe}">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
@@ -684,6 +679,7 @@
 
       function alterar() {
         if (!recId) return;
+        card.querySelectorAll('.choice-box').forEach(n=>n.remove());
         const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
           try {
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
@@ -702,9 +698,7 @@
             }
           } catch { statusText($status,'Erro ao alterar.','err'); }
         });
-        card.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
         insertAfter($status, chooser);
-
       }
 
       $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
@@ -719,7 +713,6 @@
         window.location.href = url.toString();
       });
 
-      // trava se já existe
       lockEditor(!!recId);
       return card;
     }
@@ -751,7 +744,9 @@
       });
     }
 
-    // ----- Concluir Montagem do Ano -----
+    // =========================
+    // Concluir Montagem do Ano
+    // =========================
     function showConcluirAnoIfReady() { show(btnConcluirAno, !!anoSelecionado); }
     btnConcluirAno.addEventListener('click', async (e)=>{
       e.preventDefault();
@@ -772,15 +767,14 @@
       } catch { alert('Erro ao concluir montagem.'); }
     });
 
-    // ----- Fluxo principal -----
+    // =========================
+    // Fluxo principal
+    // =========================
     function renderDirigentesEcg() {
-      // Render Dirigentes
       renderDirigentes();
-      // CG
       show(cgCard, true);
       renderCGPresetIfAny();
       maybeEnableCG();
-      // Coordenadores de Equipe:
       if (cgAdded) {
         show(coordsSection, true);
         renderCoordsGrid();
@@ -799,7 +793,6 @@
       anoSelecionado = parseInt(val,10);
       statusText(anoMsg, `Ano selecionado: ${anoSelecionado}`, 'ok');
 
-      // Reseta KPI
       totalDirigentesAdicionados = 0;
       kpiDone.textContent = '0';
 
@@ -807,7 +800,6 @@
       showConcluirAnoIfReady();
     });
 
-    // Auto-continuar se ano veio na URL
     window.addEventListener('DOMContentLoaded', ()=>{
       if (anoPre) { btnContinuar.click(); }
       const notfound = {{ (request.args.get('notfound') or '0') | tojson }};
@@ -816,4 +808,5 @@
   </script>
 </body>
 </html>
+
 
