@@ -3,48 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <title>Encontreiros</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background:#f8fafc; color:#0f172a; }
+    h1 { margin-top: 0; }
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+    .btn { border:1px solid #e5e7eb; background:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; color:inherit; cursor:pointer; }
+    .btn:hover { background:#f1f5f9; }
+    form { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+    input { padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; }
+    table { width:100%; border-collapse: collapse; margin: 8px 0 24px; background:#fff; border:1px solid #e5e7eb; }
+    th, td { padding:8px 10px; border-bottom:1px solid #e5e7eb; text-align:left; vertical-align:top; }
+    thead th { background:#f1f5f9; font-weight:600; }
+    .year { margin: 12px 0 4px; }
+    .muted { color:#64748b; }
+  </style>
 </head>
 <body>
   <h1>Encontreiros</h1>
 
-  <!-- Botão para voltar à página inicial -->
-  <a href="{{ url_for('index') }}">
-    <button type="button">Voltar para Página Inicial</button>
-  </a>
-  <br><br>
+  <div class="toolbar">
+    <a class="btn" href="{{ url_for('index') }}">← Página Inicial</a>
+  </div>
 
   <form method="get">
-    Nome Ele: <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele', '') }}">
-    Nome Ela: <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela', '') }}">
-    <button type="submit">Filtrar</button>
+    <label>Nome Ele:
+      <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele', '') }}">
+    </label>
+    <label>Nome Ela:
+      <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela', '') }}">
+    </label>
+    <label>Ano:
+      <input type="number" name="ano" inputmode="numeric" value="{{ request.args.get('ano', '') }}" style="width:100px;">
+    </label>
+    <button class="btn" type="submit">Filtrar</button>
   </form>
 
-  {% for ano, registros in por_ano.items() %}
-    <h2>{{ ano }}</h2>
+  {% if por_ano %}
+    {% for ano, registros in por_ano.items() %}
+      <h2 class="year">{{ ano }}</h2>
 
-    {% set cols = ['id','ano','equipe','nome_ele','nome_ela','telefones','endereco','coordenador'] %}
-
-    <table border="1">
-      <thead>
-        <tr>
-          {% for c in cols %}
-            <th>{{ c }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in registros %}
-          {% set s = (row.get('status','') or '') | trim | lower %}
-          {% if s in ['aberto','concluido'] %}
+      {% if registros and colunas_visiveis %}
+        <table>
+          <thead>
             <tr>
-              {% for c in cols %}
-                <td>{{ row.get(c, '') }}</td>
+              {% for col in colunas_visiveis %}
+                <th>{{ col.replace('_', ' ').title() }}</th>
               {% endfor %}
             </tr>
-          {% endif %}
-        {% endfor %}
-      </tbody>
-    </table>
-  {% endfor %}
+          </thead>
+          <tbody>
+            {% for row in registros %}
+              <tr>
+                {% for col in colunas_visiveis %}
+                  <td>{{ row.get(col, '') }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">Sem registros para este ano.</p>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <p class="muted">Nenhum resultado encontrado com os filtros informados.</p>
+  {% endif %}
 </body>
 </html>
