@@ -25,11 +25,11 @@
     .err { color:#991b1b; }
     .disabled { opacity: .6; pointer-events: none; }
     .counter { font-size:13px; color:#334155; }
-
-    /* modal simples */
     .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index: 50; }
     .modal-card { background:#fff; padding:16px; border-radius:12px; width:90%; max-width:360px; border:1px solid var(--border); }
     .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+    .card-title { margin:0 0 8px; font-weight:700; cursor:pointer; color:#0f172a; }
+    .card-title a { color:inherit; text-decoration:none; border-bottom:1px dashed #cbd5e1; }
   </style>
 </head>
 <body>
@@ -41,7 +41,7 @@
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
     </div>
-    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Em cada caixa, preencha o casal e clique em <strong>Buscar</strong> para recuperar endereço/telefones. Depois, clique em <strong>Adicionar</strong> para gravar.</p>
+    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois escolha o <b>Casal Coordenador Geral</b>. Só então aparecerão as caixas de <b>Coordenadores de Equipe</b>.</p>
 
     <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
@@ -56,7 +56,7 @@
     <!-- Indicador -->
     <p class="counter" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
 
-    <!-- Passo 2: 5 caixas Dirigentes -->
+    <!-- 5 caixas Dirigentes -->
     <div class="grid" id="dirigentes-grid" style="display:none;"></div>
 
     <!-- Coordenador Geral -->
@@ -89,29 +89,48 @@
       <div class="status" id="cg_status"></div>
       <p class="small muted" style="margin-top:8px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
     </div>
+
+    <!-- Coordenadores de Equipe (apenas após CG escolhido) -->
+    <h3 id="coords-title" style="margin:18px 0 8px; display:none;">Coordenadores de Equipe</h3>
+    <div class="grid" id="coords-grid" style="display:none;"></div>
   </div>
 
   <script>
-    // Dados vindos do servidor para pré-preencher (se houver ?ano=YYYY)
+    // Dados do servidor
     const initialData = {{ (initial_data or {}) | tojson }};
     const anoPre = {{ (ano_preselecionado if ano_preselecionado is not none else None) | tojson }};
-    const equipes = [
+    const TEAM_MAP = {{ (team_map or {}) | tojson }};
+
+    // Parâmetros de retorno da visão de equipes
+    const qs = new URLSearchParams(location.search);
+    const retTarget = qs.get('target') || null;
+    const retEle = qs.get('ele') || null;
+    const retEla = qs.get('ela') || null;
+
+    const equipesDir = [
       "Equipe Dirigente - MONTAGEM",
       "Equipe Dirigente -FICHAS",
       "Equipe Dirigente - FINANÇAS",
       "Equipe Dirigente - PALESTRA",
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
+    const coordTeams = [
+      "Sala","Círculos","Café e Minimercado","Compras","Acolhida",
+      "Ordem e Limpeza","Liturgia e Vigília","Secretaria","Cozinha","Visitação"
+    ];
 
-    const grid = document.getElementById('dirigentes-grid');
+    // Elementos
+    const gridDir = document.getElementById('dirigentes-grid');
+    const coordsTitle = document.getElementById('coords-title');
+    const gridCoords = document.getElementById('coords-grid');
     const anoInput = document.getElementById('ano');
     const btnContinuar = document.getElementById('btn-continuar');
     const anoMsg = document.getElementById('ano-msg');
     const kpi = document.getElementById('kpi-total');
     const kpiDone = document.getElementById('kpi-done');
-    const cg = document.getElementById('coordenador-geral');
 
-    // CG elements
+    // CG
+    const cg = document.getElementById('coordenador-geral');
     const cgEle = document.getElementById('cg_nome_ele');
     const cgEla = document.getElementById('cg_nome_ela');
     const cgTel = document.getElementById('cg_telefones');
@@ -120,18 +139,16 @@
     const cgAdd = document.getElementById('cg_add');
     const cgStatus = document.getElementById('cg_status');
 
-    // estado CG
-    let cgLocked = false;
-    let currentCGId = null;
-
     let anoSelecionado = null;
     let totalAdicionados = 0;
+    let cgLocked = false;
+    let currentCGId = null;
+    let coordsRendered = false; // <- só renderizamos depois do CG escolhido
 
-    function idFromEquipe(equipe) {
-      return equipe.replace(/[^a-z0-9]+/gi, '_');
-    }
+    function idSafe(txt){ return (txt || '').replace(/[^a-z0-9]+/gi,'_'); }
 
-    function makeModal(onChoose) {
+    // Modal
+    function makeModal(onChoose){
       const m = document.createElement('div');
       m.className = 'modal-backdrop';
       m.innerHTML = `
@@ -143,100 +160,172 @@
           </div>
         </div>`;
       document.body.appendChild(m);
-      m.querySelector('#m_rec').onclick = () => { onChoose('Recusou'); document.body.removeChild(m); };
-      m.querySelector('#m_des').onclick = () => { onChoose('Desistiu'); document.body.removeChild(m); };
+      m.querySelector('#m_rec').onclick = ()=>{ onChoose('Recusou'); document.body.removeChild(m); };
+      m.querySelector('#m_des').onclick = ()=>{ onChoose('Desistiu'); document.body.removeChild(m); };
     }
 
-    function renderCaixa(equipe, preset) {
-      const idSafe = idFromEquipe(equipe);
+    // URL para visão de equipes
+    function makeEquipeURL(teamTitle){
+      const equipeParam = encodeURIComponent(teamTitle);
+      const target = encodeURIComponent(teamTitle);
+      return `{{ url_for('visao_equipes') }}?equipe=${equipeParam}&target=${target}`;
+    }
+
+    // Exibição dos Coordenadores de Equipe (somente após CG confirmado)
+    function showCoordsSection(){
+      if (coordsRendered) {
+        coordsTitle.style.display = '';
+        gridCoords.style.display = '';
+        return;
+      }
+      coordsTitle.style.display = '';
+      gridCoords.style.display = '';
+      gridCoords.innerHTML = '';
+      coordTeams.forEach(teamTitle => {
+        const preset = (initialData.coords && initialData.coords[teamTitle]) ? initialData.coords[teamTitle] : null;
+        const equipeFinalStr = TEAM_MAP[teamTitle] || teamTitle;
+        const box = renderPessoaBox(teamTitle, teamTitle, equipeFinalStr, preset, true);
+        gridCoords.appendChild(box);
+      });
+      coordsRendered = true;
+    }
+
+    // CG helpers
+    function cgLock(){
+      cgEle.disabled = true; cgEla.disabled = true;
+      cgTel.disabled = true; cgEnd.disabled = true;
+      cgBuscar.disabled = true;
+      cgAdd.textContent = 'Alterar';
+      cgLocked = true;
+    }
+    function cgUnlockAndClear(){
+      cgEle.disabled = false; cgEla.disabled = false;
+      cgTel.disabled = false; cgEnd.disabled = false;
+      cgBuscar.disabled = false;
+      cgAdd.textContent = 'Adicionar';
+      cgLocked = false; currentCGId = null;
+      cgEle.value = ''; cgEla.value = ''; cgTel.value = ''; cgEnd.value = '';
+      cgEle.placeholder = 'Nome (Ele)'; cgEla.placeholder = 'Nome (Ela)';
+    }
+    function renderCGPresetIfAny(){
+      if (initialData && initialData.cg){
+        cgEle.value = initialData.cg.nome_ele || '';
+        cgEla.value = initialData.cg.nome_ela || '';
+        cgTel.value = initialData.cg.telefones || '';
+        cgEnd.value = initialData.cg.endereco || '';
+        currentCGId = initialData.cg.id || null;
+        cg.style.display = ''; cg.classList.remove('disabled');
+        cgLock(); cgAdd.disabled = false;
+        cgStatus.textContent = 'Já existe “Casal Coordenador Geral” para este ano.';
+        cgStatus.className = 'status warn';
+        // Como já existe CG, podemos exibir as caixas dos coordenadores de equipe
+        showCoordsSection();
+      }
+    }
+    function maybeEnableCG(){
+      if (totalAdicionados >= 5){
+        cg.style.display = ''; cg.classList.remove('disabled');
+        if (!initialData.cg && !cgLocked){
+          cgEle.disabled = false; cgEla.disabled = false;
+          cgBuscar.disabled = false; cgAdd.disabled = false;
+          cgEle.placeholder = 'Nome (Ele)'; cgEla.placeholder = 'Nome (Ela)';
+        }
+      }
+    }
+
+    // Caixa reusável (Dirigentes / Coordenadores de Equipe)
+    function renderPessoaBox(boxKey, titulo, equipeFinalStr, preset, isCoordEquipe){
+      const boxId = idSafe(boxKey);
       const el = document.createElement('div');
       el.className = 'card';
+
+      const headerLink = isCoordEquipe
+        ? `<a href="${makeEquipeURL(titulo)}">${titulo}</a>`
+        : `${titulo}`;
+
+      const hasPreset = preset && (preset.nome_ele || preset.nome_ela);
+      const showForm = !isCoordEquipe || hasPreset;
+
       el.innerHTML = `
-        <h3 style="margin:0 0 8px;">${equipe}</h3>
-        <div class="row">
-          <div>
-            <label for="${idSafe}_ele">Nome (Ele)</label>
-            <input id="${idSafe}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
+        <h3 class="card-title">${headerLink}</h3>
+        <div ${showForm ? '' : 'style="display:none"'} id="${boxId}_form">
+          <div class="row">
+            <div>
+              <label for="${boxId}_ele">Nome (Ele)</label>
+              <input id="${boxId}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
+            </div>
+            <div>
+              <label for="${boxId}_ela">Nome (Ela)</label>
+              <input id="${boxId}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
+            </div>
           </div>
-          <div>
-            <label for="${idSafe}_ela">Nome (Ela)</label>
-            <input id="${idSafe}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label for="${boxId}_telefones">Telefones</label>
+              <input id="${boxId}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
+            </div>
+            <div>
+              <label for="${boxId}_endereco">Endereço</label>
+              <input id="${boxId}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
+            </div>
           </div>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn" id="${boxId}_buscar">Buscar</button>
+            <button class="btn primary" id="${boxId}_action">${preset?.id ? 'Alterar' : 'Adicionar'}</button>
+          </div>
+          <div class="status" id="${boxId}_status"></div>
         </div>
-
-        <div class="row" style="margin-top:8px;">
-          <div>
-            <label for="${idSafe}_telefones">Telefones</label>
-            <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
-          </div>
-          <div>
-            <label for="${idSafe}_endereco">Endereço</label>
-            <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
-          </div>
+        <div id="${boxId}_hint" ${showForm ? 'style="display:none"' : ''} class="small muted">
+          Clique no título para escolher um casal na Visão de Equipes.
         </div>
-
-        <div class="row" style="margin-top:8px;">
-          <button class="btn" id="${idSafe}_buscar">Buscar</button>
-          <button class="btn primary" id="${idSafe}_action">${preset?.id ? 'Alterar' : 'Adicionar'}</button>
-        </div>
-
-        <div class="status" id="${idSafe}_status"></div>
       `;
 
-      // Handlers
-      setTimeout(() => {
-        const $ele = document.getElementById(`${idSafe}_ele`);
-        const $ela = document.getElementById(`${idSafe}_ela`);
-        const $tels = document.getElementById(`${idSafe}_telefones`);
-        const $end = document.getElementById(`${idSafe}_endereco`);
-        const $buscar = document.getElementById(`${idSafe}_buscar`);
-        const $action = document.getElementById(`${idSafe}_action`);
-        const $status = document.getElementById(`${idSafe}_status`);
+      setTimeout(()=>{
+        const $form = document.getElementById(`${boxId}_form`);
+        const $hint = document.getElementById(`${boxId}_hint`);
+        const $ele = document.getElementById(`${boxId}_ele`);
+        const $ela = document.getElementById(`${boxId}_ela`);
+        const $tels = document.getElementById(`${boxId}_telefones`);
+        const $end = document.getElementById(`${boxId}_endereco`);
+        const $buscar = document.getElementById(`${boxId}_buscar`);
+        const $action = document.getElementById(`${boxId}_action`);
+        const $status = document.getElementById(`${boxId}_status`);
 
         let currentId = preset?.id || null;
         let isLocked = !!preset?.id;
 
-        function lockCard() {
-          $ele.disabled = true; $ela.disabled = true;
-          $tels.disabled = true; $end.disabled = true;
-          $buscar.disabled = true;
+        function lockCard(){
+          [$ele,$ela,$tels,$end,$buscar].forEach(i => i && (i.disabled = true));
           isLocked = true;
-          $action.textContent = 'Alterar';
+          if ($action) $action.textContent = 'Alterar';
         }
-        function unlockAndClearCard() {
-          $ele.disabled = false; $ela.disabled = false;
-          $tels.disabled = false; $end.disabled = false;
-          $buscar.disabled = false;
-          $ele.value = ''; $ela.value = ''; $tels.value = ''; $end.value = '';
+        function unlockAndClearCard(){
+          [$ele,$ela,$tels,$end,$buscar].forEach(i => i && (i.disabled = false));
+          if ($ele) $ele.value=''; if ($ela) $ela.value='';
+          if ($tels) $tels.value=''; if ($end) $end.value='';
           currentId = null;
           isLocked = false;
-          $action.textContent = 'Adicionar';
+          if ($action) $action.textContent = 'Adicionar';
         }
 
-        // Se já veio preenchido do banco para o ano, consideramos "adicionado"
-        if (preset && (preset.nome_ele || preset.nome_ela)) {
-          lockCard();
-          totalAdicionados += 1;
-          kpiDone.textContent = String(totalAdicionados);
-        }
+        if (hasPreset){ lockCard(); }
 
-        async function buscar() {
+        async function buscar(){
           $status.textContent = '';
           const nome_ele = ($ele.value || '').trim();
           const nome_ela = ($ela.value || '').trim();
-          if (!nome_ele || !nome_ela) {
+          if (!nome_ele || !nome_ela){
             $status.textContent = 'Preencha Nome (Ele) e Nome (Ela) para buscar.';
             $status.className = 'status warn';
             return;
           }
-          try {
+          try{
             const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
+              method: 'POST', headers: {'Content-Type':'application/json'},
               body: JSON.stringify({ nome_ele, nome_ela })
             });
             const data = await resp.json();
-            if (data.ok) {
+            if (data.ok){
               $tels.value = data.telefones || '';
               $end.value = data.endereco || '';
               $status.textContent = `Dados carregados de ${data.origem}.`;
@@ -245,163 +334,126 @@
               $status.textContent = data.msg || 'Não encontrado.';
               $status.className = 'status err';
             }
-          } catch(e) {
-            $status.textContent = 'Erro ao buscar dados.';
+          } catch(e){
+            $status.textContent = 'Erro ao buscar.';
             $status.className = 'status err';
           }
         }
 
-        async function adicionar() {
+        async function adicionar(){
           $status.textContent = '';
-          const nome_ele = ($ele.value || '').trim();
-          const nome_ela = ($ela.value || '').trim();
-          const telefones = ($tels.value || '').trim();
-          const endereco = ($end.value || '').trim();
-          if (!anoSelecionado) {
+          const nome_ele = ($ele?.value || '').trim();
+          const nome_ela = ($ela?.value || '').trim();
+          const telefones = ($tels?.value || '').trim();
+          const endereco = ($end?.value || '').trim();
+          if (!anoSelecionado){
             $status.textContent = 'Informe o ano antes.';
             $status.className = 'status warn';
             return;
           }
-          if (!nome_ele || !nome_ela) {
+          if (!nome_ele || !nome_ela){
             $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
             $status.className = 'status warn';
             return;
           }
-          try {
+          try{
             const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
+              method: 'POST', headers: {'Content-Type':'application/json'},
               body: JSON.stringify({
                 ano: anoSelecionado,
-                equipe: `${equipe}`,
+                equipe: equipeFinalStr,
                 nome_ele, nome_ela, telefones, endereco
               })
             });
             const data = await resp.json();
-            if (data.ok) {
+            if (data.ok){
               currentId = data.id || null;
               $status.textContent = 'Adicionado com sucesso.';
               $status.className = 'status ok';
               lockCard();
-              totalAdicionados += 1;
-              kpiDone.textContent = String(totalAdicionados);
-              // habilita CG quando tiver 5/5
-              maybeEnableCG();
             } else {
               $status.textContent = data.msg || 'Falha ao adicionar.';
               $status.className = 'status err';
             }
-          } catch(e) {
+          } catch(e){
             $status.textContent = 'Erro ao adicionar.';
             $status.className = 'status err';
           }
         }
 
-        async function marcarStatus(statusEscolhido) {
-          if (!currentId) {
+        async function marcarStatus(choice){
+          if (!currentId){
             $status.textContent = 'Registro atual sem ID; recarregue a página.';
             $status.className = 'status err';
             return;
           }
-          try {
+          try{
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ id: currentId, status: statusEscolhido })
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ id: currentId, status: choice })
             });
             const data = await resp.json();
-            if (data.ok) {
-              $status.textContent = `Registro marcado como "${statusEscolhido}". Campos liberados para novo cadastro.`;
+            if (data.ok){
+              $status.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
               $status.className = 'status ok';
               unlockAndClearCard();
-              // se estava contado como adicionado, decrementa (precisa novo cadastro)
-              if (totalAdicionados > 0) {
-                totalAdicionados -= 1;
-                kpiDone.textContent = String(totalAdicionados);
-              }
             } else {
               $status.textContent = data.msg || 'Falha ao alterar status.';
               $status.className = 'status err';
             }
-          } catch (e) {
+          } catch(err){
             $status.textContent = 'Erro ao alterar status.';
             $status.className = 'status err';
           }
         }
 
-        $buscar.addEventListener('click', (e) => { e.preventDefault(); buscar(); });
-        $action.addEventListener('click', (e) => {
+        if ($buscar) $buscar.addEventListener('click', e => { e.preventDefault(); buscar(); });
+        if ($action) $action.addEventListener('click', e => {
           e.preventDefault();
-          if ($action.textContent === 'Adicionar') {
-            adicionar();
-          } else {
-            makeModal((choice) => marcarStatus(choice));
-          }
+          if (!isLocked){ adicionar(); }
+          else { makeModal(choice => marcarStatus(choice)); }
         });
-      }, 0);
+
+        // Preenchimento automático ao retornar da Visão de Equipes
+        if (isCoordEquipe && retTarget && idSafe(retTarget) === idSafe(boxKey) && retEle && retEla){
+          if ($form && $form.style.display === 'none'){ $form.style.display = ''; }
+          if ($ele) $ele.value = retEle;
+          if ($ela) $ela.value = retEla;
+          buscar();
+        }
+      },0);
 
       return el;
     }
 
-    function cgLock() {
-      cgEle.disabled = true; cgEla.disabled = true;
-      cgTel.disabled = true; cgEnd.disabled = true;
-      cgBuscar.disabled = true;
-      cgAdd.textContent = 'Alterar';
-      cgLocked = true;
-    }
-    function cgUnlockAndClear() {
-      cgEle.disabled = false; cgEla.disabled = false;
-      cgTel.disabled = false; cgEnd.disabled = false;
-      cgBuscar.disabled = false;
-      cgAdd.textContent = 'Adicionar';
-      cgLocked = false;
-      currentCGId = null;
-      cgEle.value = ''; cgEla.value = ''; cgTel.value = ''; cgEnd.value = '';
-      cgEle.placeholder = 'Nome (Ele)';
-      cgEla.placeholder = 'Nome (Ela)';
-    }
+    // Fluxo principal
+    function bootAfterAno(){
+      // Dirigentes
+      gridDir.innerHTML = '';
+      totalAdicionados = 0; kpiDone.textContent = '0'; kpi.style.display = '';
+      equipesDir.forEach(eq => {
+        const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
+        const box = renderPessoaBox(eq, eq, eq, preset, false);
+        if (preset && (preset.nome_ele || preset.nome_ela)) totalAdicionados += 1;
+        gridDir.appendChild(box);
+      });
+      kpiDone.textContent = String(totalAdicionados);
 
-    function renderCGPresetIfAny() {
-      if (initialData && initialData.cg) {
-        // preenche dados existentes
-        cgEle.value = initialData.cg.nome_ele || '';
-        cgEla.value = initialData.cg.nome_ela || '';
-        cgTel.value = initialData.cg.telefones || '';
-        cgEnd.value = initialData.cg.endereco || '';
-        currentCGId = initialData.cg.id || null;
+      // CG
+      cg.style.display = '';
+      renderCGPresetIfAny();
+      maybeEnableCG();
 
-        // habilita cartão do CG (já há 5/5 ou veio direto pela URL)
-        cg.style.display = '';
-        cg.classList.remove('disabled');
-
-        // trava edição, mas deixa o botão Alterar ativo
-        cgLock();
-        cgAdd.disabled = false;   // permite Alterar
-        cgStatus.textContent = 'Já existe “Casal Coordenador Geral” para este ano.';
-        cgStatus.className = 'status warn';
-      }
+      // NÃO renderiza coordenadores agora; só depois do CG
+      coordsTitle.style.display = 'none';
+      gridCoords.style.display = 'none';
     }
 
-    function maybeEnableCG() {
-      if (totalAdicionados >= 5) {
-        cg.style.display = '';
-        cg.classList.remove('disabled');
-        if (!initialData.cg && !cgLocked) {
-          cgEle.disabled = false;
-          cgEla.disabled = false;
-          cgBuscar.disabled = false;
-          cgAdd.disabled = false;
-          cgEle.placeholder = 'Nome (Ele)';
-          cgEla.placeholder = 'Nome (Ela)';
-        }
-      }
-    }
-
-    btnContinuar.addEventListener('click', (e) => {
+    // Handlers
+    btnContinuar.addEventListener('click', (e)=>{
       e.preventDefault();
       const val = (anoInput.value || '').trim();
-      if (!/^\d{4}$/.test(val)) {
+      if (!/^\d{4}$/.test(val)){
         anoMsg.textContent = 'Informe um ano válido (YYYY).';
         anoMsg.className = 'status err';
         return;
@@ -409,58 +461,33 @@
       anoSelecionado = parseInt(val, 10);
       anoMsg.textContent = `Ano selecionado: ${anoSelecionado}`;
       anoMsg.className = 'status ok';
-      grid.innerHTML = '';
-
-      totalAdicionados = 0;
-      kpiDone.textContent = '0';
-      kpi.style.display = '';
-
-      // cria caixas dos dirigentes, com preset se houver
-      equipes.forEach(eq => {
-        const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
-        grid.appendChild(renderCaixa(eq, preset));
-      });
-
       document.getElementById('dirigentes-grid').style.display = '';
-
-      // se já tinha presets, já conta e habilita CG se >=5
-      if (initialData && initialData.dirigentes) {
-        const nPre = Object.keys(initialData.dirigentes).length;
-        totalAdicionados = nPre;
-        kpiDone.textContent = String(totalAdicionados);
-      }
-
-      // CG
-      renderCGPresetIfAny();
-      maybeEnableCG();
+      bootAfterAno();
     });
 
-    // Auto-continuar se ano veio na URL
-    window.addEventListener('DOMContentLoaded', () => {
-      if (anoPre) {
-        btnContinuar.click();
-      }
+    // Auto-continuar se ano na URL
+    window.addEventListener('DOMContentLoaded', ()=>{
+      if (anoPre){ btnContinuar.click(); }
     });
 
-    // ----- CG Buscar / Adicionar / Alterar -----
-    cgBuscar.addEventListener('click', async (e) => {
+    // CG buscar/adicionar/alterar
+    cgBuscar.addEventListener('click', async (e)=>{
       e.preventDefault();
       cgStatus.textContent = '';
       const nome_ele = (cgEle.value || '').trim();
       const nome_ela = (cgEla.value || '').trim();
-      if (!nome_ele || !nome_ela) {
+      if (!nome_ele || !nome_ela){
         cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
         cgStatus.className = 'status warn';
         return;
       }
-      try {
+      try{
         const resp = await fetch('{{ url_for("api_buscar_cg") }}', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ nome_ele, nome_ela })
         });
         const data = await resp.json();
-        if (data.ok) {
+        if (data.ok){
           cgTel.value = data.telefones || '';
           cgEnd.value = data.endereco || '';
           cgStatus.textContent = 'Dados carregados. Casal é elegível para CG.';
@@ -469,36 +496,35 @@
           cgStatus.textContent = data.msg || 'Não permitido.';
           cgStatus.className = 'status err';
         }
-      } catch (err) {
+      } catch(err){
         cgStatus.textContent = 'Erro ao buscar.';
         cgStatus.className = 'status err';
       }
     });
 
-    cgAdd.addEventListener('click', async (e) => {
+    cgAdd.addEventListener('click', async (e)=>{
       e.preventDefault();
       cgStatus.textContent = '';
-
-      // Se já há um CG (locked), clique em Alterar → abre modal de status
-      if (cgLocked && currentCGId) {
-        makeModal(async (choice) => {
-          try {
+      if (cgLocked && currentCGId){
+        makeModal(async (choice)=>{
+          try{
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
+              method:'POST', headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ id: currentCGId, status: choice })
             });
             const data = await resp.json();
-            if (data.ok) {
+            if (data.ok){
               cgStatus.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
               cgStatus.className = 'status ok';
               cgUnlockAndClear();
-              // não altera totalAdicionados dos Dirigentes
+              // ao liberar, ocultamos coordenadores até novo CG ser escolhido
+              coordsTitle.style.display = 'none';
+              gridCoords.style.display = 'none';
             } else {
               cgStatus.textContent = data.msg || 'Falha ao alterar status.';
               cgStatus.className = 'status err';
             }
-          } catch (err) {
+          } catch(err){
             cgStatus.textContent = 'Erro ao alterar status.';
             cgStatus.className = 'status err';
           }
@@ -506,42 +532,38 @@
         return;
       }
 
-      // Fluxo "Adicionar" (novo CG)
       const nome_ele = (cgEle.value || '').trim();
       const nome_ela = (cgEla.value || '').trim();
       const telefones = (cgTel.value || '').trim();
       const endereco = (cgEnd.value || '').trim();
-      if (!anoSelecionado) {
+      if (!anoSelecionado){
         cgStatus.textContent = 'Informe o ano antes.';
         cgStatus.className = 'status warn';
         return;
       }
-      if (!nome_ele || !nome_ela) {
+      if (!nome_ele || !nome_ela){
         cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
         cgStatus.className = 'status warn';
         return;
       }
-      try {
+      try{
         const resp = await fetch('{{ url_for("api_adicionar_cg") }}', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            ano: anoSelecionado,
-            nome_ele, nome_ela, telefones, endereco
-          })
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ano: anoSelecionado, nome_ele, nome_ela, telefones, endereco })
         });
         const data = await resp.json();
-        if (data.ok) {
+        if (data.ok){
           currentCGId = data.id || null;
           cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
           cgStatus.className = 'status ok';
-          cgLock();              // trava e muda botão para "Alterar"
-          cgAdd.disabled = false; // mantém Alterar habilitado
+          cgLock(); cgAdd.disabled = false;
+          // agora podemos mostrar as caixas dos coordenadores de equipe
+          showCoordsSection();
         } else {
           cgStatus.textContent = data.msg || 'Falha ao adicionar.';
           cgStatus.className = 'status err';
         }
-      } catch (err) {
+      } catch(err){
         cgStatus.textContent = 'Erro ao adicionar.';
         cgStatus.className = 'status err';
       }
