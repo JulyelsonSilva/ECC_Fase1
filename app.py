@@ -774,10 +774,10 @@ def visao_equipes():
         cursor.close()
         conn.close()
 
-    # Quando vier da nova_montagem, o template (visao_equipe.html) deve usar os params:
+    # Quando vier da nova_montagem, o template (visao_equipes.html) deve usar os params:
     #   target=<teamKey> e ano_montagem=<ano>
     # para transformar nomes clicáveis e redirecionar de volta para /montagem/nova
-    return render_template('visao_equipe.html',
+    return render_template('visao_equipes.html',
                            equipe_selecionada=equipe,
                            tabela=tabela,
                            colunas=colunas)
