@@ -185,24 +185,27 @@ def montagem():
 # Página "Nova Montagem" (aceita ?ano=YYYY para pré-preencher)
 @app.route('/montagem/nova')
 def nova_montagem():
+    import traceback
     ano_preselecionado = request.args.get('ano', type=int)
     initial_data = {
         "dirigentes": {},  # chave = nome da equipe -> {id, nome_ele, nome_ela, telefones, endereco}
-        "cg": None         # dict com {id, nome_ele, nome_ela, telefones, endereco} ou None
+        "cg": None         # dict {id, nome_ele, nome_ela, telefones, endereco} ou None
     }
 
-    if ano_preselecionado:
-        equipes = [
-            "Equipe Dirigente - MONTAGEM",
-            "Equipe Dirigente -FICHAS",
-            "Equipe Dirigente - FINANÇAS",
-            "Equipe Dirigente - PALESTRA",
-            "Equipe Dirigente - PÓS ENCONTRO",
-        ]
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cur = conn.cursor(dictionary=True)
-        try:
-            # Pré-preenche os 5 dirigentes (se já existirem para o ano) — com ID
+    try:
+        if ano_preselecionado:
+            equipes = [
+                "Equipe Dirigente - MONTAGEM",
+                "Equipe Dirigente -FICHAS",
+                "Equipe Dirigente - FINANÇAS",
+                "Equipe Dirigente - PALESTRA",
+                "Equipe Dirigente - PÓS ENCONTRO",
+            ]
+
+            conn = mysql.connector.connect(**DB_CONFIG)
+            cur = conn.cursor(dictionary=True)
+
+            # Pré-preenche 5 dirigentes (se existirem para o ano) — com ID
             for equipe in equipes:
                 cur.execute("""
                     SELECT id, nome_ele, nome_ela, telefones, endereco
@@ -221,11 +224,11 @@ def nova_montagem():
                         "endereco": r.get("endereco") or ""
                     }
 
-            # Pré-preenche Coordenador Geral do ano (se existir) — com ID
+            # Pré-preenche Coordenador Geral (se existir) — com ID
             cur.execute("""
                 SELECT id, nome_ele, nome_ela, telefones, endereco
                   FROM encontreiros
-                 WHERE ano = %s AND UPPER(equipe) LIKE 'CASAL COORDENADOR GERAL'
+                 WHERE ano = %s AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
                  ORDER BY id ASC
                  LIMIT 1
             """, (ano_preselecionado,))
@@ -238,16 +241,18 @@ def nova_montagem():
                     "telefones": r_cg.get("telefones") or "",
                     "endereco": r_cg.get("endereco") or "",
                 }
-        finally:
-            try:
-                cur.close()
-                conn.close()
-            except Exception:
-                pass
 
-    return render_template('nova_montagem.html',
-                           ano_preselecionado=ano_preselecionado,
-                           initial_data=initial_data)
+            cur.close()
+            conn.close()
+
+        return render_template('nova_montagem.html',
+                               ano_preselecionado=ano_preselecionado,
+                               initial_data=initial_data)
+    except Exception as e:
+        # Loga no servidor
+        app.logger.exception("Erro em /montagem/nova")
+        # Mostra na tela (temporário para debug)
+        return f"<h3>Erro em /montagem/nova</h3><pre>{traceback.format_exc()}</pre>", 500
 
 
 # -----------------------------
