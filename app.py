@@ -411,13 +411,25 @@ def api_marcar_status():
     data = request.get_json(silent=True) or {}
     rec_id = data.get('id')
     status = (data.get('status') or '').strip()
+    observacao = (data.get('observacao') or '').strip()
+
     if not rec_id or status not in ('Recusou', 'Desistiu', 'Concluido', 'Aberto'):
         return jsonify({"ok": False, "msg": "Parâmetros inválidos."}), 400
+
+    # Justificativa obrigatória para Recusou/Desistiu
+    if status in ('Recusou', 'Desistiu') and not observacao:
+        return jsonify({"ok": False, "msg": "Justificativa é obrigatória para Recusou/Desistiu."}), 400
 
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE encontreiros SET status=%s WHERE id=%s", (status, rec_id))
+        if status in ('Recusou', 'Desistiu'):
+            cur.execute("UPDATE encontreiros SET status=%s, observacao=%s WHERE id=%s",
+                        (status, observacao, rec_id))
+        else:
+            # Para Aberto/Concluido não exigimos observação; não alteramos observacao existente
+            cur.execute("UPDATE encontreiros SET status=%s WHERE id=%s",
+                        (status, rec_id))
         conn.commit()
         return jsonify({"ok": True})
     finally:
