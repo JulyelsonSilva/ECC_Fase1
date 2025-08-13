@@ -2,15 +2,15 @@
 {% block content %}
   <h2 style="text-align: center;">Visão por Equipe: {{ equipe_selecionada }}</h2>
 
-  <!-- Voltar -->
   <a href="{{ url_for('index') }}">
     <button type="button">Voltar para Página Inicial</button>
   </a>
   <br><br>
 
-  <!-- Filtro de equipe (preserva 'target' se veio da nova_montagem) -->
+  <!-- Filtro (preserva target e ano_montagem quando vier da nova_montagem) -->
   <form method="get" style="text-align: center; margin-bottom: 20px;">
     <input type="hidden" name="target" value="{{ target or '' }}">
+    <input type="hidden" name="ano_montagem" value="{{ ano_montagem or '' }}">
     <select name="equipe" onchange="this.form.submit()">
       <option value="">Selecione uma equipe</option>
       <option value="Dirigentes" {% if equipe_selecionada == 'Dirigentes' %}selected{% endif %}>Dirigentes</option>
@@ -43,25 +43,30 @@
           <td>{{ ano }}</td>
           {% for nome in linha %}
             {% set raw = nome or '' %}
-            {% set is_coord = raw.startswith('*') %}   {# Coordenador do ano/linha #}
-            {% set is_mark  = raw.startswith('~') %}   {# Marcado amarelo (já foi coordenador globalmente) #}
+            {% set is_coord = raw.startswith('*') %}
+            {% set is_mark  = raw.startswith('~') %}
             {% set clean    = raw[1:] if (is_coord or is_mark) else raw %}
             <td>
               {% if raw %}
                 {% if is_coord %}
                   <b>{{ clean }}</b>
                 {% else %}
-                  {# Se veio da nova_montagem (tem target), habilita links;
-                     se veio do index (sem target), mostra apenas o texto. #}
-                  {% if target %}
+                  {% if target and ano_montagem %}
                     {% set partes = clean.split(' e ') %}
                     {% if partes|length == 2 %}
+                      {% set ele = partes[0] %}
+                      {% set ela = partes[1] %}
+                      {% set href = url_for('visao_equipes_select',
+                                            ano_montagem=ano_montagem,
+                                            target=target,
+                                            ele=ele,
+                                            ela=ela) %}
                       {% if is_mark %}
                         <span style="background-color: yellow">
-                          <a href="{{ url_for('nova_montagem') }}?ano={{ ano }}&target={{ target|urlencode }}&ele={{ partes[0]|urlencode }}&ela={{ partes[1]|urlencode }}">{{ clean }}</a>
+                          <a href="{{ href }}">{{ clean }}</a>
                         </span>
                       {% else %}
-                        <a href="{{ url_for('nova_montagem') }}?ano={{ ano }}&target={{ target|urlencode }}&ele={{ partes[0]|urlencode }}&ela={{ partes[1]|urlencode }}">{{ clean }}</a>
+                        <a href="{{ href }}">{{ clean }}</a>
                       {% endif %}
                     {% else %}
                       {% if is_mark %}
