@@ -13,7 +13,17 @@ DB_CONFIG = {
     'password': 'eccdivino2025',
     'database': 'eccdivinomcz2'
 }
-
+def safe_fetch_one(cur, sql, params):
+    """
+    Executa SELECT ... LIMIT 1 com tratamento.
+    Retorna dict ou None. Nunca deixa a exceção subir.
+    """
+    try:
+        cur.execute(sql, params)
+        return cur.fetchone()
+    except (mysql_errors.ProgrammingError, mysql_errors.DatabaseError, mysql_errors.InterfaceError, mysql_errors.OperationalError):
+        # Se a coluna não existir, ou der timeout/erro de rede, só devolve None
+        return None
 # -----------------------------
 # Mapeamentos de Equipes
 # -----------------------------
@@ -767,18 +777,17 @@ def visao_casal():
                            erro=erro)
 
 # -----------------------------
-# Organograma
+# Relatório de Casais
 # -----------------------------
+
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     def split_casal(line: str):
-        """Aceita ';' | ' e ' | 1º espaço."""
         raw = (line or '').strip()
         if not raw:
             return None, None
         if ";" in raw:
             a, b = raw.split(";", 1); return a.strip(), b.strip()
-        import re
         if re.search(r"\s+e\s+", raw, flags=re.I):
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I); return a.strip(), b.strip()
         if " " in raw:
@@ -792,121 +801,107 @@ def relatorio_casais():
     if request.method == 'POST' and entrada.strip():
         linhas = [l.strip() for l in entrada.splitlines() if l.strip()]
 
-        # Conexão com timeout curto
-        conn = mysql.connector.connect(
-            host=DB_CONFIG['host'],
-            user=DB_CONFIG['user'],
-            password=DB_CONFIG['password'],
-            database=DB_CONFIG['database'],
-            connection_timeout=5
-        )
-        cur = conn.cursor(dictionary=True)
+        # Conexão com timeouts curtos para não travar o worker
         try:
-            def fetch_encontreiros(a_pref, b_pref):
+            conn = mysql.connector.connect(
+                host=DB_CONFIG['host'],
+                user=DB_CONFIG['user'],
+                password=DB_CONFIG['password'],
+                database=DB_CONFIG['database'],
+                connection_timeout=5
+            )
+            cur = conn.cursor(dictionary=True)
+        except mysql_errors.Error:
+            # Se o banco estiver fora, devolve tudo como erro de conexão sem derrubar o app
+            for linha in linhas:
+                resultados_fail.append({"nome": linha, "endereco": "Erro de conexão com o banco", "telefones": "— / —"})
+            return render_template("relatorio_casais.html", resultados=resultados_fail, titulo=titulo, entrada=entrada)
+
+        try:
+            def consulta_prefix_like(a: str, b: str):
                 """
-                Consulta ENCONTREIROS (mais recente) usando colunas que existem:
-                - nomes: nome_ele/nome_ela (ou fallback para nome_usual_ele/nome_usual_ela)
-                - dados: endereco, telefones (NÃO tenta telefone_ele/telefone_ela aqui)
+                LIKE de prefixo (aceita primeiros nomes, mais leve): 'a%' e 'b%'.
+                Cobre inversão via OR, e usa apenas colunas que sabemos existir em cada tabela.
+                Nunca lança exceção.
                 """
-                # 1) tentar nome_ele/nome_ela
-                try:
-                    cur.execute(
+                a = (a or "").strip(); b = (b or "").strip()
+                if not a or not b:
+                    return None
+                a_pref, b_pref = f"{a}%", f"{b}%"
+
+                # ENCONTREIROS (endereços + telefones em campo único 'telefones'; NÃO usa telefone_ele/ela aqui)
+                work = safe_fetch_one(
+                    cur,
+                    "SELECT endereco, telefones "
+                    "FROM encontreiros "
+                    "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                    "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                    "ORDER BY ano DESC LIMIT 1",
+                    (a_pref, b_pref, b_pref, a_pref)
+                )
+                if work is None:
+                    # fallback se seu schema usar nome_usual_* em encontreiros
+                    work = safe_fetch_one(
+                        cur,
                         "SELECT endereco, telefones "
                         "FROM encontreiros "
-                        "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                        "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                        "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                        "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
                         "ORDER BY ano DESC LIMIT 1",
                         (a_pref, b_pref, b_pref, a_pref)
                     )
-                    return cur.fetchone()
-                except mysql_errors.ProgrammingError as e:
-                    # 2) fallback: nome_usual_ele/nome_usual_ela
-                    if e.errno != 1054:
-                        raise
-                    try:
-                        cur.execute(
-                            "SELECT endereco, telefones "
-                            "FROM encontreiros "
-                            "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                            "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                            "ORDER BY ano DESC LIMIT 1",
-                            (a_pref, b_pref, b_pref, a_pref)
-                        )
-                        return cur.fetchone()
-                    except mysql_errors.Error:
-                        return None
-                except mysql_errors.Error:
-                    return None
 
-            def fetch_encontristas(a_pref, b_pref):
-                """
-                Consulta ENCONTRISTAS (base), preferindo nom_usuais e caindo para nom_completos.
-                Retorna endereco, telefone_ele, telefone_ela (se existirem).
-                """
-                # 1) tentar com usuais + completos
-                try:
-                    cur.execute(
+                # ENCONTRISTAS (endereços + telefones separados; tenta usuais e cai pra completos)
+                base = safe_fetch_one(
+                    cur,
+                    "SELECT endereco, telefone_ele, telefone_ela "
+                    "FROM encontristas "
+                    "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                    "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
+                    "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                    "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                    "LIMIT 1",
+                    (a_pref, b_pref, b_pref, a_pref, a_pref, b_pref, b_pref, a_pref)
+                )
+                if base is None:
+                    base = safe_fetch_one(
+                        cur,
                         "SELECT endereco, telefone_ele, telefone_ela "
                         "FROM encontristas "
-                        "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                        "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                        "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
+                        "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
                         "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
                         "LIMIT 1",
-                        (a_pref, b_pref, b_pref, a_pref, a_pref, b_pref, b_pref, a_pref)
+                        (a_pref, b_pref, b_pref, a_pref)
                     )
-                    return cur.fetchone()
-                except mysql_errors.ProgrammingError as e:
-                    if e.errno != 1054:
-                        raise
-                    # 2) fallback: só nome_ele/nome_ela
-                    try:
-                        cur.execute(
-                            "SELECT endereco, telefone_ele, telefone_ela "
-                            "FROM encontristas "
-                            "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                            "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                            "LIMIT 1",
-                            (a_pref, b_pref, b_pref, a_pref)
-                        )
-                        return cur.fetchone()
-                    except mysql_errors.Error:
-                        return None
-                except mysql_errors.Error:
-                    return None
+
+                # Consolidação
+                if work or base:
+                    if work:
+                        endereco = (work.get('endereco') if work else None) or (base.get('endereco') if base else "")
+                        telefones = work.get('telefones')
+                        if not telefones:
+                            if base:
+                                telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                            else:
+                                telefones = "— / —"
+                    else:
+                        endereco = base.get('endereco') or "—"
+                        telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
+                    return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
+
+                return None
 
             for linha in linhas:
-                try:
-                    ele, ela = split_casal(linha)
-                    if not ele or not ela:
-                        resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
-                        continue
+                ele, ela = split_casal(linha)
+                if not ele or not ela:
+                    resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
+                    continue
 
-                    a_pref = f"{ele.strip()}%"
-                    b_pref = f"{ela.strip()}%"
-
-                    work = fetch_encontreiros(a_pref, b_pref)
-                    base = fetch_encontristas(a_pref, b_pref)
-
-                    if work or base:
-                        if work:
-                            endereco = (work.get('endereco') if work else None) or (base.get('endereco') if base else "")
-                            telefones = work.get('telefones')
-                            if not telefones:
-                                # tenta compor a partir da base (se existir)
-                                if base:
-                                    telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                                else:
-                                    telefones = "— / —"
-                        else:
-                            endereco = base.get('endereco') or "—"
-                            telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                        resultados_ok.append({"nome": f"{ele} e {ela}", "endereco": endereco or "—", "telefones": telefones or "— / —"})
-                    else:
-                        resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
-                except Exception as e:
-                    app.logger.exception(f"Falha ao processar linha: {linha}")
-                    resultados_fail.append({"nome": linha, "endereco": "Erro ao processar", "telefones": str(e)})
+                dados = consulta_prefix_like(ele, ela)  # cobre inversão via OR na SQL
+                if dados:
+                    resultados_ok.append({"nome": f"{ele} e {ela}", **dados})
+                else:
+                    resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
         finally:
             try:
                 cur.close()
@@ -914,8 +909,9 @@ def relatorio_casais():
             except Exception:
                 pass
 
-    resultados = resultados_ok + resultados_fail  # encontrados primeiro
+    resultados = resultados_ok + resultados_fail
     return render_template("relatorio_casais.html", resultados=resultados, titulo=titulo, entrada=entrada)
+
 
 # -----------------------------
 # Montagem de Equipe (integrantes)
