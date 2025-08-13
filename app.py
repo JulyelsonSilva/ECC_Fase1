@@ -141,19 +141,17 @@ def editar_encontrista(encontrista_id):
 
 
 # -----------------------------
-# MONTAGEM (anos abertos x concluídos)
+# MONTAGEM (anos abertos x concluídos + contadores)
 # -----------------------------
 @app.route('/montagem')
 def montagem():
     """
-    Esquerda: 'Aberto' -> anos que têm pelo menos 1 registro com status != 'Concluido'
-    Direita:  'Concluido' -> anos em que TODOS os registros têm status = 'Concluido'
-    A lista 'Concluido' vira link para /encontreiros?ano=YYYY
+    Esquerda: 'Aberto' -> anos com pelo menos 1 registro status != 'Concluido'
+    Direita:  'Concluído' -> anos onde TODOS têm status = 'Concluido'
+    Exibe contadores 'qtd_concluido/total' por ano.
     """
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
-
-    # Conta por ano: quantos 'concluido' vs total (case/whitespace safe)
     cursor.execute("""
         SELECT 
             ano,
@@ -167,19 +165,129 @@ def montagem():
     cursor.close()
     conn.close()
 
-    anos_concluidos = []
-    anos_aberto = []
+    anos_concluidos = []   # [{ano: 2024, qtd_concluido: 12, total: 12}, ...]
+    anos_aberto = []       # [{ano: 2025, qtd_concluido: 5, total: 12}, ...]
 
     for r in rows:
-        # Concluído somente se TODOS daquele ano estão 'Concluido'
-        if r['total'] > 0 and r['qtd_concluido'] == r['total']:
-            anos_concluidos.append(r['ano'])
+        item = {"ano": r["ano"], "qtd_concluido": int(r["qtd_concluido"]), "total": int(r["total"])}
+        if item["total"] > 0 and item["qtd_concluido"] == item["total"]:
+            anos_concluidos.append(item)
         else:
-            anos_aberto.append(r['ano'])
+            anos_aberto.append(item)
 
     return render_template('montagem.html',
                            anos_aberto=anos_aberto,
                            anos_concluidos=anos_concluidos)
+
+
+# Página "Nova Montagem"
+@app.route('/montagem/nova')
+def nova_montagem():
+    return render_template('nova_montagem.html')
+
+
+# -----------------------------
+# APIs da Montagem
+# -----------------------------
+@app.route('/api/buscar-casal', methods=['POST'])
+def api_buscar_casal():
+    data = request.get_json(silent=True) or {}
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+    if not nome_ele or not nome_ela:
+        return jsonify({"ok": False, "msg": "Informe nome_ele e nome_ela."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        # 1) procura no ENCONTREIROS (mais recente)
+        cur.execute("""
+            SELECT ano, telefones, endereco
+              FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+             ORDER BY ano DESC
+             LIMIT 1
+        """, (nome_ele, nome_ela))
+        r = cur.fetchone()
+        if r:
+            return jsonify({
+                "ok": True,
+                "origem": "encontreiros",
+                "ano": r["ano"],
+                "telefones": r.get("telefones") or "",
+                "endereco": r.get("endereco") or ""
+            })
+
+        # 2) procura no ENCONTRISTAS (nomes usuais)
+        cur.execute("""
+            SELECT telefone_ele, telefone_ela, endereco, ano
+              FROM encontristas
+             WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+             ORDER BY ano DESC
+             LIMIT 1
+        """, (nome_ele, nome_ela))
+        r2 = cur.fetchone()
+        if r2:
+            tel_ele = (r2.get('telefone_ele') or '').strip()
+            tel_ela = (r2.get('telefone_ela') or '').strip()
+            if tel_ele and tel_ela:
+                tels = f"{tel_ele} / {tel_ela}"
+            else:
+                # Previne ' / ' solto
+                tels = tel_ele or tel_ela
+            return jsonify({
+                "ok": True,
+                "origem": "encontristas",
+                "ano": r2.get("ano"),
+                "telefones": tels or "",
+                "endereco": r2.get("endereco") or ""
+            })
+
+        # 3) não encontrado
+        return jsonify({"ok": False, "msg": "Casal não encontrado no ECC (não participou)."}), 404
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/adicionar-dirigente', methods=['POST'])
+def api_adicionar_dirigente():
+    data = request.get_json(silent=True) or {}
+    ano = (str(data.get('ano') or '')).strip()
+    equipe = (data.get('equipe') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+    telefones = (data.get('telefones') or '').strip()
+    endereco = (data.get('endereco') or '').strip()
+
+    # validações simples
+    if not ano.isdigit() or len(ano) != 4:
+        return jsonify({"ok": False, "msg": "Ano inválido."}), 400
+    if not equipe:
+        return jsonify({"ok": False, "msg": "Equipe obrigatória."}), 400
+    if not nome_ele or not nome_ela:
+        return jsonify({"ok": False, "msg": "Preencha nome_ele e nome_ela."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO encontreiros
+                (ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador, status)
+            VALUES
+                (%s,  %s,     %s,       %s,       %s,         %s,       'Sim',      'Aberto')
+        """, (int(ano), equipe, nome_ele, nome_ela, telefones, endereco))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
 
 # -----------------------------
@@ -574,3 +682,4 @@ def relatorio_casais():
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
