@@ -157,7 +157,23 @@
     function setDisabled(el, val) { el.disabled = !!val; }
     function show(el, on=true) { el.style.display = on ? '' : 'none'; }
     function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
+<script>
+  // ... utils existentes:
+  function idFromLabel(lbl) { return lbl.replace(/[^a-z0-9]+/gi, '_'); }
+  function makeEl(html) { const d=document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
+  function setDisabled(el, val) { el.disabled = !!val; }
+  function show(el, on=true) { el.style.display = on ? '' : 'none'; }
+  function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
 
+  // ✅ Helper compatível com todos os navegadores
+  function insertAfter(referenceNode, newNode) {
+    if (referenceNode && referenceNode.parentNode) {
+      referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+    } else {
+      document.body.appendChild(newNode);
+    }
+  }
+</script>
     // ---- Caixa de escolha com justificativa obrigatória para Recusou/Desistiu ----
     function buildStatusChoice(onConfirm) {
       const box = makeEl(`
@@ -349,7 +365,8 @@
             }
           } catch { statusText($status,'Erro ao alterar.','err'); }
         });
-        $status.after(chooser);
+       card.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
+       insertAfter($status, chooser);
       }
 
       $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
@@ -486,7 +503,8 @@
           }
         } catch { statusText(cgStatus, 'Erro ao alterar.', 'err'); }
       });
-      cgStatus.after(chooser);
+      cgCard.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
+      insertAfter(cgStatus, chooser);
     }
 
     async function cgAddOrAlter() {
@@ -684,7 +702,9 @@
             }
           } catch { statusText($status,'Erro ao alterar.','err'); }
         });
-        $status.after(chooser);
+        card.querySelectorAll('.choice-box').forEach(n=>n.remove()); // evita duplicar
+        insertAfter($status, chooser);
+
       }
 
       $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
