@@ -41,7 +41,7 @@
           <ul>
             {% for item in anos_aberto %}
               <li>
-                <span>{{ item.ano }}</span>
+                <a class="year-link" href="{{ url_for('nova_montagem') }}?ano={{ item.ano }}">{{ item.ano }}</a>
                 <span class="kpi">{{ item.qtd_concluido }}/{{ item.total }} concluídos</span>
               </li>
             {% endfor %}
