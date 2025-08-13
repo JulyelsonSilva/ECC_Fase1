@@ -1,55 +1,44 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>Nova Montagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink); background:var(--bg); }
-    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap: wrap; }
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; }
     h1 { margin:0; font-size: 22px; }
     .muted { color:var(--muted); }
     .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
     .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
-    .btn.danger { background: var(--danger); color:#fff; border-color: var(--danger); }
-    .btn.ghost { background:transparent; }
-    .btn.small { padding:6px 10px; border-radius:8px; }
-    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
     label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
-    input { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-    textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; resize: vertical; }
+    input, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    .row-3 { display:grid; gap:10px; grid-template-columns: 1fr 1fr 1fr; }
+    .row3 { display:grid; gap:10px; grid-template-columns: 1fr 1fr 1fr; }
+    .small { font-size:12px; color:#475569; }
     .status { margin-top:8px; font-size:13px; }
-    .ok { color:var(--ok); }
-    .warn { color:var(--warn); }
-    .err { color:var(--danger); }
-    .disabled { opacity:.6; pointer-events:none; }
-    .section-title { margin: 18px 0 8px; font-size: 16px; font-weight: 700; }
-    .kpi { font-size:13px; color:#334155; margin:6px 0 12px; }
-    .team-link { display:block; padding:12px; border:1px dashed var(--border); border-radius:10px; text-align:center; cursor:pointer; user-select:none; }
-    .team-link:hover { background:#f1f5f9; }
-    .inline-choices { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
-    .note { font-size:12px; color:var(--muted); margin-top:6px; }
-    .choice-box { border:1px dashed var(--border); border-radius:10px; padding:12px; margin-top:8px; background:#fff; }
+    .ok { color:#065f46; }
+    .warn { color:#92400e; }
+    .err { color:#991b1b; }
+    .disabled { opacity: .6; pointer-events: none; }
+    .counter { font-size:13px; color:#334155; }
+    .inline { display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
       <h1>Nova Montagem</h1>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="inline">
         <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-        <button class="btn primary" id="btn-concluir-ano" style="display:none;">Concluir Montagem do Ano</button>
       </div>
     </div>
-
-    <p class="muted">Informe o ano, adicione os 5 Dirigentes e o <strong>Coordenador Geral</strong>. Depois selecione os <strong>Coordenadores de Equipe</strong> e, por fim, conclua a montagem do ano.</p>
+    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois de concluir os 5, defina o <b>Coordenador Geral</b>. Em seguida, você poderá escolher os <b>Coordenadores de Equipe</b> (com link para o histórico) e, quando quiser, montar cada equipe.</p>
 
     <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
@@ -61,17 +50,15 @@
       <div class="status" id="ano-msg"></div>
     </div>
 
-    <!-- Indicador Dirigentes -->
-    <p class="kpi" id="kpi-total" style="display:none;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
+    <!-- Indicador -->
+    <p class="counter" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
 
     <!-- Passo 2: 5 caixas Dirigentes -->
     <div class="grid" id="dirigentes-grid" style="display:none;"></div>
 
     <!-- Coordenador Geral -->
     <div class="card disabled" id="coordenador-geral" style="margin-top:12px; display:none;">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
-        <h3 style="margin:0;">Coordenador Geral</h3>
-      </div>
+      <h3 style="margin:0 0 8px;">Coordenador Geral</h3>
       <div class="row">
         <div>
           <label for="cg_nome_ele">Nome (Ele)</label>
@@ -97,26 +84,32 @@
         <button class="btn primary" id="cg_add" disabled>Adicionar</button>
       </div>
       <div class="status" id="cg_status"></div>
-      <p class="note">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
+      <p class="small muted" style="margin-top:8px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
     </div>
 
-    <!-- Coordenadores de Equipe (aparece só após CG escolhido) -->
-    <div id="coords-section" style="display:none;">
-      <h3 class="section-title">Coordenadores de Equipe</h3>
-      <p class="note" id="coords-note">Clique no nome da equipe para abrir a Visão de Equipes e escolher um casal (somente casais que nunca foram coordenadores aparecem como link).</p>
-      <div class="grid" id="coords-grid"></div>
+    <!-- Coordenadores de Equipe (aparece após CG) -->
+    <div class="card disabled" id="coord-equipes-card" style="margin-top:12px; display:none;">
+      <h3 style="margin:0 0 8px;">Coordenadores de Equipe</h3>
+      <p class="small muted" style="margin:0 0 8px;">Clique em <b>Escolher no histórico</b> para abrir a Visão de Equipes e selecionar um casal.</p>
+      <div class="grid" id="coord-equipes-grid"></div>
     </div>
   </div>
 
   <script>
-    // =========================
-    // Dados vindos do servidor
-    // =========================
-    const initialData = {{ initial_data | tojson }};
-    const anoPre = {{ ano_preselecionado | tojson }};
-    const TEAM_MAP = {{ team_map | tojson }};
+    // ---------------------------
+    // CONSTANTES E DADOS INICIAIS
+    // ---------------------------
+    const initialData = {{ (initial_data or {}) | tojson }};
+    const anoPre = {{ (ano_preselecionado if ano_preselecionado is not None else 'null') | safe }};
+    const VISAO_EQ_URL = "{{ url_for('visao_equipes') }}";
 
-    const equipesDirigentes = [
+    // Parâmetros de retorno da visao_equipes
+    const ret_target = {{ (request.args.get('target') or '') | tojson }};
+    const ret_ele    = {{ (request.args.get('selecionar_ele') or '') | tojson }};
+    const ret_ela    = {{ (request.args.get('selecionar_ela') or '') | tojson }};
+
+    // Dirigentes
+    const DIRIGENTES = [
       "Equipe Dirigente - MONTAGEM",
       "Equipe Dirigente -FICHAS",
       "Equipe Dirigente - FINANÇAS",
@@ -124,43 +117,29 @@
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
-    // Fallback de equipes (caso TEAM_MAP não chegue por algum motivo)
-    const FALLBACK_TEAMS = [
-      "Sala","Circulos","Café e Minimercado","Compras","Acolhida",
-      "Ordem e Limpeza","Liturgia e Vigilia","Secretaria","Cozinha","Visitação"
-    ];
+    // Coordenadores de Equipe (mapeamentos)
+    const TEAM_MAP = {
+      sala:      { rotulo:"Equipe de Sala - Coordenador/Apresentador", filtro:"Sala" },
+      circulos:  { rotulo:"Equipe de Círculos", filtro:"Circulos" },
+      cafe:      { rotulo:"Equipe Café e Minimercado", filtro:"Café e Minimercado" },
+      compras:   { rotulo:"Equipe Compras", filtro:"Compras" },
+      acolhida:  { rotulo:"Equipe Acolhida", filtro:"Acolhida" },
+      ordem:     { rotulo:"Equipe Ordem e Limpeza", filtro:"Ordem e Limpeza" },
+      liturgia:  { rotulo:"Equipe Liturgia e Vigília", filtro:"Liturgia e Vigilia" },
+      secretaria:{ rotulo:"Equipe Secretaria", filtro:"Secretaria" },
+      cozinha:   { rotulo:"Equipe Cozinha", filtro:"Cozinha" },
+      visitacao: { rotulo:"Equipe Visitação", filtro:"Visitação" },
+    };
 
-    // =========================
-    // Utils
-    // =========================
-    function idFromLabel(lbl) { return lbl.replace(/[^a-z0-9]+/gi, '_'); }
-    function makeEl(html) { const d=document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
-    function setDisabled(el, val) { el.disabled = !!val; }
-    function show(el, on=true) { el.style.display = on ? '' : 'none'; }
-    function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
-    function insertAfter(referenceNode, newNode) {
-      if (referenceNode && referenceNode.parentNode) {
-        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-      } else {
-        document.body.appendChild(newNode);
-      }
-    }
-
-    // =========================
-    // Elementos principais
-    // =========================
-    const grid = document.getElementById('dirigentes-grid');
     const anoInput = document.getElementById('ano');
     const btnContinuar = document.getElementById('btn-continuar');
     const anoMsg = document.getElementById('ano-msg');
+
+    const gridDir = document.getElementById('dirigentes-grid');
     const kpi = document.getElementById('kpi-total');
     const kpiDone = document.getElementById('kpi-done');
-    const cgCard = document.getElementById('coordenador-geral');
-    const coordsSection = document.getElementById('coords-section');
-    const coordsGrid = document.getElementById('coords-grid');
-    const btnConcluirAno = document.getElementById('btn-concluir-ano');
 
-    // CG elements
+    const cgCard = document.getElementById('coordenador-geral');
     const cgEle = document.getElementById('cg_nome_ele');
     const cgEla = document.getElementById('cg_nome_ela');
     const cgTel = document.getElementById('cg_telefones');
@@ -169,676 +148,368 @@
     const cgAdd = document.getElementById('cg_add');
     const cgStatus = document.getElementById('cg_status');
 
-    // =========================
-    // Estado
-    // =========================
-    let anoSelecionado = null;
-    let totalDirigentesAdicionados = 0;
-    let cgId = null;  // id do registro CG em Aberto
-    let cgAdded = false;
+    const coordCard = document.getElementById('coord-equipes-card');
+    const coordGrid = document.getElementById('coord-equipes-grid');
 
-    // =========================
-    // Caixa de escolha (Recusou/Desistiu) com justificativa
-    // =========================
-    function buildStatusChoice(onConfirm) {
-      const box = makeEl(`
-        <div class="choice-box">
-          <div class="inline-choices">
-            <button class="btn small" data-val="Recusou">Recusou</button>
-            <button class="btn small" data-val="Desistiu">Desistiu</button>
-            <button class="btn small ghost" data-val="cancel">Cancelar</button>
+    let anoSelecionado = null;
+    let totalAdicionados = 0;
+
+    // ---------------------------
+    // HELPERS
+    // ---------------------------
+    function idFromLabel(label){ return label.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
+
+    function makeInputRow(idSafe, preset) {
+      return `
+        <div class="row">
+          <div>
+            <label for="${idSafe}_ele">Nome (Ele)</label>
+            <input id="${idSafe}_ele" value="${preset?.nome_ele || ''}" placeholder="Ex.: João">
           </div>
-          <div class="just-box" style="margin-top:8px; display:none;">
-            <label>Justificativa</label>
-            <textarea rows="3" placeholder="Descreva a justificativa..."></textarea>
-            <div class="inline-choices" style="margin-top:8px;">
-              <button class="btn small primary" data-action="confirm">Confirmar</button>
-              <button class="btn small" data-action="back">Voltar</button>
-            </div>
-            <div class="status" style="margin-top:6px;"></div>
+          <div>
+            <label for="${idSafe}_ela">Nome (Ela)</label>
+            <input id="${idSafe}_ela" value="${preset?.nome_ela || ''}" placeholder="Ex.: Maria">
           </div>
         </div>
-      `);
-
-      const btns = box.querySelectorAll('button[data-val]');
-      const justBox = box.querySelector('.just-box');
-      const ta = justBox.querySelector('textarea');
-      const st = justBox.querySelector('.status');
-
-      let picked = null;
-
-      btns.forEach(b=>{
-        b.addEventListener('click', e=>{
-          e.preventDefault();
-          const val = b.getAttribute('data-val');
-          if (val === 'cancel') { box.remove(); return; }
-          picked = val;
-          justBox.style.display = '';
-          ta.focus();
-        });
-      });
-
-      justBox.querySelector('button[data-action="back"]').addEventListener('click', (e)=>{
-        e.preventDefault();
-        picked = null;
-        justBox.style.display = 'none';
-        st.textContent = '';
-      });
-
-      justBox.querySelector('button[data-action="confirm"]').addEventListener('click', (e)=>{
-        e.preventDefault();
-        const obs = (ta.value || '').trim();
-        if (!obs) { st.textContent = 'A justificativa é obrigatória.'; st.className = 'status err'; return; }
-        onConfirm(picked, obs, box);
-      });
-
-      return box;
+        <div class="row" style="margin-top:8px;">
+          <div>
+            <label for="${idSafe}_telefones">Telefones</label>
+            <input id="${idSafe}_telefones" value="${preset?.telefones || ''}" placeholder="preenchido pela busca (editável)">
+          </div>
+          <div>
+            <label for="${idSafe}_endereco">Endereço</label>
+            <input id="${idSafe}_endereco" value="${preset?.endereco || ''}" placeholder="preenchido pela busca (editável)">
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${idSafe}_buscar">Buscar</button>
+          <button class="btn primary" id="${idSafe}_add">Adicionar</button>
+        </div>
+        <div class="status" id="${idSafe}_status"></div>
+      `;
     }
 
-    // =========================
-    // DIRIGENTES
-    // =========================
-    function renderDirigenteCard(equipe, preset) {
-      const idSafe = idFromLabel(equipe);
-      const card = makeEl(`
-        <div class="card" id="${idSafe}_card">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
-            <h3 style="margin:0;">${equipe}</h3>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="${idSafe}_ele">Nome (Ele)</label>
-              <input id="${idSafe}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
-            </div>
-            <div>
-              <label for="${idSafe}_ela">Nome (Ela)</label>
-              <input id="${idSafe}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:8px;">
-            <div>
-              <label for="${idSafe}_telefones">Telefones</label>
-              <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
-            </div>
-            <div>
-              <label for="${idSafe}_endereco">Endereço</label>
-              <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:8px;">
-            <button class="btn" id="${idSafe}_buscar">Buscar</button>
-            <button class="btn primary" id="${idSafe}_add">Adicionar</button>
-          </div>
-
-          <div class="status" id="${idSafe}_status"></div>
-        </div>
-      `);
-
-      const $ele = card.querySelector(`#${idSafe}_ele`);
-      const $ela = card.querySelector(`#${idSafe}_ela`);
-      const $tels = card.querySelector(`#${idSafe}_telefones`);
-      const $end = card.querySelector(`#${idSafe}_endereco`);
-      const $buscar = card.querySelector(`#${idSafe}_buscar`);
-      const $add = card.querySelector(`#${idSafe}_add`);
-      const $status = card.querySelector(`#${idSafe}_status`);
-
-      let recId = preset?.id || null;
-      let locked = false;
-
-      function lockBox(on) {
-        [$ele,$ela,$tels,$end,$buscar].forEach(el=>setDisabled(el,on));
-        $add.textContent = on ? 'Alterar' : 'Adicionar';
-        locked = on;
-      }
+    function attachBoxHandlers(idSafe, equipeInsert) {
+      const $ele = document.getElementById(`${idSafe}_ele`);
+      const $ela = document.getElementById(`${idSafe}_ela`);
+      const $tels = document.getElementById(`${idSafe}_telefones`);
+      const $end = document.getElementById(`${idSafe}_endereco`);
+      const $buscar = document.getElementById(`${idSafe}_buscar`); 
+      const $add = document.getElementById(`${idSafe}_add`);
+      const $status = document.getElementById(`${idSafe}_status`);
 
       async function buscar() {
-        statusText($status,'','');
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        if (!nome_ele || !nome_ela) { return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn'); }
+        $status.textContent = '';
+        const nome_ele = ($ele.value || '').trim();
+        const nome_ela = ($ela.value || '').trim();
+        if (!nome_ele || !nome_ela) {
+          $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+          $status.className = 'status warn';
+          return;
+        }
         try {
           const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
+            method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ nome_ele, nome_ela })
           });
           const data = await resp.json();
           if (data.ok) {
             $tels.value = data.telefones || '';
             $end.value = data.endereco || '';
-            statusText($status, `Dados carregados de ${data.origem}.`, 'ok');
+            $status.textContent = `Dados carregados de ${data.origem}.`;
+            $status.className = 'status ok';
           } else {
-            statusText($status, data.msg || 'Não encontrado.', 'err');
+            $status.textContent = data.msg || 'Não encontrado.';
+            $status.className = 'status err';
           }
-        } catch { statusText($status,'Erro ao buscar.','err'); }
+        } catch(e) {
+          $status.textContent = 'Erro ao buscar.';
+          $status.className = 'status err';
+        }
       }
 
       async function adicionar() {
-        statusText($status,'','');
-        if (!anoSelecionado) return statusText($status,'Informe o ano antes.','warn');
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        const telefones = ($tels.value||'').trim();
-        const endereco = ($end.value||'').trim();
-        if (!nome_ele || !nome_ela) return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn');
-
+        $status.textContent = '';
+        const nome_ele = ($ele.value || '').trim();
+        const nome_ela = ($ela.value || '').trim();
+        const telefones = ($tels.value || '').trim();
+        const endereco = ($end.value || '').trim();
+        if (!anoSelecionado) {
+          $status.textContent = 'Informe o ano antes.';
+          $status.className = 'status warn';
+          return;
+        }
+        if (!nome_ele || !nome_ela) {
+          $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+          $status.className = 'status warn';
+          return;
+        }
         try {
           const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ ano: anoSelecionado, equipe: equipe, nome_ele, nome_ela, telefones, endereco })
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              ano: anoSelecionado,
+              equipe: equipeInsert,
+              nome_ele, nome_ela, telefones, endereco
+            })
           });
           const data = await resp.json();
           if (data.ok) {
-            recId = data.id || recId;
-            statusText($status,'Adicionado com sucesso.','ok');
-            lockBox(true);
-            totalDirigentesAdicionados += 1;
-            kpiDone.textContent = String(totalDirigentesAdicionados);
-            maybeEnableCG();
+            $status.textContent = 'Coordenador inserido com sucesso.';
+            $status.className = 'status ok';
+            $ele.disabled = true; $ela.disabled = true;
+            $tels.disabled = true; $end.disabled = true;
+            $buscar.disabled = true; $add.textContent = 'Alterar';
+            // (A lógica de alterar status + justificativa depende da rota de update; mantenho desabilitado até existir endpoint dedicado)
           } else {
-            statusText($status, data.msg || 'Falha ao adicionar.','err');
+            $status.textContent = data.msg || 'Falha ao inserir.';
+            $status.className = 'status err';
           }
-        } catch { statusText($status,'Erro ao adicionar.','err'); }
+        } catch(e) {
+          $status.textContent = 'Erro ao inserir.';
+          $status.className = 'status err';
+        }
       }
 
-      function askAlterar() {
-        if (!recId) return;
-        card.querySelectorAll('.choice-box').forEach(n=>n.remove());
-        const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
-          try {
-            const resp = await fetch('{{ url_for("api_marcar_status") }}', {
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ id: recId, status: choice, observacao: justificativa })
-            });
-            const data = await resp.json();
-            if (data.ok) {
-              statusText($status, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
-              lockBox(false);
-              [$ele,$ela,$tels,$end].forEach(i=>i.value='');
-              recId = null;
-              if (totalDirigentesAdicionados>0) {
-                totalDirigentesAdicionados -= 1;
-                kpiDone.textContent = String(totalDirigentesAdicionados);
-              }
-              boxEl.remove();
-              maybeEnableCG();
-            } else {
-              statusText($status, data.msg || 'Falha ao alterar.','err');
-            }
-          } catch { statusText($status,'Erro ao alterar.','err'); }
-        });
-        insertAfter($status, chooser);
-      }
+      $buscar.addEventListener('click', (e)=>{ e.preventDefault(); buscar(); });
+      $add.addEventListener('click', (e)=>{ e.preventDefault(); adicionar(); });
 
-      $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
-      $add.addEventListener('click', e=>{
-        e.preventDefault();
-        if (!locked) adicionar();
-        else askAlterar();
-      });
+      return { buscar, adicionar, $ele, $ela };
+    }
 
+    function renderDirigenteBox(equipe, preset) {
+      const idSafe = idFromLabel(equipe);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<h3 style="margin:0 0 8px;">${equipe}</h3>` + makeInputRow(idSafe, preset);
+      gridDir.appendChild(card);
+
+      const { $ele, $ela } = attachBoxHandlers(idSafe, equipe);
+
+      // Se veio preset (já existe no ano), deixa bloqueado
       if (preset && (preset.nome_ele || preset.nome_ela)) {
-        lockBox(true);
-        totalDirigentesAdicionados += 1;
-        kpiDone.textContent = String(totalDirigentesAdicionados);
+        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
+          const el = document.getElementById(`${idSafe}_${s}`);
+          if (el) { el.disabled = true; if (s==='add') el.textContent = 'Alterar'; }
+        });
+        totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
       }
 
-      return card;
+      return { idSafe, $ele, $ela };
     }
 
-    function renderDirigentes() {
-      grid.innerHTML = '';
-      equipesDirigentes.forEach(eq=>{
-        const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
-        grid.appendChild(renderDirigenteCard(eq, preset));
+    function renderTeamCoordBox(key) {
+      const info = TEAM_MAP[key];
+      const idSafe = 'tc_'+key;
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="inline" style="justify-content:space-between; width:100%;">
+          <h3 style="margin:0 0 8px;">${info.rotulo}</h3>
+          <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
+        </div>
+        ${makeInputRow(idSafe, null)}
+      `;
+      coordGrid.appendChild(card);
+
+      const { buscar } = attachBoxHandlers(idSafe, info.rotulo);
+
+      // botão abre /visao-equipes com equipe, target e ano_montagem
+      const chooseBtn = document.getElementById(`${idSafe}_choose`);
+      chooseBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if (!anoSelecionado) {
+          alert('Informe o ano primeiro.');
+          return;
+        }
+        const url = `${VISAO_EQ_URL}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
+        window.location.href = url;
       });
-      show(grid, true);
-      show(kpi, true);
+
+      return { idSafe, buscar };
     }
 
-    function maybeEnableCG() {
-      if (totalDirigentesAdicionados >= 5) {
-        show(cgCard, true);
-        cgCard.classList.remove('disabled');
-        if (!cgAdded) {
-          setDisabled(cgEle, false);
-          setDisabled(cgEla, false);
-          setDisabled(cgBuscar, false);
-          setDisabled(cgAdd, false);
-          setDisabled(cgTel, false);
-          setDisabled(cgEnd, false);
-          cgEle.placeholder = 'Nome (Ele)';
-          cgEla.placeholder = 'Nome (Ela)';
-        }
-      } else {
-        if (!cgAdded) {
-          show(cgCard, true);
-          cgCard.classList.add('disabled');
-          setDisabled(cgEle, true);
-          setDisabled(cgEla, true);
-          setDisabled(cgBuscar, true);
-          setDisabled(cgAdd, true);
-          setDisabled(cgTel, true);
-          setDisabled(cgEnd, true);
-          cgEle.placeholder = '— habilita após 5/5 —';
-          cgEla.placeholder = '— habilita após 5/5 —';
-        }
-      }
+    function showTeamCoords() {
+      coordGrid.innerHTML = '';
+      Object.keys(TEAM_MAP).forEach(k => renderTeamCoordBox(k));
+      coordCard.style.display = '';
+      coordCard.classList.remove('disabled');
     }
 
-    // =========================
-    // COORDENADOR GERAL
-    // =========================
     function renderCGPresetIfAny() {
-      // Só considera "em aberto" quando vier status Aberto
-      if (initialData && initialData.cg && String((initialData.cg.status || '')).toLowerCase().trim() === 'aberto') {
-        cgId = initialData.cg.id || null;
-        cgAdded = true;
-
+      if (initialData && initialData.cg) {
         cgEle.value = initialData.cg.nome_ele || '';
         cgEla.value = initialData.cg.nome_ela || '';
         cgTel.value = initialData.cg.telefones || '';
         cgEnd.value = initialData.cg.endereco || '';
-
-        setDisabled(cgEle, true);
-        setDisabled(cgEla, true);
-        setDisabled(cgTel, true);
-        setDisabled(cgEnd, true);
-        setDisabled(cgBuscar, true);
-        setDisabled(cgAdd, false); // vira "Alterar"
-        cgAdd.textContent = 'Alterar';
-        cgCard.classList.remove('disabled');
-        statusText(cgStatus,'Coordenador Geral em aberto para este ano.','ok');
-
-        // Com CG em Aberto, exibimos coordenadores de equipe
-        show(coordsSection, true);
-        renderCoordsGrid();
-      } else {
-        cgAdded = false;
-        cgId = null;
+        // Mantém bloqueado (já existe CG para o ano)
+        cgStatus.textContent = '“Casal Coordenador Geral” já cadastrado para este ano.';
+        cgStatus.className = 'status ok';
+        cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
+        cgBuscar.disabled = true; cgAdd.disabled = true;
+        // Libera coordenadores de equipe
+        showTeamCoords();
       }
     }
 
-    async function cgBuscarHandler() {
-      statusText(cgStatus,'','');
-      const nome_ele = (cgEle.value||'').trim();
-      const nome_ela = (cgEla.value||'').trim();
-      if (!nome_ele || !nome_ela) return statusText(cgStatus,'Preencha Nome (Ele) e Nome (Ela).','warn');
+    function maybeEnableCG() {
+      if (totalAdicionados >= 5) {
+        cgCard.style.display = '';
+        cgCard.classList.remove('disabled');
+        if (!initialData.cg) {
+          cgEle.disabled = false; cgEla.disabled = false;
+          cgBuscar.disabled = false; cgAdd.disabled = false;
+          cgEle.placeholder = 'Nome (Ele)';
+          cgEla.placeholder = 'Nome (Ela)';
+        }
+      } else {
+        cgCard.style.display = 'none';
+      }
+    }
 
+    // ---------------------------
+    // EVENTOS
+    // ---------------------------
+    btnContinuar.addEventListener('click', (e) => {
+      e.preventDefault();
+      const val = (anoInput.value || '').trim();
+      if (!/^\d{4}$/.test(val)) {
+        anoMsg.textContent = 'Informe um ano válido (YYYY).';
+        anoMsg.className = 'status err';
+        return;
+      }
+      anoSelecionado = parseInt(val, 10);
+      anoMsg.textContent = `Ano selecionado: ${anoSelecionado}`;
+      anoMsg.className = 'status ok';
+      gridDir.innerHTML = '';
+
+      totalAdicionados = 0; kpiDone.textContent = '0'; kpi.style.display = '';
+
+      // Render dirigentes com presets (se vieram)
+      DIRIGENTES.forEach(eq => {
+        const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
+        renderDirigenteBox(eq, preset);
+      });
+
+      document.getElementById('dirigentes-grid').style.display = '';
+
+      // Se já tinha presets, ajusta contador
+      if (initialData && initialData.dirigentes) {
+        totalAdicionados = Object.keys(initialData.dirigentes).length;
+        kpiDone.textContent = String(totalAdicionados);
+      }
+
+      // CG: mostrar e/ou pré-preencher
+      cgCard.style.display = '';
+      renderCGPresetIfAny();
+      maybeEnableCG();
+
+      // Se voltamos da visao_equipes com um casal escolhido para uma equipe, aplica agora
+      if (ret_target && ret_ele && ret_ela) {
+        applySelectedCoupleToTeam(ret_target, ret_ele, ret_ela);
+      }
+    });
+
+    // CG handlers
+    cgBuscar.addEventListener('click', async (e) => {
+      e.preventDefault();
+      cgStatus.textContent = '';
+      const nome_ele = (cgEle.value || '').trim();
+      const nome_ela = (cgEla.value || '').trim();
+      if (!nome_ele || !nome_ela) {
+        cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+        cgStatus.className = 'status warn';
+        return;
+      }
       try {
         const resp = await fetch('{{ url_for("api_buscar_cg") }}', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+          method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ nome_ele, nome_ela })
         });
         const data = await resp.json();
         if (data.ok) {
           cgTel.value = data.telefones || '';
           cgEnd.value = data.endereco || '';
-          statusText(cgStatus, 'Dados carregados. Casal é elegível para CG.', 'ok');
+          cgStatus.textContent = 'Dados carregados. Casal é elegível para CG.';
+          cgStatus.className = 'status ok';
         } else {
-          statusText(cgStatus, data.msg || 'Não permitido.', 'err');
+          cgStatus.textContent = data.msg || 'Não permitido.';
+          cgStatus.className = 'status err';
         }
-      } catch { statusText(cgStatus, 'Erro ao buscar.', 'err'); }
-    }
+      } catch (err) {
+        cgStatus.textContent = 'Erro ao buscar.';
+        cgStatus.className = 'status err';
+      }
+    });
 
-    function cgAskAlterar() {
-      if (!cgId) return;
-      cgCard.querySelectorAll('.choice-box').forEach(n=>n.remove());
-      const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
-        try {
-          const resp = await fetch('{{ url_for("api_marcar_status") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ id: cgId, status: choice, observacao: justificativa })
-          });
-          const data = await resp.json();
-          if (data.ok) {
-            statusText(cgStatus, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
-            cgAdded = false; cgId = null;
-            setDisabled(cgEle, false);
-            setDisabled(cgEla, false);
-            setDisabled(cgBuscar, false);
-            setDisabled(cgAdd, false);
-            setDisabled(cgTel, false);
-            setDisabled(cgEnd, false);
-            cgAdd.textContent = 'Adicionar';
-            cgEle.value = ''; cgEla.value = ''; cgTel.value = ''; cgEnd.value = '';
-            show(coordsSection, false);
-            boxEl.remove();
-          } else {
-            statusText(cgStatus, data.msg || 'Falha ao alterar.', 'err');
-          }
-        } catch { statusText(cgStatus, 'Erro ao alterar.', 'err'); }
-      });
-      insertAfter(cgStatus, chooser);
-    }
-
-    async function cgAddOrAlter() {
-      if (!anoSelecionado) return statusText(cgStatus,'Informe o ano antes.','warn');
-      if (cgAdded && cgId) { cgAskAlterar(); return; }
-
-      const nome_ele = (cgEle.value||'').trim();
-      const nome_ela = (cgEla.value||'').trim();
-      const telefones = (cgTel.value||'').trim();
-      const endereco = (cgEnd.value||'').trim();
-      if (!nome_ele || !nome_ela) return statusText(cgStatus,'Preencha Nome (Ele) e Nome (Ela).','warn');
-
+    cgAdd.addEventListener('click', async (e) => {
+      e.preventDefault();
+      cgStatus.textContent = '';
+      const nome_ele = (cgEle.value || '').trim();
+      const nome_ela = (cgEla.value || '').trim();
+      const telefones = (cgTel.value || '').trim();
+      const endereco = (cgEnd.value || '').trim();
+      if (!anoSelecionado) {
+        cgStatus.textContent = 'Informe o ano antes.';
+        cgStatus.className = 'status warn';
+        return;
+      }
+      if (!nome_ele || !nome_ela) {
+        cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+        cgStatus.className = 'status warn';
+        return;
+      }
       try {
         const resp = await fetch('{{ url_for("api_adicionar_cg") }}', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+          method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ ano: anoSelecionado, nome_ele, nome_ela, telefones, endereco })
         });
         const data = await resp.json();
         if (data.ok) {
-          cgId = data.id || null;
-          cgAdded = true;
-          setDisabled(cgEle, true);
-          setDisabled(cgEla, true);
-          setDisabled(cgBuscar, true);
-          setDisabled(cgAdd, false);
-          setDisabled(cgTel, true);
-          setDisabled(cgEnd, true);
-          cgAdd.textContent = 'Alterar';
-          statusText(cgStatus, 'Casal Coordenador Geral adicionado com sucesso.', 'ok');
-          show(coordsSection, true);
-          renderCoordsGrid();
+          cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
+          cgStatus.className = 'status ok';
+          cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
+          cgBuscar.disabled = true; cgAdd.disabled = true;
+          // Agora libera as caixas de Coordenadores de Equipe
+          showTeamCoords();
         } else {
-          statusText(cgStatus, data.msg || 'Falha ao adicionar.', 'err');
+          cgStatus.textContent = data.msg || 'Falha ao adicionar.';
+          cgStatus.className = 'status err';
         }
-      } catch { statusText(cgStatus, 'Erro ao adicionar.', 'err'); }
-    }
-
-    document.getElementById('cg_buscar').addEventListener('click', e=>{ e.preventDefault(); cgBuscarHandler(); });
-    document.getElementById('cg_add').addEventListener('click', e=>{ e.preventDefault(); cgAddOrAlter(); });
-
-    // =========================
-    // COORDENADORES DE EQUIPE
-    // =========================
-    function buildTeamChooser(teamKey) {
-      const card = makeEl(`
-        <div class="card" id="coord_${idFromLabel(teamKey)}">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <h3 style="margin:0;">${teamKey}</h3>
-          </div>
-          <div class="team-link" role="button">Abrir Visão de Equipes</div>
-          <div class="status" id="st_${idFromLabel(teamKey)}"></div>
-        </div>
-      `);
-      const link = card.querySelector('.team-link');
-      link.addEventListener('click', ()=>{
-        if (!anoSelecionado) { alert('Informe o ano antes.'); return; }
-        const url = new URL('{{ url_for("visao_equipes") }}', window.location.origin);
-        url.searchParams.set('equipe', teamKey);
-        url.searchParams.set('target', teamKey);           // habilita links na visão
-        url.searchParams.set('ano_montagem', String(anoSelecionado));
-        window.location.href = url.toString();
-      });
-      return card;
-    }
-
-    function buildTeamEditor(teamKey, preset) {
-      const idSafe = idFromLabel(teamKey);
-      const equipeFinal = TEAM_MAP && TEAM_MAP[teamKey] ? TEAM_MAP[teamKey] : teamKey;
-      const card = makeEl(`
-        <div class="card" id="coord_${idSafe}">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
-            <h3 style="margin:0;">${teamKey}</h3>
-            <div style="display:flex; gap:8px;">
-              <button class="btn small" id="${idSafe}_btn_montar" style="display:none;">Montar Equipe</button>
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="${idSafe}_ele">Nome (Ele)</label>
-              <input id="${idSafe}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
-            </div>
-            <div>
-              <label for="${idSafe}_ela">Nome (Ela)</label>
-              <input id="${idSafe}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:8px;">
-            <div>
-              <label for="${idSafe}_telefones">Telefones</label>
-              <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
-            </div>
-            <div>
-              <label for="${idSafe}_endereco">Endereço</label>
-              <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
-            </div>
-          </div>
-
-          <div class="row-3" style="margin-top:8px;">
-            <button class="btn" id="${idSafe}_buscar">Buscar</button>
-            <button class="btn primary" id="${idSafe}_add">Adicionar</button>
-            <button class="btn" id="${idSafe}_alterar" style="display:none;">Alterar</button>
-          </div>
-
-          <div class="status" id="${idSafe}_status"></div>
-        </div>
-      `);
-
-      const $ele = card.querySelector(`#${idSafe}_ele`);
-      const $ela = card.querySelector(`#${idSafe}_ela`);
-      const $tels = card.querySelector(`#${idSafe}_telefones`);
-      const $end = card.querySelector(`#${idSafe}_endereco`);
-      const $buscar = card.querySelector(`#${idSafe}_buscar`);
-      const $add = card.querySelector(`#${idSafe}_add`);
-      const $alterar = card.querySelector(`#${idSafe}_alterar`);
-      const $status = card.querySelector(`#${idSafe}_status`);
-      const $btnMontar = card.querySelector(`#${idSafe}_btn_montar`);
-
-      let recId = preset?.id || null;
-
-      function lockEditor(on) {
-        [$ele,$ela,$tels,$end,$buscar].forEach(el=>setDisabled(el,on));
-        $alterar.style.display = on ? '' : 'none';
-        $add.style.display = on ? 'none' : '';
-        $btnMontar.style.display = on ? '' : 'none';
+      } catch (err) {
+        cgStatus.textContent = 'Erro ao adicionar.';
+        cgStatus.className = 'status err';
       }
-
-      async function buscar() {
-        statusText($status,'','');
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        if (!nome_ele || !nome_ela) return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn');
-
-        try {
-          const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ nome_ele, nome_ela })
-          });
-          const data = await resp.json();
-          if (data.ok) {
-            $tels.value = data.telefones || '';
-            $end.value = data.endereco || '';
-            statusText($status, `Dados carregados de ${data.origem}.`, 'ok');
-          } else {
-            statusText($status, data.msg || 'Não encontrado.', 'err');
-          }
-        } catch { statusText($status,'Erro ao buscar.','err'); }
-      }
-
-      async function adicionar() {
-        statusText($status,'','');
-        if (!anoSelecionado) return statusText($status,'Informe o ano antes.','warn');
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        const telefones = ($tels.value||'').trim();
-        const endereco = ($end.value||'').trim();
-        if (!nome_ele || !nome_ela) return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn');
-
-        try {
-          const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ ano: anoSelecionado, equipe: equipeFinal, nome_ele, nome_ela, telefones, endereco })
-          });
-          const data = await resp.json();
-          if (data.ok) {
-            recId = data.id || recId;
-            statusText($status,'Coordenador da equipe adicionado com sucesso.','ok');
-            lockEditor(true);
-          } else {
-            statusText($status, data.msg || 'Falha ao adicionar.','err');
-          }
-        } catch { statusText($status,'Erro ao adicionar.','err'); }
-      }
-
-      function alterar() {
-        if (!recId) return;
-        card.querySelectorAll('.choice-box').forEach(n=>n.remove());
-        const chooser = buildStatusChoice(async (choice, justificativa, boxEl)=>{
-          try {
-            const resp = await fetch('{{ url_for("api_marcar_status") }}', {
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ id: recId, status: choice, observacao: justificativa })
-            });
-            const data = await resp.json();
-            if (data.ok) {
-              statusText($status, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
-              lockEditor(false);
-              recId = null;
-              $ele.value=''; $ela.value=''; $tels.value=''; $end.value='';
-              boxEl.remove();
-            } else {
-              statusText($status, data.msg || 'Falha ao alterar.','err');
-            }
-          } catch { statusText($status,'Erro ao alterar.','err'); }
-        });
-        insertAfter($status, chooser);
-      }
-
-      $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
-      $add.addEventListener('click', e=>{ e.preventDefault(); adicionar(); });
-      $alterar.addEventListener('click', e=>{ e.preventDefault(); alterar(); });
-
-      $btnMontar.addEventListener('click', (e)=>{
-        e.preventDefault();
-        const url = new URL('{{ url_for("montagem_equipe") }}', window.location.origin);
-        url.searchParams.set('ano', String(anoSelecionado));
-        url.searchParams.set('equipe', teamKey);
-        window.location.href = url.toString();
-      });
-
-      lockEditor(!!recId);
-      return card;
-    }
-
-    function renderCoordsGrid() {
-      coordsGrid.innerHTML = '';
-
-      // 1) pega chaves do TEAM_MAP; se vazio, usa fallback
-      const rawKeys = (TEAM_MAP && typeof TEAM_MAP === 'object') ? Object.keys(TEAM_MAP) : [];
-      const baseKeys = rawKeys.length ? rawKeys : FALLBACK_TEAMS.slice();
-
-      // 2) dedupe seguro (remove acentos/normaliza)
-      const seen = new Set();
-      const teamKeys = baseKeys.filter(k => {
-        const norm = (k || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (seen.has(norm)) return false;
-        seen.add(norm);
-        return true;
-      });
-
-      const presetVisao = initialData && initialData.preset_from_visao ? initialData.preset_from_visao : null;
-
-      teamKeys.forEach(teamKey=>{
-        let card;
-        const preset = (initialData.coords && initialData.coords[teamKey]) ? initialData.coords[teamKey] : null;
-
-        if (preset) {
-          card = buildTeamEditor(teamKey, preset);
-        } else if (presetVisao && presetVisao.target === teamKey) {
-          card = buildTeamEditor(teamKey, {
-            id: null,
-            nome_ele: presetVisao.ele || '',
-            nome_ela: presetVisao.ela || '',
-            telefones: presetVisao.telefones || '',
-            endereco: presetVisao.endereco || ''
-          });
-        } else {
-          card = buildTeamChooser(teamKey);
-        }
-
-        coordsGrid.appendChild(card);
-      });
-    }
-
-    // =========================
-    // Concluir Montagem do Ano
-    // =========================
-    function showConcluirAnoIfReady() { show(btnConcluirAno, !!anoSelecionado); }
-    btnConcluirAno.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      if (!anoSelecionado) return;
-      if (!confirm(`Concluir a montagem do ano ${anoSelecionado}? Todos os registros 'Aberto' serão marcados como 'Concluido'.`)) return;
-      try {
-        const resp = await fetch('{{ url_for("api_concluir_montagem_ano") }}', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ ano: anoSelecionado })
-        });
-        const data = await resp.json();
-        if (data.ok) {
-          alert(`Montagem ${anoSelecionado} concluída. Registros atualizados: ${data.updated}.`);
-          window.location.href = '{{ url_for("montagem") }}';
-        } else {
-          alert(data.msg || 'Falha ao concluir montagem.');
-        }
-      } catch { alert('Erro ao concluir montagem.'); }
     });
 
-    // =========================
-    // Fluxo principal
-    // =========================
-    function renderDirigentesEcg() {
-      renderDirigentes();
-      show(cgCard, true);
-      renderCGPresetIfAny();
-      maybeEnableCG();
-      if (cgAdded) {
-        show(coordsSection, true);
-        renderCoordsGrid();
-      } else {
-        show(coordsSection, false);
+    // Ao voltar da visao_equipes, aplica o casal na caixa correta e busca dados
+    function applySelectedCoupleToTeam(targetId, ele, ela) {
+      // Garante que a seção de coord. equipes está visível
+      if (coordCard.style.display === 'none') {
+        showTeamCoords();
+      }
+      const $ele = document.getElementById(`${targetId}_ele`);
+      const $ela = document.getElementById(`${targetId}_ela`);
+      const $buscar = document.getElementById(`${targetId}_buscar`);
+      if ($ele && $ela && $buscar) {
+        $ele.value = ele;
+        $ela.value = ela;
+        // dispara uma busca para preencher telefones/endereço
+        $buscar.click();
+        // rola até a caixa
+        document.getElementById(`${targetId}_ele`).scrollIntoView({ behavior:'smooth', block:'center' });
       }
     }
 
-    btnContinuar.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const val = (anoInput.value||'').trim();
-      if (!/^\d{4}$/.test(val)) {
-        statusText(anoMsg, 'Informe um ano válido (YYYY).', 'err');
-        return;
+    // Auto-continuar se ano veio na URL
+    window.addEventListener('DOMContentLoaded', () => {
+      if (anoPre) {
+        btnContinuar.click();
       }
-      anoSelecionado = parseInt(val,10);
-      statusText(anoMsg, `Ano selecionado: ${anoSelecionado}`, 'ok');
-
-      totalDirigentesAdicionados = 0;
-      // Conta presets de dirigentes já em Aberto
-      if (initialData && initialData.dirigentes) {
-        totalDirigentesAdicionados = Object.keys(initialData.dirigentes).length;
-      }
-      document.getElementById('kpi-done').textContent = String(totalDirigentesAdicionados);
-
-      renderDirigentesEcg();
-      showConcluirAnoIfReady();
-    });
-
-    window.addEventListener('DOMContentLoaded', ()=>{
-      if (anoPre) { btnContinuar.click(); }
-      const notfound = {{ (request.args.get('notfound') or '0') | tojson }};
-      if (notfound === '1') { alert('Não foi possível carregar o casal selecionado.'); }
     });
   </script>
 </body>
 </html>
+
 
 
