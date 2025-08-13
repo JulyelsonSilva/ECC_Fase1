@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Nova Montagem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; }
+    h1 { margin:0; font-size: 22px; }
+    .muted { color:var(--muted); }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .small { font-size:12px; color:#475569; }
+    .status { margin-top:8px; font-size:13px; }
+    .ok { color:#065f46; }
+    .warn { color:#92400e; }
+    .err { color:#991b1b; }
+    .disabled { opacity: .6; pointer-events: none; }
+    .counter { font-size:13px; color:#334155; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Nova Montagem</h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('montagem') }}">← Voltar</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+      </div>
+    </div>
+    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Em cada caixa, preencha o casal e clique em <strong>Buscar</strong> para recuperar endereço/telefones. Depois, clique em <strong>Adicionar</strong> para gravar.</p>
+
+    <!-- Passo 1: Ano -->
+    <div class="card" id="ano-card">
+      <label for="ano">Ano do Encontro</label>
+      <div class="row">
+        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025">
+        <button class="btn primary" id="btn-continuar">Continuar</button>
+      </div>
+      <div class="status" id="ano-msg"></div>
+    </div>
+
+    <!-- Indicador -->
+    <p class="counter" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
+
+    <!-- Passo 2: 5 caixas Dirigentes -->
+    <div class="grid" id="dirigentes-grid" style="display:none;">
+      <!-- Templates das caixas (serão repetidas) -->
+    </div>
+
+    <!-- Coordenador Geral (apenas habilita após 5/5) -->
+    <div class="card disabled" id="coordenador-geral" style="margin-top:12px; display:none;">
+      <h3 style="margin:0 0 8px;">Coordenador Geral</h3>
+      <div class="row">
+        <div>
+          <label for="cg_nome_ele">Nome (Ele)</label>
+          <input id="cg_nome_ele" placeholder="— habilita após 5/5 —" disabled>
+        </div>
+        <div>
+          <label for="cg_nome_ela">Nome (Ela)</label>
+          <input id="cg_nome_ela" placeholder="— habilita após 5/5 —" disabled>
+        </div>
+      </div>
+      <p class="small muted">Você disse que explicará depois — deixei o bloco pronto para habilitar quando os 5 dirigentes forem adicionados.</p>
+    </div>
+  </div>
+
+  <script>
+    const equipes = [
+      "Equipe Dirigente - MONTAGEM",
+      "Equipe Dirigente -FICHAS",
+      "Equipe Dirigente - FINANÇAS",
+      "Equipe Dirigente - PALESTRA",
+      "Equipe Dirigente - PÓS ENCONTRO",
+    ];
+
+    const grid = document.getElementById('dirigentes-grid');
+    const anoInput = document.getElementById('ano');
+    const btnContinuar = document.getElementById('btn-continuar');
+    const anoMsg = document.getElementById('ano-msg');
+    const kpi = document.getElementById('kpi-total');
+    const kpiDone = document.getElementById('kpi-done');
+    const cg = document.getElementById('coordenador-geral');
+
+    let anoSelecionado = null;
+    let totalAdicionados = 0;
+
+    function renderCaixa(equipe) {
+      const idSafe = equipe.replace(/[^a-z0-9]+/gi, '_');
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = `
+        <h3 style="margin:0 0 8px;">${equipe}</h3>
+        <div class="row">
+          <div>
+            <label for="${idSafe}_ele">Nome (Ele)</label>
+            <input id="${idSafe}_ele" placeholder="Ex.: João">
+          </div>
+          <div>
+            <label for="${idSafe}_ela">Nome (Ela)</label>
+            <input id="${idSafe}_ela" placeholder="Ex.: Maria">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <div>
+            <label for="${idSafe}_telefones">Telefones</label>
+            <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)">
+          </div>
+          <div>
+            <label for="${idSafe}_endereco">Endereço</label>
+            <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${idSafe}_buscar">Buscar</button>
+          <button class="btn primary" id="${idSafe}_add">Adicionar</button>
+        </div>
+
+        <div class="status" id="${idSafe}_status"></div>
+      `;
+
+      // Handlers
+      setTimeout(() => {
+        const $ele = document.getElementById(`${idSafe}_ele`);
+        const $ela = document.getElementById(`${idSafe}_ela`);
+        const $tels = document.getElementById(`${idSafe}_telefones`);
+        const $end = document.getElementById(`${idSafe}_endereco`);
+        const $buscar = document.getElementById(`${idSafe}_buscar`);
+        const $add = document.getElementById(`${idSafe}_add`);
+        const $status = document.getElementById(`${idSafe}_status`);
+
+        async function buscar() {
+          $status.textContent = '';
+          const nome_ele = ($ele.value || '').trim();
+          const nome_ela = ($ela.value || '').trim();
+          if (!nome_ele || !nome_ela) {
+            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela) para buscar.';
+            $status.className = 'status warn';
+            return;
+          }
+          try {
+            const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ nome_ele, nome_ela })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+              $tels.value = data.telefones || '';
+              $end.value = data.endereco || '';
+              $status.textContent = `Dados carregados de ${data.origem}.`;
+              $status.className = 'status ok';
+            } else {
+              $status.textContent = data.msg || 'Não encontrado.';
+              $status.className = 'status err';
+            }
+          } catch(e) {
+            $status.textContent = 'Erro ao buscar dados.';
+            $status.className = 'status err';
+          }
+        }
+
+        async function adicionar() {
+          $status.textContent = '';
+          const nome_ele = ($ele.value || '').trim();
+          const nome_ela = ($ela.value || '').trim();
+          const telefones = ($tels.value || '').trim();
+          const endereco = ($end.value || '').trim();
+          if (!anoSelecionado) {
+            $status.textContent = 'Informe o ano antes.';
+            $status.className = 'status warn';
+            return;
+          }
+          if (!nome_ele || !nome_ela) {
+            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+            $status.className = 'status warn';
+            return;
+          }
+          try {
+            const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                ano: anoSelecionado,
+                equipe: `${equipe}`,
+                nome_ele, nome_ela, telefones, endereco
+              })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+              $status.textContent = 'Adicionado com sucesso.';
+              $status.className = 'status ok';
+              $ele.disabled = true; $ela.disabled = true;
+              $tels.disabled = true; $end.disabled = true;
+              $buscar.disabled = true; $add.disabled = true;
+              totalAdicionados += 1;
+              kpiDone.textContent = String(totalAdicionados);
+              if (totalAdicionados >= 5) {
+                cg.style.display = '';
+                cg.classList.remove('disabled');
+                document.getElementById('cg_nome_ele').disabled = false;
+                document.getElementById('cg_nome_ela').disabled = false;
+                document.getElementById('cg_nome_ele').placeholder = 'Nome (Ele)';
+                document.getElementById('cg_nome_ela').placeholder = 'Nome (Ela)';
+              }
+            } else {
+              $status.textContent = data.msg || 'Falha ao adicionar.';
+              $status.className = 'status err';
+            }
+          } catch(e) {
+            $status.textContent = 'Erro ao adicionar.';
+            $status.className = 'status err';
+          }
+        }
+
+        $buscar.addEventListener('click', (e) => { e.preventDefault(); buscar(); });
+        $add.addEventListener('click', (e) => { e.preventDefault(); adicionar(); });
+      }, 0);
+
+      return el;
+    }
+
+    btnContinuar.addEventListener('click', (e) => {
+      e.preventDefault();
+      const val = (anoInput.value || '').trim();
+      if (!/^\d{4}$/.test(val)) {
+        anoMsg.textContent = 'Informe um ano válido (YYYY).';
+        anoMsg.className = 'status err';
+        return;
+      }
+      anoSelecionado = parseInt(val, 10);
+      anoMsg.textContent = `Ano selecionado: ${anoSelecionado}`;
+      anoMsg.className = 'status ok';
+      grid.innerHTML = '';
+      equipes.forEach(eq => grid.appendChild(renderCaixa(eq)));
+      document.getElementById('dirigentes-grid').style.display = '';
+      kpi.style.display = '';
+      totalAdicionados = 0;
+      kpiDone.textContent = '0';
+      cg.style.display = 'none';
+      cg.classList.add('disabled');
+    });
+  </script>
+</body>
+</html>
