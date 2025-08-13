@@ -3,6 +3,7 @@ import mysql.connector
 from collections import defaultdict
 import math
 import re
+from mysql.connector import errors as mysql_errors
 
 app = Flask(__name__)
 
