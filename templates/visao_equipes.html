@@ -2,15 +2,28 @@
 {% block content %}
   <h2 style="text-align: center;">Visão por Equipe: {{ equipe_selecionada }}</h2>
 
-  <a href="{{ url_for('index') }}">
-    <button type="button">Voltar para Página Inicial</button>
-  </a>
-  <br><br>
+  {# Detecta se veio da nova_montagem #}
+  {% set target = request.args.get('target') %}
+  {% set ano_montagem = request.args.get('ano_montagem') %}
+  {% set linking = target and ano_montagem %}
+
+  <div style="text-align:center; margin-bottom:14px;">
+    {% if linking %}
+      <a class="btn" href="{{ url_for('nova_montagem', ano=ano_montagem) }}">← Voltar à Nova Montagem ({{ ano_montagem }})</a>
+      <p style="margin-top:8px; color:#475569; font-size:14px;">
+        Clique em um <strong>casal elegível</strong> para selecioná-lo.
+      </p>
+    {% else %}
+      <a class="btn" href="{{ url_for('index') }}">← Voltar para Página Inicial</a>
+    {% endif %}
+  </div>
 
   <!-- Filtro (preserva target e ano_montagem quando vier da nova_montagem) -->
   <form method="get" style="text-align: center; margin-bottom: 20px;">
-    <input type="hidden" name="target" value="{{ target or '' }}">
-    <input type="hidden" name="ano_montagem" value="{{ ano_montagem or '' }}">
+    {% if linking %}
+      <input type="hidden" name="target" value="{{ target }}">
+      <input type="hidden" name="ano_montagem" value="{{ ano_montagem }}">
+    {% endif %}
     <select name="equipe" onchange="this.form.submit()">
       <option value="">Selecione uma equipe</option>
       <option value="Dirigentes" {% if equipe_selecionada == 'Dirigentes' %}selected{% endif %}>Dirigentes</option>
@@ -31,43 +44,40 @@
   <table border="1" style="margin: auto; border-collapse: collapse;">
     <thead>
       <tr>
-        <th>Ano</th>
+        <th style="padding:6px 10px;">Ano</th>
         {% for col in colunas %}
-          <th>{{ col }}</th>
+          <th style="padding:6px 10px;">{{ col }}</th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
       {% for ano, linha in tabela.items() %}
         <tr>
-          <td>{{ ano }}</td>
+          <td style="padding:6px 10px; text-align:center;">{{ ano }}</td>
           {% for nome in linha %}
             {% set raw = nome or '' %}
             {% set is_coord = raw.startswith('*') %}
             {% set is_mark  = raw.startswith('~') %}
             {% set clean    = raw[1:] if (is_coord or is_mark) else raw %}
-            <td>
+            <td style="padding:6px 10px;">
               {% if raw %}
                 {% if is_coord %}
                   <b>{{ clean }}</b>
                 {% else %}
-                  {% if target and ano_montagem %}
-                    {% set partes = clean.split(' e ') %}
+                  {% if linking %}
+                    {# Gera link de retorno para /montagem/nova preenchendo os campos #}
+                    {% set partes = clean.split(' e ', 1) %}
                     {% if partes|length == 2 %}
-                      {% set ele = partes[0] %}
-                      {% set ela = partes[1] %}
-                      {% set href = url_for('visao_equipes_select',
-                                            ano_montagem=ano_montagem,
-                                            target=target,
-                                            ele=ele,
-                                            ela=ela) %}
-                      {% if is_mark %}
-                        <span style="background-color: yellow">
-                          <a href="{{ href }}">{{ clean }}</a>
-                        </span>
-                      {% else %}
-                        <a href="{{ href }}">{{ clean }}</a>
-                      {% endif %}
+                      {% set ele = partes[0] | trim %}
+                      {% set ela = partes[1] | trim %}
+                      <a href="{{ url_for('nova_montagem',
+                                          ano=ano_montagem,
+                                          selecionar_ele=ele,
+                                          selecionar_ela=ela,
+                                          target=target) }}"
+                         {% if is_mark %}style="background-color: yellow; padding:2px 4px; border-radius:4px;"{% endif %}>
+                        {{ clean }}
+                      </a>
                     {% else %}
                       {% if is_mark %}
                         <span style="background-color: yellow">{{ clean }}</span>
@@ -91,4 +101,12 @@
     </tbody>
   </table>
   {% endif %}
+
+  <style>
+    .btn {
+      display:inline-block; text-decoration:none; font-size:14px; color:white;
+      background-color:#007BFF; padding:8px 14px; border-radius:8px;
+    }
+    .btn:hover { background-color:#0056b3; }
+  </style>
 {% endblock %}
