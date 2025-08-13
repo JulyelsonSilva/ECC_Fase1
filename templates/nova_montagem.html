@@ -98,7 +98,7 @@
   <script>
     // Dados do servidor
     const initialData = {{ (initial_data or {}) | tojson }};
-    const anoPre = {{ (ano_preselecionado if ano_preselecionado is not none else None) | tojson }};
+    const anoPre = {{ (ano_preselecionado if ano_preselecionado is not None else None) | tojson }};
     const TEAM_MAP = {{ (team_map or {}) | tojson }};
 
     // Parâmetros de retorno da visão de equipes
@@ -143,9 +143,10 @@
     let totalAdicionados = 0;
     let cgLocked = false;
     let currentCGId = null;
-    let coordsRendered = false; // <- só renderizamos depois do CG escolhido
+    let coordsRendered = false;
 
     function idSafe(txt){ return (txt || '').replace(/[^a-z0-9]+/gi,'_'); }
+    function hasCG(){ return !!(currentCGId || (initialData && initialData.cg && initialData.cg.id)); }
 
     // Modal
     function makeModal(onChoose){
@@ -173,13 +174,10 @@
 
     // Exibição dos Coordenadores de Equipe (somente após CG confirmado)
     function showCoordsSection(){
-      if (coordsRendered) {
-        coordsTitle.style.display = '';
-        gridCoords.style.display = '';
-        return;
-      }
+      if (!hasCG()) return; // segurança extra
       coordsTitle.style.display = '';
       gridCoords.style.display = '';
+      if (coordsRendered) return;
       gridCoords.innerHTML = '';
       coordTeams.forEach(teamTitle => {
         const preset = (initialData.coords && initialData.coords[teamTitle]) ? initialData.coords[teamTitle] : null;
@@ -216,10 +214,9 @@
         currentCGId = initialData.cg.id || null;
         cg.style.display = ''; cg.classList.remove('disabled');
         cgLock(); cgAdd.disabled = false;
-        cgStatus.textContent = 'Já existe “Casal Coordenador Geral” para este ano.';
-        cgStatus.className = 'status warn';
-        // Como já existe CG, podemos exibir as caixas dos coordenadores de equipe
-        showCoordsSection();
+        cgStatus.textContent = 'Já existe “Casal Coordenador Geral” (Aberto) para este ano.';
+        cgStatus.className = 'status ok';
+        showCoordsSection();  // <- garante exibição
       }
     }
     function maybeEnableCG(){
@@ -243,8 +240,8 @@
         ? `<a href="${makeEquipeURL(titulo)}">${titulo}</a>`
         : `${titulo}`;
 
-      const hasPreset = preset && (preset.nome_ele || preset.nome_ela);
-      const showForm = !isCoordEquipe || hasPreset;
+      const hasPresetBox = preset && (preset.nome_ele || preset.nome_ela);
+      const showForm = !isCoordEquipe || hasPresetBox;
 
       el.innerHTML = `
         <h3 class="card-title">${headerLink}</h3>
@@ -308,7 +305,7 @@
           if ($action) $action.textContent = 'Adicionar';
         }
 
-        if (hasPreset){ lockCard(); }
+        if (hasPresetBox){ lockCard(); }
 
         async function buscar(){
           $status.textContent = '';
@@ -416,10 +413,13 @@
 
         // Preenchimento automático ao retornar da Visão de Equipes
         if (isCoordEquipe && retTarget && idSafe(retTarget) === idSafe(boxKey) && retEle && retEla){
-          if ($form && $form.style.display === 'none'){ $form.style.display = ''; }
-          if ($ele) $ele.value = retEle;
-          if ($ela) $ela.value = retEla;
-          buscar();
+          // Só permite se CG existir:
+          if (hasCG()){
+            if ($form && $form.style.display === 'none'){ $form.style.display = ''; }
+            if ($ele) $ele.value = retEle;
+            if ($ela) $ela.value = retEla;
+            buscar();
+          }
         }
       },0);
 
@@ -444,9 +444,13 @@
       renderCGPresetIfAny();
       maybeEnableCG();
 
-      // NÃO renderiza coordenadores agora; só depois do CG
-      coordsTitle.style.display = 'none';
-      gridCoords.style.display = 'none';
+      // Coordenadores de Equipe só aparecem se já houver CG aberto
+      if (hasCG()){
+        showCoordsSection();
+      } else {
+        coordsTitle.style.display = 'none';
+        gridCoords.style.display = 'none';
+      }
     }
 
     // Handlers
@@ -517,9 +521,11 @@
               cgStatus.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
               cgStatus.className = 'status ok';
               cgUnlockAndClear();
-              // ao liberar, ocultamos coordenadores até novo CG ser escolhido
               coordsTitle.style.display = 'none';
               gridCoords.style.display = 'none';
+              coordsRendered = false;
+              // Também removemos referência de CG pré-existente para o hasCG()
+              if (initialData && initialData.cg){ initialData.cg = null; }
             } else {
               cgStatus.textContent = data.msg || 'Falha ao alterar status.';
               cgStatus.className = 'status err';
@@ -557,8 +563,7 @@
           cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
           cgStatus.className = 'status ok';
           cgLock(); cgAdd.disabled = false;
-          // agora podemos mostrar as caixas dos coordenadores de equipe
-          showCoordsSection();
+          showCoordsSection(); // <- garante exibição após adicionar CG
         } else {
           cgStatus.textContent = data.msg || 'Falha ao adicionar.';
           cgStatus.className = 'status err';
@@ -571,3 +576,4 @@
   </script>
 </body>
 </html>
+
