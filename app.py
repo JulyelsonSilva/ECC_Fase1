@@ -145,10 +145,14 @@ def editar_encontrista(encontrista_id):
 # -----------------------------
 @app.route('/montagem')
 def montagem():
+    """
+    Considera um ANO como 'Concluído' quando TODOS os registros desse ano
+    têm status = 'Concluido'. Qualquer outro valor (ex.: 'Aceito', 'Em Progresso', '')
+    coloca o ano em 'Em Aberto'.
+    """
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
-    # status 'Concluido' marca item concluído; qualquer outro valor conta como aberto
     cursor.execute("""
         SELECT 
             ano,
@@ -249,7 +253,6 @@ def visao_equipes():
             cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
             all_rows = cursor.fetchall()
 
-            # Coordenadores históricos da equipe
             coordenadores_globais = set(
                 f"{row['nome_ele']} e {row['nome_ela']}" for row in all_rows if (row.get('coordenador') or '').strip().lower() == 'sim'
             )
