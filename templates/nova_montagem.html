@@ -1,36 +1,39 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>Nova Montagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; }
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap: wrap; }
     h1 { margin:0; font-size: 22px; }
     .muted { color:var(--muted); }
     .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
     .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
-    .btn.small { padding:6px 10px; font-size:13px; }
-    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .btn.danger { background: var(--danger); color:#fff; border-color: var(--danger); }
+    .btn.ghost { background:transparent; }
+    .btn.small { padding:6px 10px; border-radius:8px; }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
     label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
-    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    input { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    .small { font-size:12px; color:#475569; }
+    .row-3 { display:grid; gap:10px; grid-template-columns: 1fr 1fr 1fr; }
     .status { margin-top:8px; font-size:13px; }
-    .ok { color:#065f46; }
-    .warn { color:#92400e; }
-    .err { color:#991b1b; }
-    .disabled { opacity: .6; pointer-events: none; }
-    .counter { font-size:13px; color:#334155; }
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index: 50; }
-    .modal-card { background:#fff; padding:16px; border-radius:12px; width:90%; max-width:360px; border:1px solid var(--border); }
-    .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
-    .card-title { margin:0 0 8px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-    .card-title a { color:inherit; text-decoration:none; border-bottom:1px dashed #cbd5e1; }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    .err { color:var(--danger); }
+    .disabled { opacity:.6; pointer-events:none; }
+    .section-title { margin: 18px 0 8px; font-size: 16px; font-weight: 700; }
+    .kpi { font-size:13px; color:#334155; margin:6px 0 12px; }
+    .team-link { display:block; padding:12px; border:1px dashed var(--border); border-radius:10px; text-align:center; cursor:pointer; user-select:none; }
+    .team-link:hover { background:#f1f5f9; }
+    .inline-choices { display:flex; gap:8px; margin-top:8px; }
+    .note { font-size:12px; color:var(--muted); margin-top:6px; }
   </style>
 </head>
 <body>
@@ -40,10 +43,13 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <button class="btn primary" id="btn-concluir-ano" style="display:none;">Concluir Montagem do Ano</button>
       </div>
     </div>
-    <p class="muted">Informe o ano e adicione os 5 Dirigentes. Depois escolha o <b>Casal Coordenador Geral</b>. Só então aparecerão as caixas de <b>Coordenadores de Equipe</b>. Cada coordenador definido mostra o botão <b>Montar Equipe</b>.</p>
 
+    <p class="muted">Informe o ano, adicione os 5 Dirigentes e o <strong>Coordenador Geral</strong>. Depois selecione os <strong>Coordenadores de Equipe</strong> e, por fim, conclua a montagem do ano.</p>
+
+    <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
       <label for="ano">Ano do Encontro</label>
       <div class="row">
@@ -53,462 +59,713 @@
       <div class="status" id="ano-msg"></div>
     </div>
 
-    <p class="counter" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
+    <!-- Indicador Dirigentes -->
+    <p class="kpi" id="kpi-total" style="display:none;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
 
+    <!-- Passo 2: 5 caixas Dirigentes -->
     <div class="grid" id="dirigentes-grid" style="display:none;"></div>
 
+    <!-- Coordenador Geral -->
     <div class="card disabled" id="coordenador-geral" style="margin-top:12px; display:none;">
-      <h3 style="margin:0 0 8px;">Coordenador Geral</h3>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+        <h3 style="margin:0;">Coordenador Geral</h3>
+        <div id="cg-actions" style="display:flex; gap:8px;">
+          <!-- Preenchido dinamicamente (Alterar / Montar Equipe não se aplica aqui) -->
+        </div>
+      </div>
       <div class="row">
-        <div><label for="cg_nome_ele">Nome (Ele)</label><input id="cg_nome_ele" placeholder="— habilita após 5/5 —" disabled></div>
-        <div><label for="cg_nome_ela">Nome (Ela)</label><input id="cg_nome_ela" placeholder="— habilita após 5/5 —" disabled></div>
+        <div>
+          <label for="cg_nome_ele">Nome (Ele)</label>
+          <input id="cg_nome_ele" placeholder="— habilita após 5/5 —" disabled>
+        </div>
+        <div>
+          <label for="cg_nome_ela">Nome (Ela)</label>
+          <input id="cg_nome_ela" placeholder="— habilita após 5/5 —" disabled>
+        </div>
       </div>
       <div class="row" style="margin-top:8px;">
-        <div><label for="cg_telefones">Telefones</label><input id="cg_telefones" placeholder="(preenchido pela busca)" disabled></div>
-        <div><label for="cg_endereco">Endereço</label><input id="cg_endereco" placeholder="(preenchido pela busca)" disabled></div>
+        <div>
+          <label for="cg_telefones">Telefones</label>
+          <input id="cg_telefones" placeholder="(preenchido pela busca)" disabled>
+        </div>
+        <div>
+          <label for="cg_endereco">Endereço</label>
+          <input id="cg_endereco" placeholder="(preenchido pela busca)" disabled>
+        </div>
       </div>
       <div class="row" style="margin-top:8px;">
         <button class="btn" id="cg_buscar" disabled>Buscar</button>
         <button class="btn primary" id="cg_add" disabled>Adicionar</button>
       </div>
       <div class="status" id="cg_status"></div>
-      <p class="small muted" style="margin-top:8px;">Regra: já ter trabalhado e nunca ter sido “Casal Coordenador Geral”.</p>
+      <p class="note">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
     </div>
 
-    <h3 id="coords-title" style="margin:18px 0 8px; display:none;">Coordenadores de Equipe</h3>
-    <div class="grid" id="coords-grid" style="display:none;"></div>
+    <!-- Coordenadores de Equipe (aparece só após CG escolhido) -->
+    <div id="coords-section" style="display:none;">
+      <h3 class="section-title">Coordenadores de Equipe</h3>
+      <p class="note" id="coords-note">Clique no nome da equipe para abrir a Visão de Equipes e escolher um casal (somente casais que nunca foram coordenadores aparecem como link).</p>
+      <div class="grid" id="coords-grid"></div>
+    </div>
   </div>
 
   <script>
-    const initialData = {{ (initial_data or {}) | tojson }};
+    // Dados vindos do servidor
+    const initialData = {{ initial_data | tojson }};
     const anoPre = {{ ano_preselecionado | tojson }};
-    const TEAM_MAP = {{ (team_map or {}) | tojson }};
-    const qs = new URLSearchParams(location.search);
-    const retTarget = qs.get('target') || null;
-    const retEle = qs.get('ele') || null;
-    const retEla = qs.get('ela') || null;
-    const retTel = qs.get('tel') || null;
-    const retEnd = qs.get('end') || null;
+    const TEAM_MAP = {{ team_map | tojson }};
 
-    const equipesDir = [
-      "Equipe Dirigente - MONTAGEM","Equipe Dirigente -FICHAS","Equipe Dirigente - FINANÇAS",
-      "Equipe Dirigente - PALESTRA","Equipe Dirigente - PÓS ENCONTRO",
+    const equipesDirigentes = [
+      "Equipe Dirigente - MONTAGEM",
+      "Equipe Dirigente -FICHAS",
+      "Equipe Dirigente - FINANÇAS",
+      "Equipe Dirigente - PALESTRA",
+      "Equipe Dirigente - PÓS ENCONTRO",
     ];
-    const coordTeams = ["Sala","Círculos","Café e Minimercado","Compras","Acolhida","Ordem e Limpeza","Liturgia e Vigília","Secretaria","Cozinha","Visitação"];
 
-    const gridDir = document.getElementById('dirigentes-grid');
-    const coordsTitle = document.getElementById('coords-title');
-    const gridCoords = document.getElementById('coords-grid');
+    // Elems principais
+    const grid = document.getElementById('dirigentes-grid');
     const anoInput = document.getElementById('ano');
     const btnContinuar = document.getElementById('btn-continuar');
     const anoMsg = document.getElementById('ano-msg');
     const kpi = document.getElementById('kpi-total');
     const kpiDone = document.getElementById('kpi-done');
+    const cgCard = document.getElementById('coordenador-geral');
+    const coordsSection = document.getElementById('coords-section');
+    const coordsGrid = document.getElementById('coords-grid');
+    const btnConcluirAno = document.getElementById('btn-concluir-ano');
 
-    const cg = document.getElementById('coordenador-geral');
-    const cgEle = document.getElementById('cg_nome_ela'.replace('_ela','_ele'));
+    // CG elements
+    const cgEle = document.getElementById('cg_nome_ele');
     const cgEla = document.getElementById('cg_nome_ela');
     const cgTel = document.getElementById('cg_telefones');
     const cgEnd = document.getElementById('cg_endereco');
     const cgBuscar = document.getElementById('cg_buscar');
     const cgAdd = document.getElementById('cg_add');
     const cgStatus = document.getElementById('cg_status');
+    const cgActions = document.getElementById('cg-actions');
 
+    // Estado
     let anoSelecionado = null;
-    let totalAdicionados = 0;
-    let cgLocked = false;
-    let currentCGId = null;
-    let coordsRendered = false;
+    let totalDirigentesAdicionados = 0;
+    let cgId = null; // id do registro CG em aberto
+    let cgAdded = false; // se já há CG salvo em Aberto
 
-    function idSafe(t){ return (t||'').replace(/[^a-z0-9]+/gi,'_'); }
-    function hasCG(){ return !!(currentCGId || (initialData && initialData.cg && initialData.cg.id)); }
-    function makeEquipeURL(teamTitle){
-      const eq = encodeURIComponent(teamTitle);
-      const anoMont = anoSelecionado ? `&ano=${encodeURIComponent(String(anoSelecionado))}` : '';
-      return `{{ url_for('montagem_equipe') }}?equipe=${eq}${anoMont}`;
-    }
-    function makeVisaoEquipeURL(teamTitle){
-      const equipeParam = encodeURIComponent(teamTitle);
-      const target = encodeURIComponent(teamTitle);
-      const anoMont = anoSelecionado ? `&ano_montagem=${encodeURIComponent(String(anoSelecionado))}` : '';
-      return `{{ url_for('visao_equipes') }}?equipe=${equipeParam}&target=${target}${anoMont}`;
-    }
+    // Util
+    function idFromLabel(lbl) { return lbl.replace(/[^a-z0-9]+/gi, '_'); }
+    function makeEl(html) { const d=document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
+    function setDisabled(el, val) { el.disabled = !!val; }
+    function show(el, on=true) { el.style.display = on ? '' : 'none'; }
+    function statusText(el, msg, cls='') { el.textContent = msg || ''; el.className = 'status ' + (cls||''); }
 
-    function makeModal(onChoose){
-      const m = document.createElement('div');
-      m.className = 'modal-backdrop';
-      m.innerHTML = `
-        <div class="modal-card">
-          <div style="font-weight:600; margin-bottom:8px;">O Casal…</div>
-          <div class="modal-actions">
-            <button id="m_rec" class="btn">Recusou</button>
-            <button id="m_des" class="btn">Desistiu</button>
-          </div>
-        </div>`;
-      document.body.appendChild(m);
-      m.querySelector('#m_rec').onclick = ()=>{ onChoose('Recusou'); document.body.removeChild(m); };
-      m.querySelector('#m_des').onclick = ()=>{ onChoose('Desistiu'); document.body.removeChild(m); };
-    }
-
-    function showCoordsSection(){
-      if (!hasCG()) return;
-      coordsTitle.style.display = '';
-      gridCoords.style.display = '';
-      if (coordsRendered) return;
-      gridCoords.innerHTML = '';
-      coordTeams.forEach(teamTitle => {
-        const preset = (initialData.coords && initialData.coords[teamTitle]) ? initialData.coords[teamTitle] : null;
-        const equipeFinalStr = TEAM_MAP[teamTitle] || teamTitle;
-        const box = renderPessoaBox(teamTitle, teamTitle, equipeFinalStr, preset, true);
-        gridCoords.appendChild(box);
+    function buildStatusChoice(onPick) {
+      const box = makeEl(`<div class="inline-choices">
+          <button class="btn small" data-val="Recusou">Recusou</button>
+          <button class="btn small" data-val="Desistiu">Desistiu</button>
+          <button class="btn small ghost" data-val="cancel">Cancelar</button>
+        </div>`);
+      box.querySelectorAll('button').forEach(b=>{
+        b.addEventListener('click', (e)=>{
+          e.preventDefault();
+          const val = b.getAttribute('data-val');
+          if (val === 'cancel') { box.remove(); return; }
+          onPick(val, box);
+        });
       });
-      coordsRendered = true;
+      return box;
     }
 
-    function cgLock(){
-      cgEle.disabled = true; cgEla.disabled = true;
-      cgTel.disabled = true; cgEnd.disabled = true;
-      cgBuscar.disabled = true;
-      cgAdd.textContent = 'Alterar';
-      cgLocked = true;
+    // ----- DIRIGENTES -----
+    function renderDirigenteCard(equipe, preset) {
+      const idSafe = idFromLabel(equipe);
+      const card = makeEl(`
+        <div class="card" id="${idSafe}_card">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+            <h3 style="margin:0;">${equipe}</h3>
+            <div id="${idSafe}_actions" style="display:flex; gap:8px;"></div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="${idSafe}_ele">Nome (Ele)</label>
+              <input id="${idSafe}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
+            </div>
+            <div>
+              <label for="${idSafe}_ela">Nome (Ela)</label>
+              <input id="${idSafe}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label for="${idSafe}_telefones">Telefones</label>
+              <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
+            </div>
+            <div>
+              <label for="${idSafe}_endereco">Endereço</label>
+              <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px;">
+            <button class="btn" id="${idSafe}_buscar">Buscar</button>
+            <button class="btn primary" id="${idSafe}_add">Adicionar</button>
+          </div>
+
+          <div class="status" id="${idSafe}_status"></div>
+        </div>
+      `);
+
+      const $ele = card.querySelector(`#${idSafe}_ele`);
+      const $ela = card.querySelector(`#${idSafe}_ela`);
+      const $tels = card.querySelector(`#${idSafe}_telefones`);
+      const $end = card.querySelector(`#${idSafe}_endereco`);
+      const $buscar = card.querySelector(`#${idSafe}_buscar`);
+      const $add = card.querySelector(`#${idSafe}_add`);
+      const $status = card.querySelector(`#${idSafe}_status`);
+      const $actions = card.querySelector(`#${idSafe}_actions`);
+
+      let recId = preset?.id || null;
+      let locked = false;
+
+      function lockBox(on) {
+        [$ele,$ela,$tels,$end,$buscar].forEach(el=>setDisabled(el,on));
+        $add.textContent = on ? 'Alterar' : 'Adicionar';
+        locked = on;
+      }
+
+      async function buscar() {
+        statusText($status,'','');
+        const nome_ele = ($ele.value||'').trim();
+        const nome_ela = ($ela.value||'').trim();
+        if (!nome_ele || !nome_ela) { return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn'); }
+        try {
+          const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ nome_ele, nome_ela })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            $tels.value = data.telefones || '';
+            $end.value = data.endereco || '';
+            statusText($status, `Dados carregados de ${data.origem}.`, 'ok');
+          } else {
+            statusText($status, data.msg || 'Não encontrado.', 'err');
+          }
+        } catch { statusText($status,'Erro ao buscar.','err'); }
+      }
+
+      async function adicionar() {
+        statusText($status,'','');
+        if (!anoSelecionado) return statusText($status,'Informe o ano antes.','warn');
+        const nome_ele = ($ele.value||'').trim();
+        const nome_ela = ($ela.value||'').trim();
+        const telefones = ($tels.value||'').trim();
+        const endereco = ($end.value||'').trim();
+        if (!nome_ele || !nome_ela) return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn');
+
+        try {
+          const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: anoSelecionado, equipe: equipe, nome_ele, nome_ela, telefones, endereco })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            recId = data.id || recId;
+            statusText($status,'Adicionado com sucesso.','ok');
+            lockBox(true);
+            totalDirigentesAdicionados += 1;
+            kpiDone.textContent = String(totalDirigentesAdicionados);
+            maybeEnableCG();
+          } else {
+            statusText($status, data.msg || 'Falha ao adicionar.','err');
+          }
+        } catch { statusText($status,'Erro ao adicionar.','err'); }
+      }
+
+      function askAlterar() {
+        if (!recId) return;
+        const chooser = buildStatusChoice(async (choice, boxEl)=>{
+          try {
+            const resp = await fetch('{{ url_for("api_marcar_status") }}', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ id: recId, status: choice })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+              statusText($status, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
+              lockBox(false);
+              // limpa campos
+              [$ele,$ela,$tels,$end].forEach(i=>i.value='');
+              recId = null;
+              // Ajusta KPI (liberou um dirigente)
+              if (totalDirigentesAdicionados>0) {
+                totalDirigentesAdicionados -= 1;
+                kpiDone.textContent = String(totalDirigentesAdicionados);
+              }
+              boxEl.remove();
+              maybeEnableCG(); // pode desabilitar se caiu abaixo de 5
+            } else {
+              statusText($status, data.msg || 'Falha ao alterar.','err');
+            }
+          } catch { statusText($status,'Erro ao alterar.','err'); }
+        });
+        $status.after(chooser);
+      }
+
+      $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
+      $add.addEventListener('click', e=>{
+        e.preventDefault();
+        if (!locked) adicionar();
+        else askAlterar();
+      });
+
+      if (preset && (preset.nome_ele || preset.nome_ela)) {
+        // já existe (Aberto) -> bloqueia e conta
+        lockBox(true);
+        totalDirigentesAdicionados += 1;
+        kpiDone.textContent = String(totalDirigentesAdicionados);
+      }
+
+      return card;
     }
-    function cgUnlockAndClear(){
-      cgEle.disabled = false; cgEla.disabled = false;
-      cgTel.disabled = false; cgEnd.disabled = false;
-      cgBuscar.disabled = false;
-      cgAdd.textContent = 'Adicionar';
-      cgLocked = false; currentCGId = null;
-      cgEle.value = ''; cgEla.value = ''; cgTel.value = ''; cgEnd.value = '';
-      cgEle.placeholder = 'Nome (Ele)'; cgEla.placeholder = 'Nome (Ela)';
+
+    function renderDirigentes() {
+      grid.innerHTML = '';
+      equipesDirigentes.forEach(eq=>{
+        const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
+        grid.appendChild(renderDirigenteCard(eq, preset));
+      });
+      show(grid, true);
+      show(kpi, true);
     }
-    function renderCGPresetIfAny(){
-      if (initialData && initialData.cg){
+
+    function maybeEnableCG() {
+      // Habilita CG quando 5/5 dirigentes adicionados
+      if (totalDirigentesAdicionados >= 5) {
+        show(cgCard, true);
+        cgCard.classList.remove('disabled');
+        if (!cgAdded) {
+          setDisabled(cgEle, false);
+          setDisabled(cgEla, false);
+          setDisabled(cgBuscar, false);
+          setDisabled(cgAdd, false);
+          cgEle.placeholder = 'Nome (Ele)';
+          cgEla.placeholder = 'Nome (Ela)';
+        }
+      } else {
+        if (!cgAdded) {
+          show(cgCard, true); // mostra, mas desabilitado
+          cgCard.classList.add('disabled');
+          setDisabled(cgEle, true);
+          setDisabled(cgEla, true);
+          setDisabled(cgBuscar, true);
+          setDisabled(cgAdd, true);
+          cgEle.placeholder = '— habilita após 5/5 —';
+          cgEla.placeholder = '— habilita após 5/5 —';
+        }
+      }
+    }
+
+    // ----- Coordenador Geral -----
+    function renderCGPresetIfAny() {
+      if (initialData && initialData.cg) {
+        cgId = initialData.cg.id || null;
+        cgAdded = true;
         cgEle.value = initialData.cg.nome_ele || '';
         cgEla.value = initialData.cg.nome_ela || '';
         cgTel.value = initialData.cg.telefones || '';
         cgEnd.value = initialData.cg.endereco || '';
-        currentCGId = initialData.cg.id || null;
-        cg.style.display = ''; cg.classList.remove('disabled');
-        cgLock(); cgAdd.disabled = false;
-        cgStatus.textContent = 'Já existe “Casal Coordenador Geral” (Aberto) para este ano.';
-        cgStatus.className = 'status ok';
-        showCoordsSection();
-      }
-    }
-    function maybeEnableCG(){
-      if (totalAdicionados >= 5){
-        cg.style.display = ''; cg.classList.remove('disabled');
-        if (!initialData.cg && !cgLocked){
-          cgEle.disabled = false; cgEla.disabled = false;
-          cgBuscar.disabled = false; cgAdd.disabled = false;
-          cgEle.placeholder = 'Nome (Ele)'; cgEla.placeholder = 'Nome (Ela)';
-        }
-      }
-    }
 
-    function renderPessoaBox(boxKey, titulo, equipeFinalStr, preset, isCoordEquipe){
-      const boxId = idSafe(boxKey);
-      const el = document.createElement('div');
-      el.className = 'card';
+        setDisabled(cgEle, true);
+        setDisabled(cgEla, true);
+        setDisabled(cgTel, true);
+        setDisabled(cgEnd, true);
+        setDisabled(cgBuscar, true);
+        setDisabled(cgAdd, false); // vira "Alterar"
+        cgAdd.textContent = 'Alterar';
+        cgCard.classList.remove('disabled');
+        statusText(cgStatus,'Coordenador Geral em aberto para este ano.','ok');
 
-      const headerRight = `
-        <span id="${boxId}_teambtn_wrap" style="display:none;">
-          <a class="btn small" id="${boxId}_teambtn" href="#">Montar Equipe</a>
-        </span>
-      `;
-      const headerLeft = isCoordEquipe
-        ? `<a href="${makeVisaoEquipeURL(titulo)}">${titulo}</a>`
-        : `${titulo}`;
-
-      el.innerHTML = `
-        <h3 class="card-title"><span>${headerLeft}</span>${headerRight}</h3>
-        <div ${isCoordEquipe && !(preset && (preset.nome_ele||preset.nome_ela)) ? 'style="display:none"' : ''} id="${boxId}_form">
-          <div class="row">
-            <div><label for="${boxId}_ele">Nome (Ele)</label><input id="${boxId}_ele" value="${preset?.nome_ele || ''}" placeholder="Ex.: João"></div>
-            <div><label for="${boxId}_ela">Nome (Ela)</label><input id="${boxId}_ela" value="${preset?.nome_ela || ''}" placeholder="Ex.: Maria"></div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <div><label for="${boxId}_telefones">Telefones</label><input id="${boxId}_telefones" value="${preset?.telefones || ''}" placeholder="Preenchido pela busca (editável)"></div>
-            <div><label for="${boxId}_endereco">Endereço</label><input id="${boxId}_endereco" value="${preset?.endereco || ''}" placeholder="Preenchido pela busca (editável)"></div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <button class="btn" id="${boxId}_buscar">Buscar</button>
-            <button class="btn primary" id="${boxId}_action">${preset?.id ? 'Alterar' : 'Adicionar'}</button>
-          </div>
-          <div class="status" id="${boxId}_status"></div>
-        </div>
-        ${isCoordEquipe && !(preset && (preset.nome_ele||preset.nome_ela)) ? '<div class="small muted" id="'+boxId+'_hint">Clique no título para escolher um casal na Visão de Equipes.</div>' : ''}
-      `;
-
-      setTimeout(()=>{
-        const $form = document.getElementById(`${boxId}_form`);
-        const $ele = document.getElementById(`${boxId}_ele`);
-        const $ela = document.getElementById(`${boxId}_ela`);
-        const $tels = document.getElementById(`${boxId}_telefones`);
-        const $end = document.getElementById(`${boxId}_endereco`);
-        const $buscar = document.getElementById(`${boxId}_buscar`);
-        const $action = document.getElementById(`${boxId}_action`);
-        const $status = document.getElementById(`${boxId}_status`);
-        const $teamWrap = document.getElementById(`${boxId}_teambtn_wrap`);
-        const $teamBtn = document.getElementById(`${boxId}_teambtn`);
-        const $hint = document.getElementById(`${boxId}_hint`);
-
-        let currentId = preset?.id || null;
-        let isLocked = !!preset?.id;
-
-        function showTeamButton(){
-          if (!isCoordEquipe) return;
-          if (!anoSelecionado) return;
-          if ($teamWrap){
-            $teamWrap.style.display = '';
-            if ($teamBtn){
-              $teamBtn.href = `{{ url_for('montagem_equipe') }}?ano=${encodeURIComponent(String(anoSelecionado))}&equipe=${encodeURIComponent(boxKey)}`;
-            }
-          }
-        }
-
-        function lockCard(){
-          [$ele,$ela,$tels,$end,$buscar].forEach(i => i && (i.disabled = true));
-          isLocked = true;
-          if ($action) $action.textContent = 'Alterar';
-          showTeamButton();
-        }
-        function unlockAndClearCard(){
-          [$ele,$ela,$tels,$end,$buscar].forEach(i => i && (i.disabled = false));
-          if ($ele) $ele.value=''; if ($ela) $ela.value='';
-          if ($tels) $tels.value=''; if ($end) $end.value='';
-          currentId = null; isLocked = false;
-          if ($action) $action.textContent = 'Adicionar';
-          if ($teamWrap) $teamWrap.style.display = 'none';
-        }
-
-        if (preset && (preset.nome_ele || preset.nome_ela)){ lockCard(); }
-
-        async function buscar(){
-          $status.textContent = '';
-          const nome_ele = ($ele.value || '').trim();
-          const nome_ela = ($ela.value || '').trim();
-          if (!nome_ele || !nome_ela){
-            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela) para buscar.';
-            $status.className = 'status warn';
-            return;
-          }
-          try{
-            const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
-              method: 'POST', headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({ nome_ele, nome_ela })
-            });
-            const data = await resp.json();
-            if (data.ok){
-              $tels.value = data.telefones || '';
-              $end.value = data.endereco || '';
-              $status.textContent = `Dados carregados de ${data.origem}.`;
-              $status.className = 'status ok';
-            } else {
-              $status.textContent = data.msg || 'Não encontrado.';
-              $status.className = 'status err';
-            }
-          } catch(e){
-            $status.textContent = 'Erro ao buscar.';
-            $status.className = 'status err';
-          }
-        }
-
-        async function adicionar(){
-          $status.textContent = '';
-          const nome_ele = ($ele?.value || '').trim();
-          const nome_ela = ($ela?.value || '').trim();
-          const telefones = ($tels?.value || '').trim();
-          const endereco = ($end?.value || '').trim();
-          if (!anoSelecionado){
-            $status.textContent = 'Informe o ano antes.'; $status.className = 'status warn'; return;
-          }
-          if (!nome_ele || !nome_ela){
-            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $status.className = 'status warn'; return;
-          }
-          try{
-            const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
-              method: 'POST', headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({ ano: anoSelecionado, equipe: equipeFinalStr, nome_ele, nome_ela, telefones, endereco })
-            });
-            const data = await resp.json();
-            if (data.ok){
-              currentId = data.id || null;
-              $status.textContent = 'Adicionado com sucesso.'; $status.className = 'status ok';
-              lockCard();
-              if ($hint) $hint.style.display = 'none';
-              if (!isCoordEquipe){
-                // dirigente
-                totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
-                maybeEnableCG();
-              }
-            } else {
-              $status.textContent = data.msg || 'Falha ao adicionar.'; $status.className = 'status err';
-            }
-          } catch(e){
-            $status.textContent = 'Erro ao adicionar.'; $status.className = 'status err';
-          }
-        }
-
-        async function marcarStatus(choice){
-          if (!currentId){
-            $status.textContent = 'Registro atual sem ID; recarregue a página.';
-            $status.className = 'status err';
-            return;
-          }
-          try{
-            const resp = await fetch('{{ url_for("api_marcar_status") }}', {
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ id: currentId, status: choice })
-            });
-            const data = await resp.json();
-            if (data.ok){
-              $status.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
-              $status.className = 'status ok';
-              unlockAndClearCard();
-            } else {
-              $status.textContent = data.msg || 'Falha ao alterar status.';
-              $status.className = 'status err';
-            }
-          } catch(err){
-            $status.textContent = 'Erro ao alterar status.'; $status.className = 'status err';
-          }
-        }
-
-        if ($buscar) $buscar.addEventListener('click', e => { e.preventDefault(); buscar(); });
-        if ($action) $action.addEventListener('click', e => {
-          e.preventDefault();
-          if (!isLocked){ adicionar(); }
-          else { makeModal(choice => marcarStatus(choice)); }
-        });
-
-        // vinda da visão de equipes
-        if (isCoordEquipe && retTarget && idSafe(retTarget) === idSafe(boxKey) && retEle && retEla){
-          if (hasCG()){
-            if ($form && $form.style.display === 'none'){ $form.style.display = ''; }
-            if ($ele) $ele.value = retEle;
-            if ($ela) $ela.value = retEla;
-            if ($tels && retTel) $tels.value = retTel;
-            if ($end && retEnd) $end.value = retEnd;
-            $status.textContent = 'Dados carregados do histórico (encontreiros).';
-            $status.className = 'status ok';
-          }
-        }
-      },0);
-
-      return el;
-    }
-
-    function bootAfterAno(){
-      gridDir.innerHTML = '';
-      totalAdicionados = 0; kpiDone.textContent = '0'; kpi.style.display = '';
-      equipesDir.forEach(eq => {
-        const preset = (initialData.dirigentes && initialData.dirigentes[eq]) ? initialData.dirigentes[eq] : null;
-        const box = renderPessoaBox(eq, eq, eq, preset, false);
-        if (preset && (preset.nome_ele || preset.nome_ela)) totalAdicionados += 1;
-        gridDir.appendChild(box);
-      });
-      kpiDone.textContent = String(totalAdicionados);
-
-      cg.style.display = '';
-      if (initialData && initialData.cg){ currentCGId = initialData.cg.id || null; }
-      renderCGPresetIfAny();
-      maybeEnableCG();
-
-      if (hasCG()){ showCoordsSection(); }
-      else {
-        coordsTitle.style.display = 'none'; gridCoords.style.display = 'none';
-        coordsRendered = false;
+        // Com CG definido, mostra seção de Coordenadores de Equipe
+        show(coordsSection, true);
+        renderCoordsGrid(); // renderiza grid (links ou editores)
       }
     }
 
-    btnContinuar.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const val = (anoInput.value || '').trim();
-      if (!/^\d{4}$/.test(val)){
-        anoMsg.textContent = 'Informe um ano válido (YYYY).'; anoMsg.className = 'status err'; return;
-      }
-      anoSelecionado = parseInt(val, 10);
-      anoMsg.textContent = `Ano selecionado: ${anoSelecionado}`; anoMsg.className = 'status ok';
-      document.getElementById('dirigentes-grid').style.display = '';
-      bootAfterAno();
-    });
+    async function cgBuscarHandler() {
+      statusText(cgStatus,'','');
+      const nome_ele = (cgEle.value||'').trim();
+      const nome_ela = (cgEla.value||'').trim();
+      if (!nome_ele || !nome_ela) return statusText(cgStatus,'Preencha Nome (Ele) e Nome (Ela).','warn');
 
-    window.addEventListener('DOMContentLoaded', ()=>{ if (anoPre){ btnContinuar.click(); } });
-
-    cgBuscar.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      cgStatus.textContent = '';
-      const nome_ele = (cgEle.value || '').trim();
-      const nome_ela = (cgEla.value || '').trim();
-      if (!nome_ele || !nome_ela){
-        cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className = 'status warn'; return;
-      }
-      try{
+      try {
         const resp = await fetch('{{ url_for("api_buscar_cg") }}', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ nome_ele, nome_ela })
         });
         const data = await resp.json();
-        if (data.ok){
-          cgTel.value = data.telefones || ''; cgEnd.value = data.endereco || '';
-          cgStatus.textContent = 'Dados carregados. Casal é elegível para CG.'; cgStatus.className = 'status ok';
-        } else { cgStatus.textContent = data.msg || 'Não permitido.'; cgStatus.className = 'status err'; }
-      } catch(err){ cgStatus.textContent = 'Erro ao buscar.'; cgStatus.className = 'status err'; }
-    });
+        if (data.ok) {
+          cgTel.value = data.telefones || '';
+          cgEnd.value = data.endereco || '';
+          statusText(cgStatus, 'Dados carregados. Casal é elegível para CG.', 'ok');
+        } else {
+          statusText(cgStatus, data.msg || 'Não permitido.', 'err');
+        }
+      } catch { statusText(cgStatus, 'Erro ao buscar.', 'err'); }
+    }
 
-    function hideCoords(){ coordsTitle.style.display='none'; gridCoords.style.display='none'; coordsRendered=false; }
+    async function cgAddOrAlter() {
+      if (!anoSelecionado) return statusText(cgStatus,'Informe o ano antes.','warn');
 
-    cgAdd.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      cgStatus.textContent = '';
-      if (cgLocked && currentCGId){
-        // Alterar (Recusou/Desistiu)
-        const m = document.createElement('div');
-        m.className = 'modal-backdrop';
-        m.innerHTML = `<div class="modal-card"><div style="font-weight:600; margin-bottom:8px;">O Casal…</div>
-        <div class="modal-actions"><button id="m_rec" class="btn">Recusou</button><button id="m_des" class="btn">Desistiu</button></div></div>`;
-        document.body.appendChild(m);
-        m.querySelector('#m_rec').onclick = async ()=>{ await mark('Recusou'); document.body.removeChild(m); };
-        m.querySelector('#m_des').onclick = async ()=>{ await mark('Desistiu'); document.body.removeChild(m); };
-        async function mark(choice){
-          try{
+      // Modo Alterar (já existe)
+      if (cgAdded && cgId) {
+        const chooser = buildStatusChoice(async (choice, boxEl)=>{
+          try {
             const resp = await fetch('{{ url_for("api_marcar_status") }}', {
               method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ id: currentCGId, status: choice })
+              body: JSON.stringify({ id: cgId, status: choice })
             });
             const data = await resp.json();
-            if (data.ok){
-              cgStatus.textContent = `Registro marcado como "${choice}". Campos liberados para novo cadastro.`;
-              cgStatus.className = 'status ok';
-              cgUnlockAndClear(); hideCoords();
-              if (initialData && initialData.cg){ initialData.cg = null; }
-            } else { cgStatus.textContent = data.msg || 'Falha ao alterar status.'; cgStatus.className = 'status err'; }
-          } catch(err){ cgStatus.textContent = 'Erro ao alterar status.'; cgStatus.className = 'status err'; }
-        }
+            if (data.ok) {
+              statusText(cgStatus, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
+              cgAdded = false; cgId = null;
+              setDisabled(cgEle, false);
+              setDisabled(cgEla, false);
+              setDisabled(cgBuscar, false);
+              setDisabled(cgAdd, false);
+              setDisabled(cgTel, false);
+              setDisabled(cgEnd, false);
+              cgAdd.textContent = 'Adicionar';
+              cgEle.value = ''; cgEla.value = '';
+              cgTel.value = ''; cgEnd.value = '';
+              // Esconde coordenadores até novo CG ser salvo
+              show(coordsSection, false);
+              boxEl.remove();
+            } else {
+              statusText(cgStatus, data.msg || 'Falha ao alterar.', 'err');
+            }
+          } catch { statusText(cgStatus, 'Erro ao alterar.', 'err'); }
+        });
+        cgStatus.after(chooser);
         return;
       }
 
-      const nome_ele = (cgEle.value || '').trim();
-      const nome_ela = (cgEla.value || '').trim();
-      const telefones = (cgTel.value || '').trim();
-      const endereco = (cgEnd.value || '').trim();
-      if (!anoSelecionado){ cgStatus.textContent = 'Informe o ano antes.'; cgStatus.className = 'status warn'; return; }
-      if (!nome_ele || !nome_ela){ cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className = 'status warn'; return; }
-      try{
+      // Modo Adicionar (novo CG)
+      const nome_ele = (cgEle.value||'').trim();
+      const nome_ela = (cgEla.value||'').trim();
+      const telefones = (cgTel.value||'').trim();
+      const endereco = (cgEnd.value||'').trim();
+      if (!nome_ele || !nome_ela) return statusText(cgStatus,'Preencha Nome (Ele) e Nome (Ela).','warn');
+
+      try {
         const resp = await fetch('{{ url_for("api_adicionar_cg") }}', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ ano: anoSelecionado, nome_ele, nome_ela, telefones, endereco })
         });
         const data = await resp.json();
-        if (data.ok){
-          currentCGId = data.id || null;
-          cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
-          cgStatus.className = 'status ok';
-          cgLock(); cgAdd.disabled = false;
-          showCoordsSection();
-        } else { cgStatus.textContent = data.msg || 'Falha ao adicionar.'; cgStatus.className = 'status err'; }
-      } catch(err){ cgStatus.textContent = 'Erro ao adicionar.'; cgStatus.className = 'status err'; }
+        if (data.ok) {
+          cgId = data.id || null;
+          cgAdded = true;
+          setDisabled(cgEle, true);
+          setDisabled(cgEla, true);
+          setDisabled(cgBuscar, true);
+          setDisabled(cgAdd, false);
+          setDisabled(cgTel, true);
+          setDisabled(cgEnd, true);
+          cgAdd.textContent = 'Alterar';
+          statusText(cgStatus, 'Casal Coordenador Geral adicionado com sucesso.', 'ok');
+          // Exibe coordenadores de equipe
+          show(coordsSection, true);
+          renderCoordsGrid();
+        } else {
+          statusText(cgStatus, data.msg || 'Falha ao adicionar.', 'err');
+        }
+      } catch { statusText(cgStatus, 'Erro ao adicionar.', 'err'); }
+    }
+
+    cgBuscar.addEventListener('click', e=>{ e.preventDefault(); cgBuscarHandler(); });
+    cgAdd.addEventListener('click', e=>{ e.preventDefault(); cgAddOrAlter(); });
+
+    // ----- COORDENADORES DE EQUIPE -----
+    // Estado por equipe
+    const coordBoxes = {}; // key -> { mode: 'chooser'|'editor', recId, elements... }
+
+    function buildTeamChooser(teamKey) {
+      const card = makeEl(`
+        <div class="card" id="coord_${idFromLabel(teamKey)}">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <h3 style="margin:0;">${teamKey}</h3>
+          </div>
+          <div class="team-link" role="button">Abrir Visão de Equipes</div>
+          <div class="status" id="st_${idFromLabel(teamKey)}"></div>
+        </div>
+      `);
+      const link = card.querySelector('.team-link');
+      link.addEventListener('click', ()=>{
+        if (!anoSelecionado) { alert('Informe o ano antes.'); return; }
+        const url = new URL('{{ url_for("visao_equipes") }}', window.location.origin);
+        url.searchParams.set('equipe', teamKey);
+        url.searchParams.set('target', teamKey);           // habilita links na visão
+        url.searchParams.set('ano_montagem', String(anoSelecionado));
+        window.location.href = url.toString();
+      });
+      return card;
+    }
+
+    function buildTeamEditor(teamKey, preset) {
+      const idSafe = idFromLabel(teamKey);
+      const equipeFinal = TEAM_MAP[teamKey] || teamKey; // string do banco
+      const card = makeEl(`
+        <div class="card" id="coord_${idSafe}">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+            <h3 style="margin:0;">${teamKey}</h3>
+            <div style="display:flex; gap:8px;">
+              <button class="btn small" id="${idSafe}_btn_montar" style="display:none;">Montar Equipe</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="${idSafe}_ele">Nome (Ele)</label>
+              <input id="${idSafe}_ele" placeholder="Ex.: João" value="${preset?.nome_ele || ''}">
+            </div>
+            <div>
+              <label for="${idSafe}_ela">Nome (Ela)</label>
+              <input id="${idSafe}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela || ''}">
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label for="${idSafe}_telefones">Telefones</label>
+              <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" value="${preset?.telefones || ''}">
+            </div>
+            <div>
+              <label for="${idSafe}_endereco">Endereço</label>
+              <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" value="${preset?.endereco || ''}">
+            </div>
+          </div>
+
+          <div class="row-3" style="margin-top:8px;">
+            <button class="btn" id="${idSafe}_buscar">Buscar</button>
+            <button class="btn primary" id="${idSafe}_add">Adicionar</button>
+            <button class="btn" id="${idSafe}_alterar" style="display:none;">Alterar</button>
+          </div>
+
+          <div class="status" id="${idSafe}_status"></div>
+        </div>
+      `);
+
+      const $ele = card.querySelector(`#${idSafe}_ele`);
+      const $ela = card.querySelector(`#${idSafe}_ela`);
+      const $tels = card.querySelector(`#${idSafe}_telefones`);
+      const $end = card.querySelector(`#${idSafe}_endereco`);
+      const $buscar = card.querySelector(`#${idSafe}_buscar`);
+      const $add = card.querySelector(`#${idSafe}_add`);
+      const $alterar = card.querySelector(`#${idSafe}_alterar`);
+      const $status = card.querySelector(`#${idSafe}_status`);
+      const $btnMontar = card.querySelector(`#${idSafe}_btn_montar`);
+
+      let recId = preset?.id || null;
+      let locked = !!recId;
+
+      function lockEditor(on) {
+        [$ele,$ela,$tels,$end,$buscar].forEach(el=>setDisabled(el,on));
+        show($alterar, on);
+        show($add, !on);
+        show($btnMontar, on);
+        locked = on;
+      }
+
+      async function buscar() {
+        statusText($status,'','');
+        const nome_ele = ($ele.value||'').trim();
+        const nome_ela = ($ela.value||'').trim();
+        if (!nome_ele || !nome_ela) return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn');
+
+        try {
+          const resp = await fetch('{{ url_for("api_buscar_casal") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ nome_ele, nome_ela })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            $tels.value = data.telefones || '';
+            $end.value = data.endereco || '';
+            statusText($status, `Dados carregados de ${data.origem}.`, 'ok');
+          } else {
+            statusText($status, data.msg || 'Não encontrado.', 'err');
+          }
+        } catch { statusText($status,'Erro ao buscar.','err'); }
+      }
+
+      async function adicionar() {
+        statusText($status,'','');
+        if (!anoSelecionado) return statusText($status,'Informe o ano antes.','warn');
+        const nome_ele = ($ele.value||'').trim();
+        const nome_ela = ($ela.value||'').trim();
+        const telefones = ($tels.value||'').trim();
+        const endereco = ($end.value||'').trim();
+        if (!nome_ele || !nome_ela) return statusText($status,'Preencha Nome (Ele) e Nome (Ela).','warn');
+
+        try {
+          // Reutiliza endpoint de "dirigente" para inserir qualquer coordenador (coordenador='Sim')
+          const resp = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: anoSelecionado, equipe: equipeFinal, nome_ele, nome_ela, telefones, endereco })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            recId = data.id || recId;
+            statusText($status,'Coordenador da equipe adicionado com sucesso.','ok');
+            lockEditor(true);
+          } else {
+            statusText($status, data.msg || 'Falha ao adicionar.','err');
+          }
+        } catch { statusText($status,'Erro ao adicionar.','err'); }
+      }
+
+      function alterar() {
+        if (!recId) return;
+        const chooser = buildStatusChoice(async (choice, boxEl)=>{
+          try {
+            const resp = await fetch('{{ url_for("api_marcar_status") }}', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ id: recId, status: choice })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+              statusText($status, `Status alterado para “${choice}”. Preencha novos dados e clique em Adicionar.`, 'ok');
+              lockEditor(false);
+              recId = null;
+              $ele.value=''; $ela.value=''; $tels.value=''; $end.value='';
+              boxEl.remove();
+            } else {
+              statusText($status, data.msg || 'Falha ao alterar.','err');
+            }
+          } catch { statusText($status,'Erro ao alterar.','err'); }
+        });
+        $status.after(chooser);
+      }
+
+      $buscar.addEventListener('click', e=>{ e.preventDefault(); buscar(); });
+      $add.addEventListener('click', e=>{ e.preventDefault(); adicionar(); });
+      $alterar.addEventListener('click', e=>{ e.preventDefault(); alterar(); });
+
+      $btnMontar.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const url = new URL('{{ url_for("montagem_equipe") }}', window.location.origin);
+        url.searchParams.set('ano', String(anoSelecionado));
+        url.searchParams.set('equipe', teamKey);
+        window.location.href = url.toString();
+      });
+
+      // trava se já existe
+      lockEditor(!!recId);
+      return card;
+    }
+
+    function renderCoordsGrid() {
+      coordsGrid.innerHTML = '';
+      // lista de equipes na ordem "bonita"
+      const teamKeys = Object.keys(TEAM_MAP);
+      // Verifica se voltamos da visão de equipes com preset
+      const presetVisao = initialData && initialData.preset_from_visao ? initialData.preset_from_visao : null;
+
+      teamKeys.forEach(teamKey=>{
+        let card;
+        const preset = (initialData.coords && initialData.coords[teamKey]) ? initialData.coords[teamKey] : null;
+
+        if (preset) {
+          card = buildTeamEditor(teamKey, preset);
+        } else if (presetVisao && presetVisao.target === teamKey) {
+          // editor pré-preenchido com casal escolhido na Visão
+          card = buildTeamEditor(teamKey, {
+            id: null,
+            nome_ele: presetVisao.ele || '',
+            nome_ela: presetVisao.ela || '',
+            telefones: presetVisao.telefones || '',
+            endereco: presetVisao.endereco || ''
+          });
+        } else {
+          // apenas link para abrir visão
+          card = buildTeamChooser(teamKey);
+        }
+
+        coordsGrid.appendChild(card);
+      });
+    }
+
+    // ----- Concluir Montagem do Ano -----
+    function showConcluirAnoIfReady() {
+      show(btnConcluirAno, !!anoSelecionado);
+    }
+    btnConcluirAno.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      if (!anoSelecionado) return;
+      if (!confirm(`Concluir a montagem do ano ${anoSelecionado}? Todos os registros 'Aberto' serão marcados como 'Concluido'.`)) return;
+      try {
+        const resp = await fetch('{{ url_for("api_concluir_montagem_ano") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ano: anoSelecionado })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          alert(`Montagem ${anoSelecionado} concluída. Registros atualizados: ${data.updated}.`);
+          window.location.href = '{{ url_for("montagem") }}';
+        } else {
+          alert(data.msg || 'Falha ao concluir montagem.');
+        }
+      } catch { alert('Erro ao concluir montagem.'); }
+    });
+
+    // ----- Fluxo principal -----
+    btnContinuar.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = (anoInput.value||'').trim();
+      if (!/^\d{4}$/.test(val)) {
+        statusText(anoMsg, 'Informe um ano válido (YYYY).', 'err');
+        return;
+      }
+      anoSelecionado = parseInt(val,10);
+      statusText(anoMsg, `Ano selecionado: ${anoSelecionado}`, 'ok');
+
+      // Reseta KPI
+      totalDirigentesAdicionados = 0;
+      kpiDone.textContent = '0';
+
+      // Render Dirigentes
+      renderDirigentes();
+
+      // CG
+      show(cgCard, true);
+      renderCGPresetIfAny();
+      maybeEnableCG();
+
+      // Coordenadores de Equipe:
+      // Só mostra se já houver CG em aberto OU se for selecionado agora
+      if (cgAdded) {
+        show(coordsSection, true);
+        renderCoordsGrid();
+      } else {
+        show(coordsSection, false);
+      }
+
+      // Botão concluir
+      showConcluirAnoIfReady();
+    });
+
+    // Auto-continuar se ano veio na URL
+    window.addEventListener('DOMContentLoaded', ()=>{
+      if (anoPre) {
+        btnContinuar.click();
+      }
+      // Se veio "notfound" de um retorno inválido
+      const notfound = {{ (request.args.get('notfound') or '0') | tojson }};
+      if (notfound === '1') {
+        alert('Não foi possível carregar o casal selecionado.');
+      }
     });
   </script>
 </body>
