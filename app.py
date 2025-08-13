@@ -146,17 +146,18 @@ def editar_encontrista(encontrista_id):
 @app.route('/montagem')
 def montagem():
     """
-    Considera um ANO como 'Concluído' quando TODOS os registros desse ano
-    têm status = 'Concluido'. Qualquer outro valor (ex.: 'Aceito', 'Em Progresso', '')
-    coloca o ano em 'Em Aberto'.
+    Esquerda: 'Aberto' -> anos que têm pelo menos 1 registro com status != 'Concluido'
+    Direita:  'Concluido' -> anos em que TODOS os registros têm status = 'Concluido'
+    A lista 'Concluido' vira link para /encontreiros?ano=YYYY
     """
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
+    # Conta por ano: quantos 'concluido' vs total (case/whitespace safe)
     cursor.execute("""
         SELECT 
             ano,
-            SUM(CASE WHEN status = 'Concluido' THEN 1 ELSE 0 END) AS qtd_concluido,
+            SUM(CASE WHEN TRIM(LOWER(status)) = 'concluido' THEN 1 ELSE 0 END) AS qtd_concluido,
             COUNT(*) AS total
         FROM encontreiros
         GROUP BY ano
@@ -170,6 +171,7 @@ def montagem():
     anos_aberto = []
 
     for r in rows:
+        # Concluído somente se TODOS daquele ano estão 'Concluido'
         if r['total'] > 0 and r['qtd_concluido'] == r['total']:
             anos_concluidos.append(r['ano'])
         else:
