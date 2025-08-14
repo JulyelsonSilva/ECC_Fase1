@@ -1569,38 +1569,64 @@ def palestras_painel():
 
 @app.route('/palestras/nova')
 def palestras_nova():
-    """Página de montagem de palestras do ano (template: nova_palestras.html)."""
+    """
+    Tela de montagem das palestras para um ano.
+    Querystring opcional: ?ano=YYYY (pré-seleciona o ano).
+    Passa ao template:
+      - ano_preselecionado (int|None)
+      - titulos (lista)
+      - solo_titulos (lista)
+      - existentes (dict por título com dados já cadastrados no ano)
+      - tem_abertos (bool) -> se há registros com status 'Aberto' no ano
+    """
     ano_preselecionado = request.args.get('ano', type=int)
-
     existentes = {}
+    tem_abertos = False
+
     if ano_preselecionado:
-        conn = db_conn()
+        conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
+            # Traz todos daquele ano (o mais recente de cada título serve para exibir preenchimento)
             cur.execute("""
-                SELECT id, ano, palestra, nome_ele, nome_ela, status
+                SELECT id, titulo, nome_ele, nome_ela, telefones, endereco, status
                   FROM palestras
                  WHERE ano = %s
-                 ORDER BY id ASC
+                 ORDER BY id DESC
             """, (ano_preselecionado,))
-            for r in cur.fetchall() or []:
-                existentes[r["palestra"]] = {
-                    "id": r["id"],
-                    "nome_ele": r.get("nome_ele") or "",
-                    "nome_ela": r.get("nome_ela") or "",
-                    "status": r.get("status") or ""
-                }
+            rows = cur.fetchall() or []
+
+            for r in rows:
+                t = r.get("titulo") or ""
+                # guarda o primeiro que aparecer (por ser ORDER BY id DESC é o mais recente)
+                if t and t not in existentes:
+                    existentes[t] = {
+                        "id": r.get("id"),
+                        "nome_ele": r.get("nome_ele"),
+                        "nome_ela": r.get("nome_ela"),
+                        "telefones": r.get("telefones"),
+                        "endereco": r.get("endereco"),
+                        "status": r.get("status"),
+                    }
+                st = (r.get("status") or "").strip().lower()
+                if st == "aberto":
+                    tem_abertos = True
         finally:
             try:
-                cur.close(); conn.close()
+                cur.close()
+                conn.close()
             except Exception:
                 pass
 
-    return render_template('nova_palestras.html',
-                           ano_preselecionado=ano_preselecionado,
-                           titulos=PALESTRAS_TITULOS,
-                           solo_titulos=list(PALESTRAS_SOLO),
-                           existentes=existentes)
+    return render_template(
+        'nova_palestras.html',
+        ano_preselecionado=ano_preselecionado,
+        titulos=PALESTRAS_TITULOS,
+        solo_titulos=list(PALESTRAS_SOLO),
+        existentes=existentes,
+        tem_abertos=tem_abertos
+    )
+
 
 @app.route('/api/palestras/buscar', methods=['POST'])
 def api_palestras_buscar():
