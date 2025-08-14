@@ -69,8 +69,8 @@
     const SOLO = new Set({{ solo_titulos|tojson }});
     const EXIST = {{ existentes|tojson }};
     const anoPre = {{ ano_preselecionado|tojson }};
-    const TEM_ABERTOS = {{ tem_abertos|tojson }};
-
+   const TEM_ABERTOS = {{ (tem_abertos | default(false)) | tojson }};
+    
     // ---------------- Elementos ----------------
     const $ano  = document.getElementById('ano');
     const $go   = document.getElementById('btn-go');
