@@ -65,6 +65,9 @@
     .hero .text p{
       margin:0; color:var(--muted); font-size:14px;
     }
+    .hero .actions{
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
     .hero .stamp{
       display:flex; align-items:center; gap:10px; color:#334155; font-size:13px;
       background: var(--brand-50); border:1px solid #dbeafe; padding:8px 12px; border-radius:999px;
@@ -72,9 +75,6 @@
     .hero .stamp .dot{
       width:10px; height:10px; border-radius:999px; background: var(--accent);
       box-shadow: 0 0 0 4px rgba(245,158,11,.15);
-    }
-    .hero-actions{
-      display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-end;
     }
 
     .grid{
@@ -150,15 +150,14 @@
     <section class="hero" role="region" aria-label="Ações do Encontro">
       <div class="text">
         <h2>Bem-vindos ao serviço do ECC</h2>
-        <p>Ferramentas de operação do Encontro: montagem das equipes e gestão das palestras.</p>
+        <p>Ferramentas para organizar o encontro e cuidar dos casais com simplicidade.</p>
       </div>
-
-      <div class="hero-actions" aria-label="Ações principais">
+      <div class="actions">
         <a class="card" href="{{ url_for('montagem') }}" style="max-width:320px;">
           <div class="icon" aria-hidden="true">🧩</div>
           <div>
             <h3>Montagem</h3>
-            <p>Abra a visão geral das montagens por ano (abertas e concluídas).</p>
+            <p>Visão geral das montagens por ano (abertas e concluídas).</p>
           </div>
         </a>
 
@@ -166,13 +165,13 @@
           <div class="icon" aria-hidden="true">🎤</div>
           <div>
             <h3>Palestras</h3>
-            <p>Cadastrar e acompanhar palestrantes por título e ano.</p>
+            <p>Painel por ano para cadastrar os palestrantes de cada tema.</p>
           </div>
         </a>
       </div>
     </section>
 
-    <main class="grid" aria-label="Consultas e relatórios">
+    <main class="grid" aria-label="Navegação principal">
       <a class="card" href="{{ url_for('encontristas') }}">
         <div class="icon" aria-hidden="true">📇</div>
         <div>
@@ -186,6 +185,15 @@
         <div>
           <h3>Encontreiros</h3>
           <p>Histórico dos casais que serviram nas equipes do ECC.</p>
+        </div>
+      </a>
+
+      <!-- NOVO: Palestrantes, ao lado de Encontreiros -->
+      <a class="card" href="{{ url_for('palestrantes') }}">
+        <div class="icon" aria-hidden="true">🎙️</div>
+        <div>
+          <h3>Palestrantes</h3>
+          <p>Lista de palestras e palestrantes por ano, com filtros rápidos.</p>
         </div>
       </a>
 
