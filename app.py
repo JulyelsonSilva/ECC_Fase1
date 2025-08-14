@@ -1190,6 +1190,47 @@ def api_add_membro_equipe():
             conn.close()
         except Exception:
             pass
+# Alterar status (Recusou/Desistiu) para DIRIGENTES/CG com justificativa obrigatória
+@app.route('/api/marcar-status-dirigente', methods=['POST'])
+def api_marcar_status_dirigente():
+    """
+    Marca o registro ABERTO de um ano/equipe (dirigente ou coord. de equipe) como Recusou/Desistiu com observação.
+    Body JSON: { "ano": 2025, "equipe": "<rótulo exato>", "novo_status": "Recusou"|"Desistiu", "observacao": "texto" }
+    """
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    equipe = (data.get('equipe') or '').strip()
+    novo_status = (data.get('novo_status') or '').strip()
+    observacao = (data.get('observacao') or '').strip()
+
+    if not (ano and equipe and novo_status in ('Recusou', 'Desistiu') and observacao):
+        return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        # Atualiza o registro mais recente ABERTO daquele ano/equipe
+        cur.execute("""
+            UPDATE encontreiros
+               SET status = %s, observacao = %s
+             WHERE ano = %s
+               AND equipe = %s
+               AND UPPER(status) = 'ABERTO'
+             ORDER BY id DESC
+             LIMIT 1
+        """, (novo_status, observacao, int(ano), equipe))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"ok": False, "msg": "Nenhum registro ABERTO encontrado para alterar."}), 404
+
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
 @app.route('/api/marcar-status-membro', methods=['POST'])
 def api_marcar_status_membro():
