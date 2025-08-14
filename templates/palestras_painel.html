@@ -1,69 +1,69 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Palestras • ECC</title>
+  <meta charset="utf-8">
+  <title>Palestras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root{
-      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:
+    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --brand50:#eff6ff; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
       radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
       radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-      var(--bg);}
-    .wrap{max-width:1100px;margin:0 auto;padding:24px 16px 64px;}
-    header{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap;padding:12px 0 8px;}
-    .brand{display:flex;align-items:center;gap:12px;}
-    .logo{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;font-size:28px;}
-    .titles h1{margin:0;font-size:22px}
-    .titles p{margin:2px 0 0;color:var(--muted);font-size:13px}
-    .hero{margin:18px 0;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-decoration:none;color:inherit;display:flex;gap:12px;align-items:flex-start;box-shadow:0 8px 20px rgba(15,23,42,.04)}
-    .icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #e2e8f0;font-size:22px}
-    .btn{appearance:none;border:1px solid var(--border);background:#fff;padding:10px 14px;border-radius:10px;text-decoration:none;color:inherit}
-    .muted{color:var(--muted)}
-    .grid{display:grid;gap:14px;margin-top:18px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+      var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; flex-wrap:wrap; }
+    h1 { margin:0; font-size: 22px; }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .tag { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; text-decoration:none; color:#0f172a; background:#fff; margin:6px 6px 0 0; }
+    .muted { color:var(--muted); }
+    .hero { display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+    input{ padding:10px 12px; border:1px solid var(--border); border-radius:8px; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">🎤</div>
-        <div class="titles">
-          <h1>Palestras</h1>
-          <p>Painel inicial • Em desenvolvimento</p>
-        </div>
+    <div class="header">
+      <h1>Palestras</h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
-      <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-    </header>
+    </div>
 
-    <section class="hero">
-      <div>
-        <h2 style="margin:0 0 6px">Gestão de Palestras</h2>
-        <p class="muted" style="margin:0">Aqui você irá cadastrar e acompanhar palestrantes por título e ano, com regras de repetição e elegibilidade.</p>
+    <div class="hero">
+      <div class="muted">Iniciar/continuar o cadastro de palestras por ano</div>
+      <div style="display:flex; gap:8px;">
+        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" style="width:140px">
+        <a id="go" class="btn" href="#" onclick="const y=document.getElementById('ano').value.trim(); if(/^\d{4}$/.test(y)){ this.href='{{ url_for('palestras_nova') }}?ano='+encodeURIComponent(y);} else { alert('Informe um ano válido (YYYY).'); return false; }">+ Nova/Editar</a>
       </div>
-      <div class="card" aria-hidden="true">
-        <div class="icon">ℹ️</div>
-        <div>
-          <h3 style="margin:0 0 6px;font-size:16px">Status</h3>
-          <p class="muted" style="margin:0">Tela provisória — link habilitado para evitar erro de rota.</p>
-        </div>
-      </div>
-    </section>
+    </div>
 
-    <main class="grid">
-      <a class="card" href="{{ url_for('montagem') }}">
-        <div class="icon">🧩</div>
+    <div class="cols">
+      <div class="card">
+        <h3 style="margin-top:0;">Aberto</h3>
+        <p class="muted">Anos com <b>faltando</b> alguma palestra da lista canônica.</p>
         <div>
-          <h3 style="margin:0 0 6px;font-size:16px">Montagem</h3>
-          <p class="muted" style="margin:0">Voltar à visão de equipes por ano.</p>
+          {% for r in anos_aberto %}
+            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.feitas }}/{{ r.total }}</a>
+          {% else %}
+            <span class="muted">Nenhum ano em aberto.</span>
+          {% endfor %}
         </div>
-      </a>
-    </main>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Concluído</h3>
+        <p class="muted">Anos com <b>todas</b> as palestras da lista canônica cadastradas.</p>
+        <div>
+          {% for r in anos_concluidos %}
+            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.feitas }}/{{ r.total }}</a>
+          {% else %}
+            <span class="muted">Nenhum ano concluído.</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 </html>
