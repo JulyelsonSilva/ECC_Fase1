@@ -5,21 +5,16 @@
   <title>Palestras</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --brand50:#eff6ff; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
-      radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-      radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-      var(--bg); }
-    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; flex-wrap:wrap; }
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; }
     h1 { margin:0; font-size: 22px; }
-    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; }
+    a.btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; }
     .cols { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
     .tag { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; text-decoration:none; color:#0f172a; background:#fff; margin:6px 6px 0 0; }
     .muted { color:var(--muted); }
-    .hero { display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
-    input{ padding:10px 12px; border:1px solid var(--border); border-radius:8px; }
   </style>
 </head>
 <body>
@@ -28,24 +23,17 @@
       <h1>Palestras</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-      </div>
-    </div>
-
-    <div class="hero">
-      <div class="muted">Iniciar/continuar o cadastro de palestras por ano</div>
-      <div style="display:flex; gap:8px;">
-        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" style="width:140px">
-        <a id="go" class="btn" href="#" onclick="const y=document.getElementById('ano').value.trim(); if(/^\d{4}$/.test(y)){ this.href='{{ url_for('palestras_nova') }}?ano='+encodeURIComponent(y);} else { alert('Informe um ano válido (YYYY).'); return false; }">+ Nova/Editar</a>
+        <a class="btn" href="{{ url_for('palestras_nova') }}">+ Cadastrar Palestras (Ano)</a>
       </div>
     </div>
 
     <div class="cols">
       <div class="card">
-        <h3 style="margin-top:0;">Aberto</h3>
-        <p class="muted">Anos com <b>faltando</b> alguma palestra da lista canônica.</p>
+        <h3 style="margin-top:0;">Em Aberto</h3>
+        <p class="muted">Anos com quantidade de palestras cadastradas menor que o total esperado.</p>
         <div>
           {% for r in anos_aberto %}
-            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.feitas }}/{{ r.total }}</a>
+            <a class="tag" href="{{ url_for('palestrantes') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.feitas }}/{{ r.total }}</a>
           {% else %}
             <span class="muted">Nenhum ano em aberto.</span>
           {% endfor %}
@@ -54,10 +42,10 @@
 
       <div class="card">
         <h3 style="margin-top:0;">Concluído</h3>
-        <p class="muted">Anos com <b>todas</b> as palestras da lista canônica cadastradas.</p>
+        <p class="muted">Anos com todas as palestras cadastradas.</p>
         <div>
           {% for r in anos_concluidos %}
-            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.feitas }}/{{ r.total }}</a>
+            <a class="tag" href="{{ url_for('palestrantes') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.feitas }}/{{ r.total }}</a>
           {% else %}
             <span class="muted">Nenhum ano concluído.</span>
           {% endfor %}
