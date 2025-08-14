@@ -1457,6 +1457,17 @@ def api_palestras_adicionar():
             cur.close(); conn.close()
         except Exception:
             pass
+@app.route('/api/palestras/save', methods=['POST'])
+def api_palestras_save():
+    # alguns templates antigos usam 'api_palestras_save'
+    # redireciona para o endpoint atual:
+    return api_palestras_adicionar()
+
+@app.route('/api/palestras/validate', methods=['POST'])
+def api_palestras_validate():
+    # alguns templates antigos usam 'api_palestras_validate'
+    # redireciona para o endpoint atual:
+    return api_palestras_buscar()
 
 # Alias de compatibilidade: alguns templates antigos chamavam 'palestra_topico'
 @app.route('/palestras/topico')
