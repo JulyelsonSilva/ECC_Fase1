@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Cadastro de Palestras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
+      radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
+      radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+      var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size: 22px; }
+    .muted { color:var(--muted); }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .status { margin-top:8px; font-size:13px; }
+    .ok { color:#065f46; }
+    .warn { color:#92400e; }
+    .err { color:#b91c1c; }
+    .repbar { height:8px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
+    .repbar > div { height:100%; width:0%; transition: width .2s ease; }
+    .rep0 { background:#10b981; }   /* verde */
+    .rep1 { background:#22c55e; }
+    .rep2 { background:#eab308; }   /* amarelo */
+    .rep3 { background:#f59e0b; }
+    .rep4 { background:#f97316; }   /* laranja */
+    .rep5 { background:#ef4444; }   /* vermelho */
+    .disabled { opacity:.7; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Palestras — Ano</h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('palestras_painel') }}">← Palestras</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+      </div>
+    </div>
+
+    <!-- Passo 1: Ano -->
+    <div class="card">
+      <label for="ano">Ano do Encontro</label>
+      <div class="row">
+        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}">
+        <button class="btn primary" id="btn-continuar">Continuar</button>
+      </div>
+      <div class="status" id="ano-msg"></div>
+    </div>
+
+    <!-- Cards de palestras -->
+    <div class="grid" id="grid" style="margin-top:12px; display:none;"></div>
+  </div>
+
+  <script>
+    const TITULOS = {{ titulos|tojson }};
+    const SOLO = new Set({{ solo_titulos|tojson }});
+    const EXIST = {{ existentes|tojson }};
+    const anoPre = {{ ano_preselecionado|tojson }};
+
+    const $ano = document.getElementById('ano');
+    const $go  = document.getElementById('btn-continuar');
+    const $msg = document.getElementById('ano-msg');
+    const $grid= document.getElementById('grid');
+
+    function idFrom(title){ return title.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
+
+    function repClass(n){
+      if (n <= 0) return 'rep0';
+      if (n === 1) return 'rep1';
+      if (n === 2) return 'rep2';
+      if (n === 3) return 'rep3';
+      if (n === 4) return 'rep4';
+      return 'rep5';
+    }
+
+    function makeCard(title){
+      const id = idFrom(title);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'card';
+      const ex = EXIST[title] || null;
+
+      if (SOLO.has(title)) {
+        wrapper.innerHTML = `
+          <h3 style="margin:0 0 8px;">${title} <span class="muted">(solo)</span></h3>
+          <label for="${id}_nome">Nome</label>
+          <input id="${id}_nome" placeholder="Ex.: Pe. João da Silva" value="${ex ? (ex.nome_ele||'') : ''}">
+          <div class="status" id="${id}_status"></div>
+          <div style="margin-top:8px;"><button class="btn primary" id="${id}_add">${ex ? 'Alterar' : 'Adicionar'}</button></div>
+        `;
+      } else {
+        wrapper.innerHTML = `
+          <h3 style="margin:0 0 8px;">${title}</h3>
+          <div class="row">
+            <div>
+              <label for="${id}_ele">Nome (Ele)</label>
+              <input id="${id}_ele" value="${ex ? (ex.nome_ele||'') : ''}" placeholder="Ex.: João">
+            </div>
+            <div>
+              <label for="${id}_ela">Nome (Ela)</label>
+              <input id="${id}_ela" value="${ex ? (ex.nome_ela||'') : ''}" placeholder="Ex.: Maria">
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label for="${id}_tel">Telefones</label>
+              <input id="${id}_tel" placeholder="preenchido pela busca (não grava)">
+            </div>
+            <div>
+              <label for="${id}_end">Endereço</label>
+              <input id="${id}_end" placeholder="preenchido pela busca (não grava)">
+            </div>
+          </div>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+            <button class="btn" id="${id}_buscar">Buscar</button>
+            <div class="repbar" style="flex:1;">
+              <div id="${id}_rep" class="rep0" style="width:0%"></div>
+            </div>
+            <span class="muted" id="${id}_replabel">0/5</span>
+          </div>
+          <div class="status" id="${id}_status"></div>
+          <div style="margin-top:8px;"><button class="btn primary" id="${id}_add">${ex ? 'Alterar' : 'Adicionar'}</button></div>
+        `;
+      }
+
+      $grid.appendChild(wrapper);
+
+      // Pre-disable se já existe
+      if (ex) {
+        const toDisable = SOLO.has(title)
+          ? [`${id}_nome`, `${id}_add`]
+          : [`${id}_ele`, `${id}_ela`, `${id}_tel`, `${id}_end`, `${id}_buscar`, `${id}_add`];
+        toDisable.forEach(cid => {
+          const el = document.getElementById(cid);
+          if (el) el.disabled = true;
+        });
+        const st = document.getElementById(`${id}_status`);
+        st.textContent = 'Palestra já cadastrada para este ano.';
+        st.className = 'status ok';
+      }
+
+      // Handlers
+      const $status = document.getElementById(`${id}_status`);
+
+      if (!SOLO.has(title)) {
+        document.getElementById(`${id}_buscar`).addEventListener('click', async (e)=>{
+          e.preventDefault();
+          $status.textContent = '';
+          const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
+          const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
+          if (!nome_ele || !nome_ela) {
+            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+            $status.className = 'status warn';
+            return;
+          }
+          try{
+            const resp = await fetch('{{ url_for("api_palestras_buscar") }}', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ palestra: title, nome_ele, nome_ela })
+            });
+            const data = await resp.json();
+            if (!data.ok) {
+              $status.textContent = data.msg || 'Falha na busca.';
+              $status.className = 'status err';
+              return;
+            }
+            document.getElementById(`${id}_tel`).value = data.telefones || '';
+            document.getElementById(`${id}_end`).value = data.endereco || '';
+            const n = Math.max(0, Math.min(5, data.repeticoes||0));
+            const bar = document.getElementById(`${id}_rep`);
+            bar.className = repClass(n);
+            bar.style.width = (n*20) + '%';
+            document.getElementById(`${id}_replabel`).textContent = `${n}/5`;
+            $status.textContent = (n >= 5) ? 'Limite atingido — não pode cadastrar.' : 'Dados carregados.';
+            $status.className = (n >= 5) ? 'status err' : 'status ok';
+          }catch{
+            $status.textContent = 'Erro na busca.';
+            $status.className = 'status err';
+          }
+        });
+      }
+
+      document.getElementById(`${id}_add`).addEventListener('click', async (e)=>{
+        e.preventDefault();
+        $status.textContent = '';
+        const ano = (document.getElementById('ano').value || '').trim();
+        if (!/^\d{4}$/.test(ano)) {
+          $msg.textContent = 'Informe o ano antes.'; $msg.className = 'status err';
+          return;
+        }
+
+        let payload = { ano: parseInt(ano,10), palestra: title };
+
+        if (SOLO.has(title)) {
+          const nome = (document.getElementById(`${id}_nome`).value || '').trim();
+          if (!nome) { $status.textContent = 'Preencha o nome.'; $status.className = 'status warn'; return; }
+          payload.nome_ele = nome;
+        } else {
+          const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
+          const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
+          if (!nome_ele || !nome_ela) { $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $status.className = 'status warn'; return; }
+          payload.nome_ele = nome_ele;
+          payload.nome_ela = nome_ela;
+          payload.telefones = (document.getElementById(`${id}_tel`).value || '').trim();
+          payload.endereco  = (document.getElementById(`${id}_end`).value || '').trim();
+        }
+
+        try{
+          const resp = await fetch('{{ url_for("api_palestras_adicionar") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            $status.textContent = 'Palestra cadastrada com sucesso.';
+            $status.className = 'status ok';
+            // trava campos
+            if (SOLO.has(title)) {
+              ['nome','add'].forEach(s=>{
+                const el = document.getElementById(`${id}_${s}`); if (el) el.disabled = true;
+              });
+            } else {
+              ['ele','ela','tel','end','buscar','add'].forEach(s=>{
+                const el = document.getElementById(`${id}_${s}`); if (el) el.disabled = true;
+              });
+            }
+          } else {
+            $status.textContent = data.msg || 'Falha ao cadastrar.';
+            $status.className = 'status err';
+          }
+        }catch{
+          $status.textContent = 'Erro ao cadastrar.';
+          $status.className = 'status err';
+        }
+      });
+    }
+
+    function renderGrid(){
+      $grid.innerHTML = '';
+      TITULOS.forEach(t => makeCard(t));
+      $grid.style.display = '';
+    }
+
+    document.getElementById('btn-continuar').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const v = ($ano.value || '').trim();
+      if (!/^\d{4}$/.test(v)) {
+        $msg.textContent = 'Informe um ano válido (YYYY).';
+        $msg.className = 'status err';
+        return;
+      }
+      $msg.textContent = `Ano selecionado: ${v}`;
+      $msg.className = 'status ok';
+      renderGrid();
+    });
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      if (anoPre) {
+        document.getElementById('btn-continuar').click();
+      }
+    });
+  </script>
+</body>
+</html>
