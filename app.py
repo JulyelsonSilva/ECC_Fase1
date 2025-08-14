@@ -1465,6 +1465,52 @@ def palestra_topico():
     if ano:
         return redirect(url_for('palestras_nova', ano=ano))
     return redirect(url_for('palestras_nova'))
+    
+# ===============================
+# Palestrantes (listagem por ano, com filtros)
+# ===============================
+@app.route('/palestrantes')
+def palestrantes():
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
+    nome_ele = (request.args.get('nome_ele', '') or '').strip()
+    nome_ela = (request.args.get('nome_ela', '') or '').strip()
+    ano_filtro = (request.args.get('ano', '') or '').strip()
+
+    query = """
+        SELECT ano, palestra, nome_ele, nome_ela, status
+          FROM palestras
+         WHERE 1=1
+    """
+    params = []
+    if nome_ele:
+        query += " AND nome_ele LIKE %s"
+        params.append(f"%{nome_ele}%")
+    if nome_ela:
+        query += " AND nome_ela LIKE %s"
+        params.append(f"%{nome_ela}%")
+    if ano_filtro:
+        query += " AND ano = %s"
+        params.append(ano_filtro)
+
+    query += " ORDER BY ano DESC, palestra ASC"
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # Agrupa por ano (exatamente como em 'encontreiros')
+    por_ano = defaultdict(list)
+    for r in rows:
+        por_ano[r['ano']].append(r)
+
+    colunas_visiveis = ['palestra', 'nome_ele', 'nome_ela', 'status']
+
+    return render_template('palestrantes.html',
+                           por_ano=por_ano,
+                           colunas_visiveis=colunas_visiveis)
 
 # ===============================
 # Organograma
