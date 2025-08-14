@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Montagem da Equipe — Sala</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46;}
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
+      radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
+      radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+      var(--bg); }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px 48px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size: 22px; }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; cursor:pointer; }
+    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .btn.warn { border-color:#f59e0b; }
+    .btn.danger { border-color: var(--danger); color: var(--danger); }
+    .layout { display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .slot { border:1px dashed var(--border); border-radius:12px; padding:12px; }
+    .slot h3 { margin:0 0 8px; font-size:16px; }
+    label { display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input, textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .status { margin-top:8px; font-size:13px; }
+    .ok { color:var(--ok); }
+    .warn-t { color:var(--warn); }
+    .err { color:var(--danger); }
+    .small { font-size:12px; color:#475569; }
+    .justify-box { margin-top:8px; display:none; }
+    .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; margin-right:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>Montagem — Equipe de Sala</h1>
+        <div class="small">Ano: <b>{{ ano }}</b></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
+        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}">↩ Voltar à Nova Montagem</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <span class="pill">Canto: 2</span>
+      <span class="pill">Som e Projeção: 2</span>
+      <span class="pill">Boa Vontade: 1</span>
+      <span class="pill">Recepção Palestrantes: 1</span>
+    </div>
+
+    <div class="layout">
+      <!-- Esquerda: 6 subequipes -->
+      <div class="card">
+        <div class="grid" id="slots"></div>
+      </div>
+
+      <!-- Direita: sugestões do ano anterior -->
+      <div class="card">
+        <h3 style="margin-top:0;">Encontristas do ano {{ ano - 1 }}</h3>
+        <p class="small" style="margin-top:0;">Clique para preencher a <b>próxima</b> subequipe vazia, na ordem: Canto 1 → Canto 2 → Som 1 → Som 2 → Boa Vontade → Recepção.</p>
+        <div id="sugestoes">
+          {% for s in sugestoes_prev_ano %}
+            {% set label = (s.nome_ele ~ ' e ' ~ s.nome_ela).strip() %}
+            <a href="#" class="btn" style="display:block; margin:6px 0;" data-ele="{{ s.nome_ele }}" data-ela="{{ s.nome_ela }}">
+              {{ label }}
+            </a>
+          {% else %}
+            <p class="small">Sem registros para o ano anterior.</p>
+          {% endfor %}
+        </div>
+        {% if pref_recepcao and (pref_recepcao.nome_ele or pref_recepcao.nome_ela) %}
+          <hr style="margin:12px 0; border:none; border-top:1px solid var(--border);">
+          <p class="small"><b>Sugestão Recepção Palestrantes</b><br>
+            (trazido de: <i>Equipe Dirigente - PALESTRA</i>)</p>
+          <p class="small">
+            {{ (pref_recepcao.nome_ele or '') ~ (' e ' if pref_recepcao.nome_ela else '') ~ (pref_recepcao.nome_ela or '') }}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const ANO = {{ ano | int }};
+  const SLOTS = {{ (sala_slots or []) | tojson }};
+  const PREF = {{ (pref_recepcao or {}) | tojson }};
+
+  const slotsWrap = document.getElementById('slots');
+
+  function h(tag, attrs={}, html='') {
+    const el = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs||{})) {
+      if (k === 'class') el.className = v;
+      else if (k.startsWith('data-')) el.setAttribute(k, v);
+      else if (k === 'disabled' && v) el.setAttribute('disabled', 'disabled');
+      else el.setAttribute(k, v);
+    }
+    if (html !== undefined && html !== null) el.innerHTML = html;
+    return el;
+  }
+
+  function fillSlot(i, data) {
+    const $ele = document.getElementById(`ele_${i}`);
+    const $ela = document.getElementById(`ela_${i}`);
+    const $tel = document.getElementById(`tel_${i}`);
+    const $end = document.getElementById(`end_${i}`);
+    if ($ele) $ele.value = data?.nome_ele || '';
+    if ($ela) $ela.value = data?.nome_ela || '';
+    if ($tel) $tel.value = data?.telefones || '';
+    if ($end) $end.value = data?.endereco || '';
+  }
+
+  function lockSlot(i, locked, memberId=null) {
+    const slot = document.getElementById(`slot_${i}`);
+    const ids = ['ele','ela','tel','end','buscar','add'];
+    if (locked) {
+      slot.dataset.locked = '1';
+      if (memberId) slot.dataset.memberId = String(memberId);
+      ids.forEach(s => { const el = document.getElementById(`${s}_${i}`); if (el) el.disabled = true; });
+      const btn = document.getElementById(`add_${i}`); if (btn) { btn.textContent = 'Alterar'; btn.dataset.mode = 'alterar'; }
+    } else {
+      slot.dataset.locked = '';
+      slot.dataset.memberId = '';
+      ids.forEach(s => {
+        const el = document.getElementById(`${s}_${i}`);
+        if (el) { el.disabled = false; if (['ele','ela','tel','end'].includes(s)) el.value = ''; }
+      });
+      const btn = document.getElementById(`add_${i}`); if (btn) { btn.textContent = 'Adicionar'; btn.dataset.mode = 'add'; }
+      const jw = document.getElementById(`justify_wrap_${i}`); if (jw) jw.style.display = 'none';
+      const jt = document.getElementById(`justify_${i}`); if (jt) jt.value = '';
+    }
+  }
+
+  function renderSlot(i, slotInfo) {
+    const slot = h('div', {class:'slot', id:`slot_${i}`, 'data-kind':slotInfo.kind, 'data-equipedb':slotInfo.equipe_db, 'data-locked':''});
+    const title = h('h3', {}, `${slotInfo.label}`);
+    const row1 = h('div', {class:'row'});
+    row1.append(
+      h('div', {}, `<label for="ele_${i}">Nome (Ele)</label><input id="ele_${i}" placeholder="Ex.: João">`),
+      h('div', {}, `<label for="ela_${i}">Nome (Ela)</label><input id="ela_${i}" placeholder="Ex.: Maria">`)
+    );
+    const row2 = h('div', {class:'row', style:'margin-top:8px;'});
+    row2.append(
+      h('div', {}, `<label for="tel_${i}">Telefones</label><input id="tel_${i}" placeholder="Preenchido pela busca (editável)">`),
+      h('div', {}, `<label for="end_${i}">Endereço</label><input id="end_${i}" placeholder="Preenchido pela busca (editável)">`)
+    );
+    const actions = h('div', {style:'margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;'});
+    const btnBuscar = h('button', {class:'btn', id:`buscar_${i}`}, 'Buscar');
+    const btnAdd    = h('button', {class:'btn primary', id:`add_${i}`, 'data-mode':'add'}, 'Adicionar');
+    actions.append(btnBuscar, btnAdd);
+
+    const justify = h('div', {class:'justify-box', id:`justify_wrap_${i}`}, `
+      <label for="justify_${i}">Justificativa (obrigatória para Recusou/Desistiu)</label>
+      <textarea id="justify_${i}" rows="3" placeholder="Descreva a justificativa..."></textarea>
+      <div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn danger" id="mark_recusou_${i}">Confirmar Recusou</button>
+        <button class="btn warn" id="mark_desistiu_${i}">Confirmar Desistiu</button>
+        <button class="btn" id="cancel_alter_${i}">Cancelar</button>
+      </div>
+    `);
+
+    const status = h('div', {class:'status', id:`status_${i}`});
+
+    slot.append(title, row1, row2, actions, justify, status);
+    slotsWrap.appendChild(slot);
+
+    // Prefill Recepção com Dirigente - PALESTRA se não houver existente
+    if (slotInfo.kind === 'Recepção Palestrantes' && !slotInfo.existing && (PREF?.nome_ele || PREF?.nome_ela)) {
+      fillSlot(i, { nome_ele: PREF.nome_ele || '', nome_ela: PREF.nome_ela || '', telefones: PREF.telefones || '', endereco: PREF.endereco || '' });
+      status.textContent = 'Sugestão preenchida a partir de “Equipe Dirigente - PALESTRA”.';
+      status.className = 'status ok';
+    }
+
+    // Se já existe no banco, preenche + trava
+    if (slotInfo.existing) {
+      fillSlot(i, slotInfo.existing);
+      lockSlot(i, true, slotInfo.existing.id || null);
+      status.textContent = `Integrante já cadastrado${slotInfo.existing.status ? ' ('+slotInfo.existing.status+')' : ''}.`;
+      status.className = 'status ok';
+    }
+
+    // Handlers
+    btnBuscar.addEventListener('click', async (e) => {
+      e.preventDefault();
+      status.textContent = '';
+      const nome_ele = document.getElementById(`ele_${i}`).value.trim();
+      const nome_ela = document.getElementById(`ela_${i}`).value.trim();
+      if (!nome_ele || !nome_ela) {
+        status.textContent = 'Preencha Nome (Ele) e Nome (Ela) antes de buscar.';
+        status.className = 'status warn-t';
+        return;
+      }
+      try {
+        const resp = await fetch('{{ url_for("api_check_casal_equipe") }}', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            ano: ANO,
+            equipe_final: slotInfo.equipe_db,   // <- subequipe exata
+            nome_ele, nome_ela
+          })
+        });
+        const data = await resp.json();
+        if (!data.ok) { status.textContent = data.msg || 'Falha ao validar.'; status.className = 'status err'; return; }
+        if (data.ja_no_ano)   { status.textContent = 'Casal já está montado em alguma equipe deste ano.'; status.className = 'status err'; return; }
+        if (data.ja_coordenador) { status.textContent = 'Casal já foi coordenador desta equipe.'; status.className = 'status err'; return; }
+        document.getElementById(`tel_${i}`).value = data.telefones || '';
+        document.getElementById(`end_${i}`).value = data.endereco || '';
+        status.textContent = data.trabalhou_antes ? 'Casal já trabalhou nesta equipe. Confirme ao adicionar.' : 'Dados carregados.';
+        status.className = data.trabalhou_antes ? 'status warn-t' : 'status ok';
+        document.getElementById(`slot_${i}`).dataset.trabalhouAntes = data.trabalhou_antes ? '1' : '';
+      } catch {
+        status.textContent = 'Erro na validação/busca.';
+        status.className = 'status err';
+      }
+    });
+
+    btnAdd.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const mode = btnAdd.dataset.mode || 'add';
+      if (mode === 'add') {
+        const nome_ele = document.getElementById(`ele_${i}`).value.trim();
+        const nome_ela = document.getElementById(`ela_${i}`).value.trim();
+        const telefones = document.getElementById(`tel_${i}`).value.trim();
+        const endereco  = document.getElementById(`end_${i}`).value.trim();
+        if (!nome_ele || !nome_ela) { status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; status.className = 'status warn-t'; return; }
+
+        let confirmar_repeticao = false;
+        if (document.getElementById(`slot_${i}`).dataset.trabalhouAntes === '1') {
+          confirmar_repeticao = window.confirm('Casal já trabalhou na subequipe. Confirmar montar novamente?');
+          if (!confirmar_repeticao) return;
+        }
+        try {
+          const resp = await fetch('{{ url_for("api_add_membro_equipe") }}', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              ano: ANO,
+              equipe_final: slotInfo.equipe_db,  // <- grava subequipe exata
+              nome_ele, nome_ela, telefones, endereco,
+              confirmar_repeticao
+            })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok';
+            lockSlot(i, true, null);
+          } else if (data.needs_confirm) {
+            const ok = window.confirm(data.msg || 'Confirmar?');
+            if (ok) {
+              const resp2 = await fetch('{{ url_for("api_add_membro_equipe") }}', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({
+                  ano: ANO,
+                  equipe_final: slotInfo.equipe_db,
+                  nome_ele, nome_ela, telefones, endereco,
+                  confirmar_repeticao: true
+                })
+              });
+              const data2 = await resp2.json();
+              if (data2.ok) { status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok'; lockSlot(i, true, null); }
+              else { status.textContent = data2.msg || 'Falha ao adicionar.'; status.className = 'status err'; }
+            }
+          } else {
+            status.textContent = data.msg || 'Falha ao adicionar.'; status.className = 'status err';
+          }
+        } catch {
+          status.textContent = 'Erro ao adicionar.'; status.className = 'status err';
+        }
+      } else {
+        document.getElementById(`justify_wrap_${i}`).style.display = 'block';
+      }
+    });
+
+    // Alterar -> Recusou/Desistiu
+    document.getElementById(`mark_recusou_${i}`).addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const obs = document.getElementById(`justify_${i}`).value.trim();
+      if (!obs) { status.textContent = 'Justificativa é obrigatória.'; status.className = 'status err'; return; }
+      const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
+      if (!memberId) { status.textContent = 'Sem ID do integrante. Recarregue a página.'; status.className = 'status err'; return; }
+      try {
+        const resp = await fetch('{{ url_for("api_marcar_status_membro") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: parseInt(memberId,10), novo_status:'Recusou', observacao: obs })
+        });
+        const data = await resp.json();
+        if (data.ok) { status.textContent = 'Status atualizado para Recusou. Campos liberados.'; status.className = 'status ok'; lockSlot(i, false, null); }
+        else { status.textContent = data.msg || 'Falha ao alterar status.'; status.className = 'status err'; }
+      } catch { status.textContent = 'Erro ao alterar status.'; status.className = 'status err'; }
+    });
+
+    document.getElementById(`mark_desistiu_${i}`).addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const obs = document.getElementById(`justify_${i}`).value.trim();
+      if (!obs) { status.textContent = 'Justificativa é obrigatória.'; status.className = 'status err'; return; }
+      const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
+      if (!memberId) { status.textContent = 'Sem ID do integrante. Recarregue a página.'; status.className = 'status err'; return; }
+      try {
+        const resp = await fetch('{{ url_for("api_marcar_status_membro") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: parseInt(memberId,10), novo_status:'Desistiu', observacao: obs })
+        });
+        const data = await resp.json();
+        if (data.ok) { status.textContent = 'Status atualizado para Desistiu. Campos liberados.'; status.className = 'status ok'; lockSlot(i, false, null); }
+        else { status.textContent = data.msg || 'Falha ao alterar status.'; status.className = 'status err'; }
+      } catch { status.textContent = 'Erro ao alterar status.'; status.className = 'status err'; }
+    });
+
+    document.getElementById(`cancel_alter_${i}`).addEventListener('click', (e)=>{
+      e.preventDefault();
+      document.getElementById(`justify_wrap_${i}`).style.display = 'none';
+      const jt = document.getElementById(`justify_${i}`); if (jt) jt.value = '';
+    });
+  }
+
+  // Render de todos os 6 slots
+  function renderAll() {
+    slotsWrap.innerHTML = '';
+    SLOTS.forEach((info, i) => renderSlot(i, info));
+  }
+
+  // Sugestões (lado direito)
+  function wireSuggestions() {
+    const box = document.getElementById('sugestoes');
+    if (!box) return;
+    box.addEventListener('click', async (e) => {
+      const a = e.target.closest('a.btn'); if (!a) return; e.preventDefault();
+
+      // Encontra o primeiro slot vazio na ordem natural
+      let idx = -1;
+      for (let i=0; i<SLOTS.length; i++) {
+        const s = document.getElementById(`slot_${i}`);
+        if (s && s.dataset.locked !== '1') { idx = i; break; }
+      }
+      if (idx === -1) { alert('Não há slots vazios. Libere um com Alterar -> Recusou/Desistiu.'); return; }
+
+      const nome_ele = a.dataset.ele || '';
+      const nome_ela = a.dataset.ela || '';
+      fillSlot(idx, { nome_ele, nome_ela });
+
+      const status = document.getElementById(`status_${idx}`);
+      try {
+        const resp = await fetch('{{ url_for("api_check_casal_equipe") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            ano: ANO,
+            equipe_final: SLOTS[idx].equipe_db,
+            nome_ele, nome_ela
+          })
+        });
+        const data = await resp.json();
+        if (!data.ok) { status.textContent = data.msg || 'Falha ao validar.'; status.className = 'status err'; return; }
+        if (data.ja_no_ano)   { status.textContent = 'Casal já está montado em alguma equipe deste ano.'; status.className = 'status err'; return; }
+        if (data.ja_coordenador) { status.textContent = 'Casal já foi coordenador desta equipe.'; status.className = 'status err'; return; }
+        document.getElementById(`tel_${idx}`).value = data.telefones || '';
+        document.getElementById(`end_${idx}`).value = data.endereco || '';
+        status.textContent = data.trabalhou_antes ? 'Casal já trabalhou nesta equipe. Confirme ao adicionar.' : 'Dados carregados a partir da sugestão.';
+        status.className = data.trabalhou_antes ? 'status warn-t' : 'status ok';
+        document.getElementById(`slot_${idx}`).dataset.trabalhouAntes = data.trabalhou_antes ? '1' : '';
+      } catch {
+        status.textContent = 'Erro na validação/busca.'; status.className = 'status err';
+      }
+    });
+  }
+
+  renderAll();
+  wireSuggestions();
+  </script>
+</body>
+</html>
