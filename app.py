@@ -7,6 +7,9 @@ from mysql.connector import errors as mysql_errors
 
 app = Flask(__name__)
 
+# -----------------------------
+# DB
+# -----------------------------
 DB_CONFIG = {
     'host': 'db4free.net',
     'user': 'eccdivino2',
@@ -15,18 +18,15 @@ DB_CONFIG = {
 }
 
 def safe_fetch_one(cur, sql, params):
-    """
-    Executa SELECT ... LIMIT 1 com tratamento.
-    Retorna dict ou None. Nunca deixa a exceção subir.
-    """
     try:
         cur.execute(sql, params)
         return cur.fetchone()
-    except (mysql_errors.ProgrammingError, mysql_errors.DatabaseError, mysql_errors.InterfaceError, mysql_errors.OperationalError):
+    except (mysql_errors.ProgrammingError, mysql_errors.DatabaseError,
+            mysql_errors.InterfaceError, mysql_errors.OperationalError):
         return None
 
 # -----------------------------
-# Mapeamentos de Equipes
+# Constantes de Equipes (MONTAGEM)
 # -----------------------------
 TEAM_MAP = {
     "sala":      {"rotulo": "Equipe de Sala - Coordenador/Apresentador", "filtro": "Sala"},
@@ -54,7 +54,7 @@ TEAM_LIMITS = {
 }
 
 # -----------------------------
-# Palestras - Constantes
+# Constantes de Palestras
 # -----------------------------
 PALESTRAS_TITULOS = [
     "Plano de Deus",
@@ -74,7 +74,19 @@ PALESTRAS_TITULOS = [
     "O casal Cristão no Mundo de Hoje",
 ]
 PALESTRAS_SOLO = {"Penitência", "Testem. Jovem", "Ceia Eucarística"}
-PALESTRAS_IDX = {t: i for i, t in enumerate(PALESTRAS_TITULOS)}
+PALESTRAS_ORDER_MAP = {t: i for i, t in enumerate(PALESTRAS_TITULOS)}
+
+def proper_case(s: str) -> str:
+    if not s:
+        return ""
+    parts = re.split(r"(\s+)", s.strip())
+    out = []
+    for p in parts:
+        if p.isspace():
+            out.append(p)
+        else:
+            out.append(p[:1].upper() + p[1:].lower())
+    return "".join(out)
 
 # -----------------------------
 # Rotas principais
@@ -203,10 +215,6 @@ def editar_encontrista(encontrista_id):
 # -----------------------------
 @app.route('/montagem')
 def montagem():
-    """
-    Esquerda: 'Aberto' -> anos com pelo menos 1 registro status != 'Concluido'
-    Direita:  'Concluído' -> anos onde TODOS têm status = 'Concluido'
-    """
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
@@ -237,7 +245,7 @@ def montagem():
                            anos_concluidos=anos_concluidos)
 
 # -----------------------------
-# Nova Montagem (pré-preenche dirigentes/CG/coord_equipes)
+# Nova Montagem
 # -----------------------------
 @app.route('/montagem/nova')
 def nova_montagem():
@@ -252,7 +260,7 @@ def nova_montagem():
     if ano_preselecionado:
         equipes_dir = [
             "Equipe Dirigente - MONTAGEM",
-            "Equipe Dirigente -FICHAS",  # manter exatamente assim
+            "Equipe Dirigente -FICHAS",  # manter assim
             "Equipe Dirigente - FINANÇAS",
             "Equipe Dirigente - PALESTRA",
             "Equipe Dirigente - PÓS ENCONTRO",
@@ -278,7 +286,6 @@ def nova_montagem():
                         "endereco": r.get("endereco") or ""
                     }
 
-            # Coordenador Geral (apenas ABERTO)
             cur.execute("""
                 SELECT nome_ele, nome_ela, telefones, endereco
                   FROM encontreiros
@@ -297,7 +304,6 @@ def nova_montagem():
                     "endereco": r_cg.get("endereco") or "",
                 }
 
-            # Coordenadores de Equipe existentes (status ABERTO)
             for key, info in TEAM_MAP.items():
                 rotulo = info["rotulo"]
                 cur.execute("""
@@ -524,7 +530,7 @@ def api_adicionar_cg():
             pass
 
 # -----------------------------
-# ENCONTREIROS (listagem – sem edição)
+# ENCONTREIROS (listagem – consulta)
 # -----------------------------
 @app.route('/encontreiros')
 def encontreiros():
@@ -570,7 +576,7 @@ def encontreiros():
                            colunas_visiveis=colunas_visiveis)
 
 # -----------------------------
-# Visão Equipes (com/sem links)
+# Visão Equipes
 # -----------------------------
 @app.route('/visao-equipes')
 def visao_equipes():
@@ -879,7 +885,10 @@ def relatorio_casais():
                 return None
 
             for linha in linhas:
-                ele, ela = split_casal(linha)
+                ele, ela = consulta = (None, None)
+                ele, ela = (lambda s: re.split(r"\s+e\s+", s, maxsplit=1, flags=re.I) if re.search(r"\s+e\s+", s, flags=re.I) else (s.split(";",1) if ";" in s else (s.split(" ",1) if " " in s else ["",""])))(linha.strip())
+                ele = ele.strip() if ele else ""
+                ela = ela.strip() if ela else ""
                 if not ele or not ela:
                     resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
                     continue
@@ -916,10 +925,7 @@ def equipe_montagem():
         equipe_final = equipe_filtro or 'Equipe'
 
     limites_cfg = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final, {}))
-    limites = {
-        "min": int(limites_cfg.get('min', 0)),
-        "max": int(limites_cfg.get('max', 8)),
-    }
+    limites = {"min": int(limites_cfg.get('min', 0)), "max": int(limites_cfg.get('max', 8))}
 
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
@@ -986,7 +992,6 @@ def equipe_montagem():
         sugestoes_prev_ano=sugestoes_prev_ano
     )
 
-# --- APIs auxiliares da montagem de equipe ---
 def _casal_ja_no_ano(conn, ano:int, nome_ele:str, nome_ela:str) -> bool:
     cur = conn.cursor()
     try:
@@ -1221,7 +1226,7 @@ def api_concluir_montagem_ano():
             pass
 
 # -----------------------------
-# Organograma (simples)
+# Organograma
 # -----------------------------
 @app.route('/organograma')
 def organograma():
@@ -1232,7 +1237,6 @@ def dados_organograma():
     ano = request.args.get("ano", type=int)
     if not ano:
         return jsonify([])
-
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
     try:
@@ -1246,267 +1250,104 @@ def dados_organograma():
     finally:
         cursor.close()
         conn.close()
-
     return jsonify(dados)
 
-# =========================================================
-#                      PALESTRAS
-# =========================================================
+# =====================================================================
+#                           PALESTRAS
+# =====================================================================
+
 @app.route('/palestras')
 def palestras_painel():
-    """Painel por ano com contagens."""
+    """
+    Ano 'Concluído' quando NÃO há registros em 'Aberto'.
+    Não exige ter as 15 palestras — basta não existir 'Aberto'.
+    """
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
-            SELECT ano, COUNT(*) AS feitas
+            SELECT ano,
+                   SUM(CASE WHEN UPPER(TRIM(status)) = 'ABERTO' THEN 1 ELSE 0 END) AS abertos,
+                   COUNT(*) AS total
               FROM palestras
              GROUP BY ano
              ORDER BY ano DESC
         """)
         rows = cur.fetchall()
     finally:
-        cur.close(); conn.close()
+        try: cur.close(); conn.close()
+        except Exception: pass
 
-    total = len(PALESTRAS_TITULOS)
     anos_aberto, anos_concluidos = [], []
     for r in rows:
-        item = {"ano": r["ano"], "feitas": int(r["feitas"]), "total": total}
-        if item["feitas"] >= total:
+        ano = r['ano']
+        abertos = int(r['abertos'] or 0)
+        total = int(r['total'] or 0)
+        item = {"ano": ano, "abertos": abertos, "total": total}
+        if total > 0 and abertos == 0:
             anos_concluidos.append(item)
         else:
             anos_aberto.append(item)
 
     return render_template('palestras_painel.html',
                            anos_aberto=anos_aberto,
-                           anos_concluidos=anos_concluidos,
-                           total_palestras=total)
+                           anos_concluidos=anos_concluidos)
 
 @app.route('/palestras/nova')
 def palestras_nova():
-    """Tela para cadastrar as palestras do ano."""
     ano_preselecionado = request.args.get('ano', type=int)
 
     existentes = {}
+    tem_abertos = False
+
     if ano_preselecionado:
         conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
+            # Só traz ativos (não Recusou/Desistiu) para pré-travar os cards
             cur.execute("""
-                SELECT palestra, nome_ele, nome_ela
+                SELECT id, ano, palestra, nome_ele, nome_ela, status
                   FROM palestras
                  WHERE ano = %s
+                   AND UPPER(COALESCE(status,'')) NOT IN ('RECUSOU','DESISTIU')
             """, (ano_preselecionado,))
-            for r in cur.fetchall():
-                existentes[r["palestra"]] = {
-                    "nome_ele": r.get("nome_ele"),
-                    "nome_ela": r.get("nome_ela"),
+            fetched = cur.fetchall()
+            for r in fetched:
+                existentes[r['palestra']] = {
+                    "id": r['id'],
+                    "nome_ele": r.get('nome_ele'),
+                    "nome_ela": r.get('nome_ela'),
+                    "status": r.get('status') or ""
                 }
+            # Há algum 'Aberto'?
+            for r in fetched:
+                if (r.get('status') or '').strip().lower() == 'aberto':
+                    tem_abertos = True
+                    break
         finally:
-            cur.close(); conn.close()
+            try: cur.close(); conn.close()
+            except Exception: pass
 
     return render_template(
         'nova_palestras.html',
         ano_preselecionado=ano_preselecionado,
         titulos=PALESTRAS_TITULOS,
         solo_titulos=list(PALESTRAS_SOLO),
-        existentes=existentes
+        existentes=existentes,
+        tem_abertos=tem_abertos
     )
 
-@app.route('/api/palestras/buscar', methods=['POST'])
-def api_palestras_buscar():
-    """
-    Valida casal para uma palestra (não-solo):
-    - precisa ter sido encontrista ou encontriero;
-    - retorna repeticoes (quantas vezes já deu ESTA palestra);
-    - retorna telefones/endereco (mais recentes de encontreiros; senão, encontristas).
-    """
-    data = request.get_json(silent=True) or {}
-    palestra = (data.get('palestra') or '').strip()
-    nome_ele = (data.get('nome_ele') or '').strip()
-    nome_ela = (data.get('nome_ela') or '').strip()
-
-    if not palestra:
-        return jsonify({"ok": False, "msg": "Palestra obrigatória."}), 400
-    if palestra in PALESTRAS_SOLO:
-        # normalmente o front não chama buscar para solo
-        return jsonify({"ok": True, "repeticoes": 0, "telefones": "", "endereco": ""})
-
-    if not nome_ele or not nome_ela:
-        return jsonify({"ok": False, "msg": "Informe nome_ele e nome_ela."}), 400
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor(dictionary=True)
-    try:
-        # Checa participação (encontreiros ou encontristas)
-        cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             LIMIT 1
-        """, (nome_ele, nome_ela))
-        participou = cur.fetchone() is not None
-
-        if not participou:
-            cur.execute("""
-                SELECT 1 FROM encontristas
-                 WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
-                    OR (nome_ele = %s AND nome_ela = %s)
-                 LIMIT 1
-            """, (nome_ele, nome_ela, nome_ele, nome_ela))
-            participou = cur.fetchone() is not None
-
-        if not participou:
-            return jsonify({"ok": False, "msg": "Apenas casais que já foram encontristas ou encontreiros podem palestrar."}), 403
-
-        # Telefones / Endereço
-        cur.execute("""
-            SELECT telefones AS tel, endereco
-              FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             ORDER BY ano DESC LIMIT 1
-        """, (nome_ele, nome_ela))
-        r = cur.fetchone()
-        telefones = (r.get('tel') if r else '') or ''
-        endereco = (r.get('endereco') if r else '') or ''
-        if not r:
-            cur.execute("""
-                SELECT telefone_ele, telefone_ela, endereco
-                  FROM encontristas
-                 WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-                 ORDER BY ano DESC LIMIT 1
-            """, (nome_ele, nome_ela))
-            r2 = cur.fetchone()
-            if r2:
-                tel_ele = (r2.get('telefone_ele') or '').strip()
-                tel_ela = (r2.get('telefone_ela') or '').strip()
-                telefones = " / ".join([t for t in [tel_ele, tel_ela] if t])
-                endereco = r2.get('endereco') or ''
-
-        # Repetições nesta palestra (qualquer ano)
-        cur.execute("""
-            SELECT COUNT(*) AS n
-              FROM palestras
-             WHERE palestra = %s AND nome_ele = %s AND nome_ela = %s
-        """, (palestra, nome_ele, nome_ela))
-        rep = cur.fetchone()
-        repeticoes = int(rep['n']) if rep and rep.get('n') is not None else 0
-
-        return jsonify({"ok": True, "repeticoes": repeticoes, "telefones": telefones, "endereco": endereco})
-    finally:
-        try:
-            cur.close(); conn.close()
-        except Exception:
-            pass
-
-@app.route('/api/palestras/adicionar', methods=['POST'])
-def api_palestras_adicionar():
-    """
-    Adiciona a palestra do ano:
-    - Solo: grava em nome_ele (nome_ela = NULL)
-    - Casal: valida participação e limite de 5 repetições
-    - Não grava telefones/endereço (apenas exibe no front)
-    """
-    data = request.get_json(silent=True) or {}
-    ano = data.get('ano')
-    palestra = (data.get('palestra') or '').strip()
-    nome_ele = (data.get('nome_ele') or '').strip()
-    nome_ela = (data.get('nome_ela') or '').strip()
-
-    if not (ano and str(ano).isdigit() and len(str(ano)) == 4):
-        return jsonify({"ok": False, "msg": "Ano inválido."}), 400
-    if not palestra:
-        return jsonify({"ok": False, "msg": "Palestra obrigatória."}), 400
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor(dictionary=True)
-    try:
-        # Evita duplicar mesma palestra no ano
-        cur.execute("SELECT id FROM palestras WHERE ano = %s AND palestra = %s LIMIT 1", (int(ano), palestra))
-        if cur.fetchone():
-            return jsonify({"ok": False, "msg": "Esta palestra já está cadastrada para o ano informado."}), 409
-
-        if palestra in PALESTRAS_SOLO:
-            if not nome_ele:
-                return jsonify({"ok": False, "msg": "Informe o nome para esta palestra."}), 400
-            cur2 = conn.cursor()
-            cur2.execute("""
-                INSERT INTO palestras (ano, palestra, nome_ele, nome_ela, status)
-                VALUES (%s, %s, %s, NULL, 'Concluido')
-            """, (int(ano), palestra, nome_ele))
-            conn.commit()
-            cur2.close()
-            return jsonify({"ok": True})
-
-        # Casais: precisa nome_ele e nome_ela
-        if not (nome_ele and nome_ela):
-            return jsonify({"ok": False, "msg": "Preencha Nome (Ele) e Nome (Ela)."}), 400
-
-        # Participação (encontreiros/encontristas)
-        cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             LIMIT 1
-        """, (nome_ele, nome_ela))
-        participou = cur.fetchone() is not None
-        if not participou:
-            cur.execute("""
-                SELECT 1 FROM encontristas
-                 WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
-                    OR (nome_ele = %s AND nome_ela = %s)
-                 LIMIT 1
-            """, (nome_ele, nome_ela, nome_ele, nome_ela))
-            participou = cur.fetchone() is not None
-        if not participou:
-            return jsonify({"ok": False, "msg": "Apenas casais que já foram encontristas ou encontreiros podem palestrar."}), 403
-
-        # Limite de 5 repetições por palestra/casal (qualquer ano)
-        cur.execute("""
-            SELECT COUNT(*) AS n
-              FROM palestras
-             WHERE palestra = %s AND nome_ele = %s AND nome_ela = %s
-        """, (palestra, nome_ele, nome_ela))
-        rep = cur.fetchone()
-        repeticoes = int(rep['n']) if rep and rep.get('n') is not None else 0
-        if repeticoes >= 5:
-            return jsonify({"ok": False, "msg": "Limite de 5 repetições atingido para este casal nesta palestra."}), 409
-
-        cur2 = conn.cursor()
-        cur2.execute("""
-            INSERT INTO palestras (ano, palestra, nome_ele, nome_ela, status)
-            VALUES (%s, %s, %s, %s, 'Concluido')
-        """, (int(ano), palestra, nome_ele, nome_ela))
-        conn.commit()
-        cur2.close()
-        return jsonify({"ok": True})
-    finally:
-        try:
-            cur.close(); conn.close()
-        except Exception:
-            pass
-
-# --- Compatibilidade com templates antigos (sem sobrescrever endpoints atuais) ---
-@app.route('/api/palestras/save', methods=['POST'], endpoint='api_palestras_save')
-def api_palestras_save_alias():
-    return api_palestras_adicionar()
-
-@app.route('/api/palestras/validate', methods=['POST'], endpoint='api_palestras_validate')
-def api_palestras_validate_alias():
-    return api_palestras_buscar()
-
-# -----------------------------
-# Palestrantes (listagem com ordenação fixa)
-# -----------------------------
 @app.route('/palestrantes')
 def palestrantes():
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-
     nome_ele = (request.args.get('nome_ele', '') or '').strip()
     nome_ela = (request.args.get('nome_ela', '') or '').strip()
     ano_filtro = (request.args.get('ano', '') or '').strip()
 
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+
     query = """
-        SELECT ano, palestra, nome_ele, nome_ela
+        SELECT id, ano, palestra, nome_ele, nome_ela, status
           FROM palestras
          WHERE 1=1
     """
@@ -1521,22 +1362,246 @@ def palestrantes():
         query += " AND ano = %s"
         params.append(ano_filtro)
 
-    query += " ORDER BY ano DESC, palestra ASC"
+    query += " ORDER BY ano DESC, id ASC"
 
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    cur.execute(query, params)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
 
     por_ano = defaultdict(list)
     for r in rows:
-        por_ano[r['ano']].append(r)
+        ano = r['ano']
+        item = {
+            "palestra": r['palestra'],
+            "nome_ele": proper_case(r.get('nome_ele') or ''),
+            "nome_ela": proper_case(r.get('nome_ela') or ''),
+        }
+        por_ano[ano].append(item)
 
-    # Ordena dentro do ano pela sequência fixa
-    for ano in list(por_ano.keys()):
-        por_ano[ano].sort(key=lambda r: PALESTRAS_IDX.get(r.get('palestra', ''), 9999))
+    for ano, lista in por_ano.items():
+        lista.sort(key=lambda x: PALESTRAS_ORDER_MAP.get(x['palestra'], 999))
 
-    return render_template('palestrantes.html', por_ano=por_ano)
+    colunas_visiveis = ['palestra', 'nome_ele', 'nome_ela']
+    return render_template('palestrantes.html',
+                           por_ano=por_ano,
+                           colunas_visiveis=colunas_visiveis)
+
+# ---------- APIs de Palestras ----------
+
+@app.route('/api/palestras/buscar', methods=['POST'])
+def api_palestras_buscar():
+    data = request.get_json(silent=True) or {}
+    palestra = (data.get('palestra') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+    if not (palestra and nome_ele and nome_ela):
+        return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+
+    if palestra in PALESTRAS_SOLO:
+        return jsonify({"ok": False, "msg": "Palestra do tipo 'solo' não requer busca."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+             LIMIT 1
+        """, (nome_ele, nome_ela))
+        elegivel = cur.fetchone() is not None
+
+        if not elegivel:
+            cur.execute("""
+                SELECT 1 FROM encontristas
+                 WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
+                    OR (nome_ele = %s AND nome_ela = %s)
+                 LIMIT 1
+            """, (nome_ele, nome_ela, nome_ele, nome_ela))
+            elegivel = cur.fetchone() is not None
+
+        if not elegivel:
+            return jsonify({"ok": False, "msg": "Casal não encontrado como encontrista/encontreiros."}), 404
+
+        cur.execute("""
+            SELECT COUNT(*) AS n
+              FROM palestras
+             WHERE UPPER(TRIM(palestra)) = UPPER(TRIM(%s))
+               AND UPPER(TRIM(nome_ele)) = UPPER(TRIM(%s))
+               AND UPPER(TRIM(nome_ela)) = UPPER(TRIM(%s))
+        """, (palestra, nome_ele, nome_ela))
+        rrep = cur.fetchone() or {"n": 0}
+        repeticoes = int(rrep.get('n') or 0)
+
+        telefones = ""; endereco = ""
+
+        cur.execute("""
+            SELECT telefones, endereco
+              FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+             ORDER BY ano DESC
+             LIMIT 1
+        """, (nome_ele, nome_ela))
+        r1 = cur.fetchone()
+        if r1:
+            telefones = (r1.get('telefones') or '').strip()
+            endereco  = (r1.get('endereco') or '').strip()
+        else:
+            cur.execute("""
+                SELECT telefone_ele, telefone_ela, endereco
+                  FROM encontristas
+                 WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
+                    OR (nome_ele = %s AND nome_ela = %s)
+                 ORDER BY ano DESC
+                 LIMIT 1
+            """, (nome_ele, nome_ela, nome_ele, nome_ela))
+            r2 = cur.fetchone()
+            if r2:
+                tel_ele = (r2.get('telefone_ele') or '').strip()
+                tel_ela = (r2.get('telefone_ela') or '').strip()
+                telefones = " / ".join([t for t in [tel_ele, tel_ela] if t])
+                endereco = (r2.get('endereco') or '').strip()
+
+        return jsonify({
+            "ok": True,
+            "repeticoes": repeticoes,
+            "telefones": telefones,
+            "endereco": endereco
+        })
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+@app.route('/api/palestras/adicionar', methods=['POST'])
+def api_palestras_adicionar():
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    palestra = (data.get('palestra') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip() if 'nome_ela' in data else None
+
+    if not (ano and palestra and nome_ele):
+        return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+
+    try:
+        cur.execute("""
+            SELECT id FROM palestras
+             WHERE ano = %s AND UPPER(TRIM(palestra)) = UPPER(TRIM(%s))
+               AND UPPER(COALESCE(status,'')) NOT IN ('RECUSOU','DESISTIU')
+             LIMIT 1
+        """, (int(ano), palestra))
+        if cur.fetchone():
+            return jsonify({"ok": False, "msg": "Já existe cadastro ativo para este ano e palestra."}), 409
+
+        if palestra in PALESTRAS_SOLO:
+            cur2 = conn.cursor()
+            cur2.execute("""
+                INSERT INTO palestras (ano, palestra, nome_ele, nome_ela, status)
+                VALUES (%s, %s, %s, NULL, 'Aberto')
+            """, (int(ano), palestra, nome_ele))
+            conn.commit()
+            cur2.close()
+            return jsonify({"ok": True})
+
+        cur.execute("""
+            SELECT 1 FROM encontreiros
+             WHERE nome_ele = %s AND nome_ela = %s
+             LIMIT 1
+        """, (nome_ele, nome_ela))
+        elegivel = cur.fetchone() is not None
+        if not elegivel:
+            cur.execute("""
+                SELECT 1 FROM encontristas
+                 WHERE (nome_usual_ele = %s AND nome_usual_ela = %s)
+                    OR (nome_ele = %s AND nome_ela = %s)
+                 LIMIT 1
+            """, (nome_ele, nome_ela, nome_ele, nome_ela))
+            elegivel = cur.fetchone() is not None
+        if not elegivel:
+            return jsonify({"ok": False, "msg": "Casal não encontrado como encontrista/encontreiros."}), 404
+
+        cur.execute("""
+            SELECT COUNT(*) AS n
+              FROM palestras
+             WHERE UPPER(TRIM(palestra)) = UPPER(TRIM(%s))
+               AND UPPER(TRIM(nome_ele)) = UPPER(TRIM(%s))
+               AND UPPER(TRIM(nome_ela)) = UPPER(TRIM(%s))
+        """, (palestra, nome_ele, nome_ela))
+        rrep = cur.fetchone() or {"n": 0}
+        repeticoes = int(rrep.get('n') or 0)
+        if repeticoes >= 5:
+            return jsonify({"ok": False, "msg": "Limite de 5 repetições atingido para este casal nesta palestra."}), 409
+
+        cur2 = conn.cursor()
+        cur2.execute("""
+            INSERT INTO palestras (ano, palestra, nome_ele, nome_ela, status)
+            VALUES (%s, %s, %s, %s, 'Aberto')
+        """, (int(ano), palestra, nome_ele, nome_ela))
+        conn.commit()
+        cur2.close()
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close(); conn.close()
+        except Exception:
+            pass
+
+@app.route('/api/palestras/marcar-status', methods=['POST'])
+def api_palestras_marcar_status():
+    data = request.get_json(silent=True) or {}
+    _id = data.get('id')
+    novo_status = (data.get('novo_status') or '').strip()
+    observacao = (data.get('observacao') or '').strip()
+
+    if not (_id and novo_status in ('Recusou', 'Desistiu') and observacao):
+        return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE palestras
+               SET status = %s, observacao = %s
+             WHERE id = %s
+               AND UPPER(COALESCE(status,'')) NOT IN ('RECUSOU','DESISTIU')
+             LIMIT 1
+        """, (novo_status, observacao, int(_id)))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"ok": False, "msg": "Registro não encontrado ou já alterado."}), 404
+        return jsonify({"ok": True})
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+@app.route('/api/palestras/encerrar-ano', methods=['POST'])
+def api_palestras_encerrar_ano():
+    """
+    Marca TODOS os registros 'Aberto' do ano como 'Concluido'.
+    """
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    if not ano:
+        return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE palestras
+               SET status = 'Concluido'
+             WHERE ano = %s
+               AND UPPER(TRIM(status)) = 'ABERTO'
+        """, (int(ano),))
+        conn.commit()
+        return jsonify({"ok": True, "alterados": cur.rowcount})
+    finally:
+        try:
+            cur.close(); conn.close()
+        except Exception:
+            pass
 
 # -----------------------------
 # Main
