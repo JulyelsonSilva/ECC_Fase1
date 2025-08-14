@@ -57,6 +57,46 @@ TEAM_LIMITS = {
     "Visitação": {"min": 6, "max": 10},
 }
 
+# --- KPI: contagem de integrantes por equipe (exclui Coordenador; exclui Recusou/Desistiu) ---
+@app.route('/api/team-kpis')
+def api_team_kpis():
+    ano = request.args.get('ano', type=int)
+    if not ano:
+        return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
+
+    # rotulo -> filtro (ex.: 'Equipe de Círculos' -> 'Circulos')
+    rotulo_to_filtro = {}
+    for k, v in TEAM_MAP.items():
+        rotulo_to_filtro[v["rotulo"]] = v["filtro"]
+
+    data = {}
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT equipe, COUNT(*) AS n
+              FROM encontreiros
+             WHERE ano = %s
+               AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
+               AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+             GROUP BY equipe
+        """, (ano,))
+        for r in cur.fetchall():
+            rot = (r.get("equipe") or "").strip()
+            n = int(r.get("n") or 0)
+            filtro = rotulo_to_filtro.get(rot)
+            if filtro:
+                data[filtro] = n
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    return jsonify({"ok": True, "counts": data})
+
+
 # =========================
 # Constantes de Palestras
 # =========================
