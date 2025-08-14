@@ -1043,9 +1043,16 @@ def relatorio_casais():
 # =========================
 @app.route('/equipe-montagem')
 def equipe_montagem():
+    """
+    Tela de montagem de equipe.
+    Parâmetros:
+      - ?ano=YYYY
+      - ?equipe=<Circulos|Cozinha|Sala|...>  (chave de filtro do TEAM_MAP ou nome direto)
+    """
     ano = request.args.get('ano', type=int)
     equipe_filtro = (request.args.get('equipe') or '').strip()
 
+    # Resolve rótulo padrão via TEAM_MAP (ex.: Circulos -> "Equipe de Círculos")
     equipe_final = None
     for _key, info in TEAM_MAP.items():
         if info['filtro'].lower() == equipe_filtro.lower():
@@ -1054,10 +1061,142 @@ def equipe_montagem():
     if not equipe_final:
         equipe_final = equipe_filtro or 'Equipe'
 
-    limites_cfg = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final, {}))
-    limites = {"min": int(limites_cfg.get('min', 0)), "max": int(limites_cfg.get('max', 8))}
+    # Caso especial: SALA tem subequipes fixas
+    if equipe_filtro.lower() == 'sala':
+        SALA_DB = {
+            "Canto": "Equipe de Sala - Canto",
+            "Som e Projeção": "Equipe de Sala - Som e Projeção",
+            "Boa Vontade": "Equipe de Sala - Boa Vontade",
+            "Recepção Palestrantes": "Equipe de Sala - Recepção Palestrantes",
+        }
+        # Ordem fixa dos 6 slots
+        sala_order = [
+            ("Canto 1", "Canto"),
+            ("Canto 2", "Canto"),
+            ("Som e Projeção 1", "Som e Projeção"),
+            ("Som e Projeção 2", "Som e Projeção"),
+            ("Boa Vontade", "Boa Vontade"),
+            ("Recepção Palestrantes", "Recepção Palestrantes"),
+        ]
 
-    conn = db_conn()
+        # Carrega existentes do ano para QUALQUER subequipe de Sala (exceto coordenador e Recusou/Desistiu)
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cur = conn.cursor(dictionary=True)
+        try:
+            cur.execute(f"""
+                SELECT id, ano, equipe, nome_ele, nome_ela, telefones, endereco, status
+                  FROM encontreiros
+                 WHERE ano = %s
+                   AND equipe IN (%s, %s, %s, %s)
+                   AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
+                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+                 ORDER BY id ASC
+            """, (
+                ano,
+                SALA_DB["Canto"],
+                SALA_DB["Som e Projeção"],
+                SALA_DB["Boa Vontade"],
+                SALA_DB["Recepção Palestrantes"],
+            ))
+            rows = cur.fetchall()
+
+            # Agrupa por subequipe
+            buckets = {k: [] for k in SALA_DB.keys()}
+            for r in rows:
+                eq = (r.get("equipe") or "")
+                for k, dbname in SALA_DB.items():
+                    if eq == dbname:
+                        buckets[k].append(r)
+                        break
+
+            # Sugestão para Recepção Palestrantes: Dirigente - PALESTRA do mesmo ano
+            cur.execute("""
+                SELECT nome_ele, nome_ela, telefones, endereco
+                  FROM encontreiros
+                 WHERE ano = %s
+                   AND UPPER(equipe) = 'EQUIPE DIRIGENTE - PALESTRA'
+                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+                 ORDER BY id DESC
+                 LIMIT 1
+            """, (ano,))
+            pref_recepcao = cur.fetchone() or {}
+        finally:
+            try:
+                cur.close(); conn.close()
+            except Exception:
+                pass
+
+        # Monta a lista de slots com existing por posição (Canto tem 2, Som tem 2)
+        sala_slots = []
+        use_index = {"Canto": 0, "Som e Projeção": 0, "Boa Vontade": 0, "Recepção Palestrantes": 0}
+        for label, kind in sala_order:
+            lst = buckets.get(kind, [])
+            idx = use_index[kind]
+            existing = lst[idx] if idx < len(lst) else None
+            use_index[kind] = idx + 1
+            sala_slots.append({
+                "label": label,                # ex.: "Canto 1"
+                "kind": kind,                  # ex.: "Canto"
+                "equipe_db": SALA_DB[kind],    # ex.: "Equipe de Sala - Canto"
+                "existing": existing or None,
+            })
+
+        # Sugestões do ano anterior (igual às outras equipes)
+        sugestoes_prev_ano = []
+        if ano:
+            conn = mysql.connector.connect(**DB_CONFIG)
+            cur = conn.cursor(dictionary=True)
+            try:
+                cur.execute("""
+                    SELECT e.nome_usual_ele, e.nome_usual_ela, e.telefone_ele, e.telefone_ela, e.endereco
+                      FROM encontristas e
+                     WHERE e.ano = %s
+                       AND NOT EXISTS (
+                             SELECT 1
+                               FROM encontreiros w
+                              WHERE w.ano = %s
+                                AND w.nome_ele = e.nome_usual_ele
+                                AND w.nome_ela = e.nome_usual_ela
+                                AND (w.status IS NULL OR UPPER(TRIM(w.status)) NOT IN ('RECUSOU','DESISTIU'))
+                           )
+                     ORDER BY e.nome_usual_ele, e.nome_usual_ela
+                """, (ano - 1, ano))
+                for r in cur.fetchall():
+                    tel_ele = (r.get('telefone_ele') or '').strip()
+                    tel_ela = (r.get('telefone_ela') or '').strip()
+                    tels = " / ".join([t for t in [tel_ele, tel_ela] if t])
+                    sugestoes_prev_ano.append({
+                        "nome_ele": r.get('nome_usual_ele') or '',
+                        "nome_ela": r.get('nome_usual_ela') or '',
+                        "telefones": tels,
+                        "endereco": r.get('endereco') or ''
+                    })
+            finally:
+                try:
+                    cur.close(); conn.close()
+                except Exception:
+                    pass
+
+        # Limites fixos para Sala: 6 slots
+        limites = {"min": 6, "max": 6}
+
+        return render_template(
+            'equipe_montagem_sala.html',
+            ano=ano,
+            limites=limites,
+            sala_slots=sala_slots,
+            sugestoes_prev_ano=sugestoes_prev_ano,
+            pref_recepcao=pref_recepcao
+        )
+
+    # ------------------ fluxo padrão p/ outras equipes ------------------
+    limites_cfg = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final, {}))
+    limites = {
+        "min": int(limites_cfg.get('min', 0)),
+        "max": int(limites_cfg.get('max', 8)),
+    }
+
+    conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     membros_existentes = []
     try:
@@ -1077,9 +1216,10 @@ def equipe_montagem():
         except Exception:
             pass
 
+    # Sugestões do ano anterior (idem de antes)
     sugestoes_prev_ano = []
     if ano:
-        conn = db_conn()
+        conn = mysql.connector.connect(**DB_CONFIG)
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute("""
@@ -1121,6 +1261,7 @@ def equipe_montagem():
         membros_existentes=membros_existentes,
         sugestoes_prev_ano=sugestoes_prev_ano
     )
+
 
 def _casal_ja_no_ano(conn, ano:int, nome_ele:str, nome_ela:str) -> bool:
     cur = conn.cursor()
