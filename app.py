@@ -11,7 +11,10 @@ DB_CONFIG = {
     'host': 'db4free.net',
     'user': 'eccdivino2',
     'password': 'eccdivino2025',
-    'database': 'eccdivinomcz2'
+    'database': 'eccdivinomcz2',
+    # recomendado para acentuação correta:
+    'charset': 'utf8mb4',
+    'use_unicode': True,
 }
 def safe_fetch_one(cur, sql, params):
     """
@@ -24,6 +27,7 @@ def safe_fetch_one(cur, sql, params):
     except (mysql_errors.ProgrammingError, mysql_errors.DatabaseError, mysql_errors.InterfaceError, mysql_errors.OperationalError):
         # Se a coluna não existir, ou der timeout/erro de rede, só devolve None
         return None
+
 # -----------------------------
 # Mapeamentos de Equipes
 # -----------------------------
@@ -67,34 +71,48 @@ def encontristas():
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
 
-    nome_ele = request.args.get('nome_usual_ele', '')
-    nome_ela = request.args.get('nome_usual_ela', '')
-    ano = request.args.get('ano', '')
-    pagina = int(request.args.get('pagina', 1))
-    por_pagina = 50
+    # aceita tanto nome_usual_* quanto nome_*
+    nome_ele = (request.args.get('nome_usual_ele') or request.args.get('nome_ele') or '').strip()
+    nome_ela = (request.args.get('nome_usual_ela') or request.args.get('nome_ela') or '').strip()
+    ano = (request.args.get('ano') or '').strip()
 
-    query = "SELECT * FROM encontristas WHERE 1=1"
-    params = []
+    pagina = max(1, int(request.args.get('pagina', 1)))
+    por_pagina = 50
+    offset = (pagina - 1) * por_pagina
+
+    base = "FROM encontristas WHERE 1=1"
+    filtros, params = [], []
+
     if nome_ele:
-        query += " AND nome_usual_ele LIKE %s"
-        params.append(f"%{nome_ele}%")
+        filtros.append(" AND (nome_usual_ele LIKE %s OR nome_ele LIKE %s)")
+        params += [f"%{nome_ele}%", f"%{nome_ele}%"]
     if nome_ela:
-        query += " AND nome_usual_ela LIKE %s"
-        params.append(f"%{nome_ela}%")
+        filtros.append(" AND (nome_usual_ela LIKE %s OR nome_ela LIKE %s)")
+        params += [f"%{nome_ela}%", f"%{nome_ela}%"]
     if ano:
-        query += " AND ano = %s"
+        filtros.append(" AND ano = %s")
         params.append(ano)
 
-    cursor.execute(query, params)
-    todos = cursor.fetchall()
-    total_paginas = max(1, math.ceil(len(todos) / por_pagina))
-    dados = todos[(pagina-1)*por_pagina : pagina*por_pagina]
+    try:
+        # total
+        cursor.execute("SELECT COUNT(*) AS total " + base + "".join(filtros), params)
+        total = cursor.fetchone()['total'] if cursor.rowcount != -1 else 0
+        total_paginas = max(1, math.ceil(total / por_pagina))
+
+        # dados paginados
+        sql = f"""
+            SELECT * {base} {''.join(filtros)}
+            ORDER BY ano DESC, nome_usual_ele ASC, nome_usual_ela ASC
+            LIMIT %s OFFSET %s
+        """
+        cursor.execute(sql, params + [por_pagina, offset])
+        dados = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
 
     updated = request.args.get('updated')
     notfound = request.args.get('notfound')
-
-    cursor.close()
-    conn.close()
 
     return render_template(
         'encontristas.html',
@@ -228,7 +246,7 @@ def nova_montagem():
     if ano_preselecionado:
         equipes_dir = [
             "Equipe Dirigente - MONTAGEM",
-            "Equipe Dirigente -FICHAS",
+            "Equipe Dirigente -FICHAS",       # <- mantém exatamente assim
             "Equipe Dirigente - FINANÇAS",
             "Equipe Dirigente - PALESTRA",
             "Equipe Dirigente - PÓS ENCONTRO",
@@ -700,86 +718,102 @@ def visao_equipes_select():
                             selecionar_ele=ele, selecionar_ela=ela))
 
 # -----------------------------
-# Visão do Casal
+# Visão do Casal (robusta)
 # -----------------------------
 @app.route('/visao-casal')
 def visao_casal():
-    nome_ele = request.args.get("nome_ele", "").strip()
-    nome_ela = request.args.get("nome_ela", "").strip()
-
-    dados_encontrista = {}
-    dados_encontreiros = []
-    erro = None
+    nome_ele = (request.args.get("nome_ele") or "").strip()
+    nome_ela = (request.args.get("nome_ela") or "").strip()
 
     if not nome_ele or not nome_ela:
-        erro = "Informe ambos os nomes para realizar a busca."
         return render_template("visao_casal.html",
-                               nome_ele=nome_ele,
-                               nome_ela=nome_ela,
-                               dados_encontrista=None,
-                               dados_encontreiros=[],
-                               erro=erro)
+                               nome_ele=nome_ele, nome_ela=nome_ela,
+                               dados_encontrista=None, dados_encontreiros=[],
+                               erro="Informe ambos os nomes para realizar a busca.")
 
     conn = mysql.connector.connect(**DB_CONFIG)
     cursor = conn.cursor(dictionary=True)
-
     try:
+        # ENCONTRISTAS — match normalizado, pega o mais recente
         cursor.execute("""
-            SELECT ano, endereco, telefone_ele, telefone_ela
-            FROM encontristas 
-            WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+            SELECT ano, endereco,
+                   COALESCE(NULLIF(TRIM(telefone_ele),''),'') AS telefone_ele,
+                   COALESCE(NULLIF(TRIM(telefone_ela),''),'') AS telefone_ela
+              FROM encontristas
+             WHERE TRIM(UPPER(nome_usual_ele)) = TRIM(UPPER(%s))
+               AND TRIM(UPPER(nome_usual_ela)) = TRIM(UPPER(%s))
+             ORDER BY ano DESC
+             LIMIT 1
         """, (nome_ele, nome_ela))
-        resultado_encontrista = cursor.fetchone()
+        r_base = cursor.fetchone()
 
-        while cursor.nextset():
-            pass
+        # Fallback: prefix LIKE (aceita inversão Ele/Ela)
+        if not r_base:
+            like_ele = f"{nome_ele}%"; like_ela = f"{nome_ela}%"
+            cursor.execute("""
+                SELECT ano, endereco, telefone_ele, telefone_ela
+                  FROM encontristas
+                 WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s)
+                    OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s)
+                 ORDER BY ano DESC
+                 LIMIT 1
+            """, (like_ele, like_ela, f"{nome_ela}%", f"{nome_ele}%"))
+            r_base = cursor.fetchone()
 
-        if resultado_encontrista:
+        dados_encontrista = {}
+        if r_base:
+            tels = " / ".join([t for t in [(r_base.get("telefone_ele") or "").strip(),
+                                           (r_base.get("telefone_ela") or "").strip()] if t]) or "— / —"
             dados_encontrista = {
-                "ano_encontro": resultado_encontrista["ano"],
-                "endereco": resultado_encontrista["endereco"],
-                "telefones": f"{resultado_encontrista['telefone_ele']} / {resultado_encontrista['telefone_ela']}"
+                "ano_encontro": r_base["ano"],
+                "endereco": r_base.get("endereco") or "",
+                "telefones": tels
             }
 
+        # ENCONTREIROS — histórico (ordenado DESC) e sobrescreve com o mais recente que tenha dado útil
         cursor.execute("""
             SELECT ano, equipe, coordenador, endereco, telefones
-            FROM encontreiros 
-            WHERE nome_ele = %s AND nome_ela = %s
+              FROM encontreiros
+             WHERE TRIM(UPPER(nome_ele)) = TRIM(UPPER(%s))
+               AND TRIM(UPPER(nome_ela)) = TRIM(UPPER(%s))
+             ORDER BY ano DESC
         """, (nome_ele, nome_ela))
         resultados_encontreiros = cursor.fetchall()
 
+        dados_encontreiros = []
         if resultados_encontreiros:
             dados_encontreiros = [{
                 "ano": r["ano"],
                 "equipe": r["equipe"],
-                "coordenador": r["coordenador"]
+                "coordenador": r.get("coordenador")
             } for r in resultados_encontreiros]
 
             if "ano_encontro" not in dados_encontrista:
                 dados_encontrista["ano_encontro"] = "-"
 
-            mais_recente = max(resultados_encontreiros, key=lambda x: x["ano"])
-            dados_encontrista["endereco"] = mais_recente["endereco"]
-            dados_encontrista["telefones"] = mais_recente["telefones"]
+            # pega o mais recente com endereço/telefones
+            mais_recente_util = next((r for r in resultados_encontreiros if (r.get("endereco") or r.get("telefones"))), resultados_encontreiros[0])
+            if mais_recente_util.get("endereco"):
+                dados_encontrista["endereco"] = mais_recente_util["endereco"]
+            if mais_recente_util.get("telefones"):
+                dados_encontrista["telefones"] = mais_recente_util["telefones"]
 
-        if not resultado_encontrista and not resultados_encontreiros:
+        erro = None
+        if not r_base and not resultados_encontreiros:
             erro = "Casal não encontrado."
 
+        return render_template("visao_casal.html",
+                               nome_ele=nome_ele, nome_ela=nome_ela,
+                               dados_encontrista=dados_encontrista or None,
+                               dados_encontreiros=dados_encontreiros,
+                               erro=erro)
     finally:
         cursor.close()
         conn.close()
 
-    return render_template("visao_casal.html",
-                           nome_ele=nome_ele,
-                           nome_ela=nome_ela,
-                           dados_encontrista=dados_encontrista,
-                           dados_encontreiros=dados_encontreiros,
-                           erro=erro)
-
 # -----------------------------
 # Relatório de Casais
 # -----------------------------
-
 @app.route('/relatorio-casais', methods=['GET', 'POST'])
 def relatorio_casais():
     def split_casal(line: str):
@@ -808,7 +842,9 @@ def relatorio_casais():
                 user=DB_CONFIG['user'],
                 password=DB_CONFIG['password'],
                 database=DB_CONFIG['database'],
-                connection_timeout=5
+                connection_timeout=5,
+                charset=DB_CONFIG.get('charset', 'utf8mb4'),
+                use_unicode=DB_CONFIG.get('use_unicode', True),
             )
             cur = conn.cursor(dictionary=True)
         except mysql_errors.Error:
@@ -829,7 +865,7 @@ def relatorio_casais():
                     return None
                 a_pref, b_pref = f"{a}%", f"{b}%"
 
-                # ENCONTREIROS (endereços + telefones em campo único 'telefones'; NÃO usa telefone_ele/ela aqui)
+                # ENCONTREIROS
                 work = safe_fetch_one(
                     cur,
                     "SELECT endereco, telefones "
@@ -840,7 +876,6 @@ def relatorio_casais():
                     (a_pref, b_pref, b_pref, a_pref)
                 )
                 if work is None:
-                    # fallback se seu schema usar nome_usual_* em encontreiros
                     work = safe_fetch_one(
                         cur,
                         "SELECT endereco, telefones "
@@ -851,7 +886,7 @@ def relatorio_casais():
                         (a_pref, b_pref, b_pref, a_pref)
                     )
 
-                # ENCONTRISTAS (endereços + telefones separados; tenta usuais e cai pra completos)
+                # ENCONTRISTAS
                 base = safe_fetch_one(
                     cur,
                     "SELECT endereco, telefone_ele, telefone_ela "
@@ -874,7 +909,6 @@ def relatorio_casais():
                         (a_pref, b_pref, b_pref, a_pref)
                     )
 
-                # Consolidação
                 if work or base:
                     if work:
                         endereco = (work.get('endereco') if work else None) or (base.get('endereco') if base else "")
@@ -897,7 +931,7 @@ def relatorio_casais():
                     resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
                     continue
 
-                dados = consulta_prefix_like(ele, ela)  # cobre inversão via OR na SQL
+                dados = consulta_prefix_like(ele, ela)
                 if dados:
                     resultados_ok.append({"nome": f"{ele} e {ela}", **dados})
                 else:
@@ -944,7 +978,6 @@ def equipe_montagem():
     }
 
     # Membros já montados (não coordenadores) no ano/equipe
-    # Inclui todos os ativos (qualquer status) EXCETO Recusou/Desistiu
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor(dictionary=True)
     membros_existentes = []
@@ -965,8 +998,7 @@ def equipe_montagem():
         except Exception:
             pass
 
-    # Sugestões do ano anterior (encontristas ano-1) — EXCLUI quem já está montado no ano atual em QUALQUER equipe
-    # (considera montado se status != Recusou/Desistiu)
+    # Sugestões do ano anterior (encontristas ano-1) — EXCLUI quem já está montado no ano atual
     sugestoes_prev_ano = []
     if ano:
         conn = mysql.connector.connect(**DB_CONFIG)
@@ -1271,6 +1303,7 @@ def api_concluir_montagem_ano():
             conn.close()
         except Exception:
             pass
+
 # -----------------------------
 # Organograma (endpoints usados pelo index/templating)
 # -----------------------------
