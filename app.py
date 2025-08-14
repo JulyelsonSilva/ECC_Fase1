@@ -726,14 +726,30 @@ def visao_equipes():
 
 @app.route('/visao-equipes/select')
 def visao_equipes_select():
-    ano_montagem = request.args.get('ano_montagem', type=int)
-    target = request.args.get('target', '')
-    ele = request.args.get('ele', '')
-    ela = request.args.get('ela', '')
+    # Aceita 'ano_montagem' OU 'ano'
+    ano_montagem = request.args.get('ano_montagem', type=int) or request.args.get('ano', type=int)
+
+    # Aceita 'target' OU 'ret_target'
+    target = (request.args.get('target') or request.args.get('ret_target') or '').strip()
+
+    # Aceita múltiplos nomes para os selecionados
+    ele = (request.args.get('ele')
+           or request.args.get('selecionar_ele')
+           or request.args.get('nome_ele') or '').strip()
+    ela = (request.args.get('ela')
+           or request.args.get('selecionar_ela')
+           or request.args.get('nome_ela') or '').strip()
+
+    # Se algo essencial faltar, volta para a visão de equipes (com o que tiver)
     if not (ano_montagem and target and ele and ela):
-        return redirect(url_for('visao_equipes'))
-    return redirect(url_for('nova_montagem', ano=ano_montagem, target=target,
-                            selecionar_ele=ele, selecionar_ela=ela))
+        return redirect(url_for('visao_equipes', target=target, ano_montagem=ano_montagem))
+
+    # Redireciona de volta pra Nova Montagem com os nomes selecionados
+    return redirect(url_for('nova_montagem',
+                            ano=ano_montagem,
+                            target=target,
+                            selecionar_ele=ele,
+                            selecionar_ela=ela))
 
 # =========================
 # Visão do Casal (ATUALIZADA: inclui palestras do casal)
