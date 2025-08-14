@@ -70,13 +70,13 @@
                     {% if partes|length == 2 %}
                       {% set ele = partes[0] | trim %}
                       {% set ela = partes[1] | trim %}
-                      <a href="{{ url_for('nova_montagem',
-                                          ano=ano_montagem,
-                                          selecionar_ele=ele,
-                                          selecionar_ela=ela,
-                                          target=target) }}"
+                      <a href="{{ url_for('visao_equipes_select',
+                                        ano_montagem=ano_montagem,
+                                        target=target,
+                                        ele=ele,
+                                        ela=ela) }}"
                          {% if is_mark %}style="background-color: yellow; padding:2px 4px; border-radius:4px;"{% endif %}>
-                        {{ clean }}
+                          {{ clean }}
                       </a>
                     {% else %}
                       {% if is_mark %}
