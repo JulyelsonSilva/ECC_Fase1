@@ -5,8 +5,7 @@
   <title>Cadastro de Palestras</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
-    *{box-sizing:border-box}
+    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
       radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
       radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
@@ -17,23 +16,27 @@
     .muted { color:var(--muted); }
     .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
     .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .btn.warn { border-color:#f59e0b; }
+    .btn.danger { border-color: var(--danger); color: var(--danger); }
     .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
     label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
-    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    input, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
     .status { margin-top:8px; font-size:13px; }
-    .ok { color:#065f46; }
-    .warn { color:#92400e; }
-    .err { color:#b91c1c; }
+    .ok { color:var(--ok); }
+    .warn-t { color:var(--warn); }
+    .err { color:var(--danger); }
     .repbar { height:8px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
     .repbar > div { height:100%; width:0%; transition: width .2s ease; }
-    .rep0 { background:#10b981; }   /* 0 */
-    .rep1 { background:#22c55e; }
-    .rep2 { background:#eab308; }   /* 2 */
-    .rep3 { background:#f59e0b; }
-    .rep4 { background:#f97316; }
-    .rep5 { background:#ef4444; }   /* 5 */
+    .rep0 { background:#10b981; }  /* 0 */
+    .rep1 { background:#22c55e; }  /* 1 */
+    .rep2 { background:#eab308; }  /* 2 */
+    .rep3 { background:#f59e0b; }  /* 3 */
+    .rep4 { background:#f97316; }  /* 4 */
+    .rep5 { background:#ef4444; }  /* 5 */
+    .justify { display:none; margin-top:8px; }
+    .note { font-size:12px; color:#475569; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -51,7 +54,7 @@
       <label for="ano">Ano do Encontro</label>
       <div class="row">
         <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}">
-        <button class="btn primary" id="btn-continuar">Continuar</button>
+        <button class="btn primary" id="btn-go">{{ 'Encerrar' if tem_abertos else 'Continuar' }}</button>
       </div>
       <div class="status" id="ano-msg"></div>
     </div>
@@ -61,17 +64,20 @@
   </div>
 
   <script>
-    // Dados vindos do backend
-    const TITULOS = {{ titulos | tojson }};
-    const SOLO = new Set({{ solo_titulos | tojson }});  // palestras “solo” (Penitência, Testem. Jovem, Ceia Eucarística)
-    const EXIST = {{ existentes | tojson }};            // { titulo -> {nome_ele, nome_ela} } para o ano
-    const anoPre = {{ ano_preselecionado | tojson }};
+    // ---------------- Dados do servidor ----------------
+    const TITULOS = {{ titulos|tojson }};
+    const SOLO = new Set({{ solo_titulos|tojson }});
+    const EXIST = {{ existentes|tojson }};
+    const anoPre = {{ ano_preselecionado|tojson }};
+    const TEM_ABERTOS = {{ tem_abertos|tojson }};
 
-    const $ano = document.getElementById('ano');
-    const $go  = document.getElementById('btn-continuar');
-    const $msg = document.getElementById('ano-msg');
-    const $grid= document.getElementById('grid');
+    // ---------------- Elementos ----------------
+    const $ano  = document.getElementById('ano');
+    const $go   = document.getElementById('btn-go');
+    const $msg  = document.getElementById('ano-msg');
+    const $grid = document.getElementById('grid');
 
+    // ---------------- Helpers ----------------
     function idFrom(title){ return title.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
     function repClass(n){
       if (n <= 0) return 'rep0';
@@ -81,88 +87,117 @@
       if (n === 4) return 'rep4';
       return 'rep5';
     }
+    async function postJSON(url, body){
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+      return await r.json();
+    }
+    function disable(ids){ ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; }); }
+    function enable(ids){ ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; }); }
 
+    // ---------------- Render de um card ----------------
     function makeCard(title){
       const id = idFrom(title);
-      const wrapper = document.createElement('div');
-      wrapper.className = 'card';
-      const ex = EXIST[title] || null;
-      const disabled = !!ex;
+      const ex = EXIST[title] || null; // {id, nome_ele, nome_ela, status}
+      const wrap = document.createElement('div');
+      wrap.className = 'card';
+      wrap.id = `wrap_${id}`;
+      if (ex && ex.id) wrap.dataset.recordId = String(ex.id);
 
       if (SOLO.has(title)) {
-        wrapper.innerHTML = `
+        wrap.innerHTML = `
           <h3 style="margin:0 0 8px;">${title} <span class="muted">(solo)</span></h3>
           <label for="${id}_nome">Nome</label>
-          <input id="${id}_nome" placeholder="Ex.: Pe. João da Silva" value="${ex ? (ex.nome_ele||'') : ''}" ${disabled ? 'disabled' : ''}>
-          <div class="status" id="${id}_status">${disabled ? 'Palestra já cadastrada para este ano.' : ''}</div>
-          <div style="margin-top:8px;">
-            <button class="btn primary" id="${id}_add" ${disabled ? 'disabled' : ''}>${ex ? 'Alterar' : 'Adicionar'}</button>
+          <input id="${id}_nome" placeholder="Ex.: Pe. João da Silva" value="${ex ? (ex.nome_ele||'') : ''}">
+          <div class="status" id="${id}_status"></div>
+          <div class="note">Ao salvar: status = <b>Aberto</b>. Telefones/Endereço não são gravados nesta tela.</div>
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn primary" id="${id}_add">${ex ? 'Alterar' : 'Adicionar'}</button>
+          </div>
+          <div class="justify" id="${id}_just">
+            <label for="${id}_obs">Justificativa</label>
+            <textarea id="${id}_obs" rows="3" placeholder="Descreva a justificativa..."></textarea>
+            <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+              <button class="btn danger" id="${id}_rec">Confirmar Recusou</button>
+              <button class="btn warn"   id="${id}_des">Confirmar Desistiu</button>
+              <button class="btn"        id="${id}_cancel">Cancelar</button>
+            </div>
           </div>
         `;
       } else {
-        wrapper.innerHTML = `
+        wrap.innerHTML = `
           <h3 style="margin:0 0 8px;">${title}</h3>
           <div class="row">
             <div>
               <label for="${id}_ele">Nome (Ele)</label>
-              <input id="${id}_ele" value="${ex ? (ex.nome_ele||'') : ''}" placeholder="Ex.: João" ${disabled ? 'disabled' : ''}>
+              <input id="${id}_ele" value="${ex ? (ex.nome_ele||'') : ''}" placeholder="Ex.: João">
             </div>
             <div>
               <label for="${id}_ela">Nome (Ela)</label>
-              <input id="${id}_ela" value="${ex ? (ex.nome_ela||'') : ''}" placeholder="Ex.: Maria" ${disabled ? 'disabled' : ''}>
+              <input id="${id}_ela" value="${ex ? (ex.nome_ela||'') : ''}" placeholder="Ex.: Maria">
             </div>
           </div>
           <div class="row" style="margin-top:8px;">
             <div>
               <label for="${id}_tel">Telefones</label>
-              <input id="${id}_tel" placeholder="preenchido pela busca (não grava)" ${disabled ? 'disabled' : ''}>
+              <input id="${id}_tel" placeholder="preenchido pela busca (não grava)">
             </div>
             <div>
               <label for="${id}_end">Endereço</label>
-              <input id="${id}_end" placeholder="preenchido pela busca (não grava)" ${disabled ? 'disabled' : ''}>
+              <input id="${id}_end" placeholder="preenchido pela busca (não grava)">
             </div>
           </div>
-          <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-            <button class="btn" id="${id}_buscar" ${disabled ? 'disabled' : ''}>Buscar</button>
-            <div class="repbar" style="flex:1;">
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn" id="${id}_buscar">Buscar</button>
+            <div class="repbar" style="flex:1; min-width:120px;">
               <div id="${id}_rep" class="rep0" style="width:0%"></div>
             </div>
             <span class="muted" id="${id}_replabel">0/5</span>
           </div>
-          <div class="status" id="${id}_status">${disabled ? 'Palestra já cadastrada para este ano.' : ''}</div>
-          <div style="margin-top:8px;">
-            <button class="btn primary" id="${id}_add" ${disabled ? 'disabled' : ''}>${ex ? 'Alterar' : 'Adicionar'}</button>
+          <div class="status" id="${id}_status"></div>
+          <div class="note">Ao salvar: status = <b>Aberto</b>. Telefones/Endereço não são gravados nesta tela.</div>
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn primary" id="${id}_add">${ex ? 'Alterar' : 'Adicionar'}</button>
+          </div>
+          <div class="justify" id="${id}_just">
+            <label for="${id}_obs">Justificativa</label>
+            <textarea id="${id}_obs" rows="3" placeholder="Descreva a justificativa..."></textarea>
+            <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+              <button class="btn danger" id="${id}_rec">Confirmar Recusou</button>
+              <button class="btn warn"   id="${id}_des">Confirmar Desistiu</button>
+              <button class="btn"        id="${id}_cancel">Cancelar</button>
+            </div>
           </div>
         `;
       }
 
-      $grid.appendChild(wrapper);
+      $grid.appendChild(wrap);
 
-      const $status = document.getElementById(`${id}_status`);
+      // Estado inicial se já existe
+      const $st = document.getElementById(`${id}_status`);
+      const disableSolo = () => disable([`${id}_nome`, `${id}_add`]);
+      const disableCouple = () => disable([`${id}_ele`, `${id}_ela`, `${id}_tel`, `${id}_end`, `${id}_buscar`, `${id}_add`]);
 
-      // Buscar (somente para palestras de casal)
-      if (!SOLO.has(title) && !disabled) {
+      if (ex) {
+        $st.textContent = `Palestra já cadastrada para este ano (status: ${ex.status || '—'}).`;
+        $st.className = 'status ok';
+        if (SOLO.has(title)) disableSolo(); else disableCouple();
+      }
+
+      // Handlers
+      const showJust = () => { document.getElementById(`${id}_just`).style.display = 'block'; };
+      const hideJust = () => { document.getElementById(`${id}_just`).style.display = 'none'; const t = document.getElementById(`${id}_obs`); if (t) t.value = ''; };
+
+      // Buscar (casal)
+      if (!SOLO.has(title)) {
         document.getElementById(`${id}_buscar`).addEventListener('click', async (e)=>{
           e.preventDefault();
-          $status.textContent = '';
+          $st.textContent = '';
           const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
           const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
-          if (!nome_ele || !nome_ela) {
-            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-            $status.className = 'status warn';
-            return;
-          }
+          if (!nome_ele || !nome_ela) { $st.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $st.className = 'status warn-t'; return; }
           try{
-            const resp = await fetch('{{ url_for("api_palestras_buscar") }}', {
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ palestra: title, nome_ele, nome_ela })
-            });
-            const data = await resp.json();
-            if (!data.ok) {
-              $status.textContent = data.msg || 'Falha na busca.';
-              $status.className = 'status err';
-              return;
-            }
+            const data = await postJSON('{{ url_for("api_palestras_buscar") }}', { palestra: title, nome_ele, nome_ela });
+            if (!data.ok) { $st.textContent = data.msg || 'Falha na busca.'; $st.className = 'status err'; return; }
             document.getElementById(`${id}_tel`).value = data.telefones || '';
             document.getElementById(`${id}_end`).value = data.endereco || '';
             const n = Math.max(0, Math.min(5, data.repeticoes||0));
@@ -170,69 +205,91 @@
             bar.className = repClass(n);
             bar.style.width = (n*20) + '%';
             document.getElementById(`${id}_replabel`).textContent = `${n}/5`;
-            $status.textContent = (n >= 5) ? 'Limite atingido — não pode cadastrar.' : 'Dados carregados.';
-            $status.className = (n >= 5) ? 'status err' : 'status ok';
+            $st.textContent = (n >= 5) ? 'Limite atingido — não pode cadastrar.' : 'Dados carregados.';
+            $st.className = (n >= 5) ? 'status err' : 'status ok';
           }catch{
-            $status.textContent = 'Erro na busca.';
-            $status.className = 'status err';
+            $st.textContent = 'Erro na busca.'; $st.className = 'status err';
           }
         });
       }
 
       // Adicionar / Alterar
-      if (!disabled) {
-        document.getElementById(`${id}_add`).addEventListener('click', async (e)=>{
-          e.preventDefault();
-          $status.textContent = '';
-          const ano = (document.getElementById('ano').value || '').trim();
-          if (!/^\d{4}$/.test(ano)) {
-            $msg.textContent = 'Informe o ano antes.'; $msg.className = 'status err';
-            return;
-          }
+      document.getElementById(`${id}_add`).addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const ano = ($ano.value || '').trim();
+        if (!/^\d{4}$/.test(ano)) { $msg.textContent = 'Informe um ano válido (YYYY).'; $msg.className = 'status err'; return; }
 
-          let payload = { ano: parseInt(ano,10), palestra: title };
+        // Se já existe -> Alterar (abrir justificativa)
+        if (EXIST[title]) {
+          showJust();
+          return;
+        }
 
-          if (SOLO.has(title)) {
-            const nome = (document.getElementById(`${id}_nome`).value || '').trim();
-            if (!nome) { $status.textContent = 'Preencha o nome.'; $status.className = 'status warn'; return; }
-            payload.nome_ele = nome;
+        // Adicionar
+        let payload = { ano: parseInt(ano,10), palestra: title };
+        if (SOLO.has(title)) {
+          const nome = (document.getElementById(`${id}_nome`).value || '').trim();
+          if (!nome) { $st.textContent = 'Preencha o nome.'; $st.className = 'status warn-t'; return; }
+          payload.nome_ele = nome;
+        } else {
+          const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
+          const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
+          if (!nome_ele || !nome_ela) { $st.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $st.className = 'status warn-t'; return; }
+          // Se barra está no 5/5, bloqueia
+          const label = document.getElementById(`${id}_replabel`).textContent || '0/5';
+          const n = parseInt(label.split('/')[0] || '0', 10);
+          if (n >= 5) { $st.textContent = 'Limite de 5 repetições atingido — escolha outro casal.'; $st.className = 'status err'; return; }
+
+          payload.nome_ele = nome_ele;
+          payload.nome_ela = nome_ela;
+        }
+
+        try{
+          const data = await postJSON('{{ url_for("api_palestras_adicionar") }}', payload);
+          if (data.ok) {
+            $st.textContent = 'Palestra cadastrada com sucesso (status: Aberto).';
+            $st.className = 'status ok';
+            if (SOLO.has(title)) disableSolo(); else disableCouple();
+            // dica: para alterar esta inclusão agora, recarregue a página (precisamos do ID)
+            const note = document.createElement('div'); note.className='note'; note.textContent='Para alterar este cadastro recém-inserido, recarregue a página.';
+            wrap.appendChild(note);
           } else {
-            const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
-            const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
-            if (!nome_ele || !nome_ela) { $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $status.className = 'status warn'; return; }
-            payload.nome_ele = nome_ele;
-            payload.nome_ela = nome_ela;
+            $st.textContent = data.msg || 'Falha ao cadastrar.'; $st.className = 'status err';
           }
+        }catch{
+          $st.textContent = 'Erro ao cadastrar.'; $st.className = 'status err';
+        }
+      });
 
-          try{
-            const resp = await fetch('{{ url_for("api_palestras_adicionar") }}', {
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify(payload)
-            });
-            const data = await resp.json();
-            if (data.ok) {
-              $status.textContent = 'Palestra cadastrada com sucesso.';
-              $status.className = 'status ok';
-              // trava campos
-              if (SOLO.has(title)) {
-                document.getElementById(`${id}_nome`).disabled = true;
-                document.getElementById(`${id}_add`).disabled = true;
-              } else {
-                ['ele','ela','tel','end','buscar','add'].forEach(s=>{
-                  const el = document.getElementById(`${id}_${s}`);
-                  if (el) el.disabled = true;
-                });
-              }
-            } else {
-              $status.textContent = data.msg || 'Falha ao cadastrar.';
-              $status.className = 'status err';
-            }
-          }catch{
-            $status.textContent = 'Erro ao cadastrar.';
-            $status.className = 'status err';
-          }
-        });
-      }
+      // Justificativa (Alterar → Recusou/Desistiu)
+      const $rec = document.getElementById(`${id}_rec`);
+      const $des = document.getElementById(`${id}_des`);
+      const $can = document.getElementById(`${id}_cancel`);
+      if ($rec) $rec.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const rid = wrap.dataset.recordId;
+        const obs = (document.getElementById(`${id}_obs`).value || '').trim();
+        if (!rid) { $st.textContent = 'Sem ID do registro. Recarregue a página.'; $st.className = 'status err'; return; }
+        if (!obs) { $st.textContent = 'Justificativa é obrigatória.'; $st.className = 'status err'; return; }
+        try{
+          const data = await postJSON('{{ url_for("api_palestras_marcar_status") }}', { id: parseInt(rid,10), novo_status:'Recusou', observacao: obs });
+          if (data.ok) { $st.textContent = 'Atualizado para Recusou. Campos liberados.'; $st.className='status ok'; hideJust(); if (SOLO.has(title)) enable([`${id}_nome`, `${id}_add`]); else enable([`${id}_ele`, `${id}_ela`, `${id}_tel`, `${id}_end`, `${id}_buscar`, `${id}_add`]); delete EXIST[title]; delete wrap.dataset.recordId; }
+          else { $st.textContent = data.msg || 'Falha ao alterar.'; $st.className='status err'; }
+        }catch{ $st.textContent = 'Erro ao alterar.'; $st.className='status err'; }
+      });
+      if ($des) $des.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const rid = wrap.dataset.recordId;
+        const obs = (document.getElementById(`${id}_obs`).value || '').trim();
+        if (!rid) { $st.textContent = 'Sem ID do registro. Recarregue a página.'; $st.className = 'status err'; return; }
+        if (!obs) { $st.textContent = 'Justificativa é obrigatória.'; $st.className = 'status err'; return; }
+        try{
+          const data = await postJSON('{{ url_for("api_palestras_marcar_status") }}', { id: parseInt(rid,10), novo_status:'Desistiu', observacao: obs });
+          if (data.ok) { $st.textContent = 'Atualizado para Desistiu. Campos liberados.'; $st.className='status ok'; hideJust(); if (SOLO.has(title)) enable([`${id}_nome`, `${id}_add`]); else enable([`${id}_ele`, `${id}_ela`, `${id}_tel`, `${id}_end`, `${id}_buscar`, `${id}_add`]); delete EXIST[title]; delete wrap.dataset.recordId; }
+          else { $st.textContent = data.msg || 'Falha ao alterar.'; $st.className='status err'; }
+        }catch{ $st.textContent = 'Erro ao alterar.'; $st.className='status err'; }
+      });
+      if ($can) $can.addEventListener('click', (e)=>{ e.preventDefault(); hideJust(); });
     }
 
     function renderGrid(){
@@ -241,22 +298,58 @@
       $grid.style.display = '';
     }
 
-    document.getElementById('btn-continuar').addEventListener('click', (e)=>{
-      e.preventDefault();
+    // ---------------- Botão Continuar / Encerrar ----------------
+    $go.addEventListener('click', async (e)=>{
       const v = ($ano.value || '').trim();
       if (!/^\d{4}$/.test(v)) {
+        e.preventDefault();
         $msg.textContent = 'Informe um ano válido (YYYY).';
         $msg.className = 'status err';
         return;
       }
+
+      // Se grid ainda não foi exibido: sempre mostra o grid
+      if ($grid.style.display === 'none') {
+        e.preventDefault();
+        $msg.textContent = `Ano selecionado: ${v}`;
+        $msg.className = 'status ok';
+        renderGrid();
+        // Se o servidor sinalizou que há abertos, manter rótulo Encerrar
+        if (TEM_ABERTOS) $go.textContent = 'Encerrar';
+        return;
+      }
+
+      // Se já está visível e botão está como Encerrar -> encerrar
+      if ($go.textContent.trim().toLowerCase() === 'encerrar') {
+        e.preventDefault();
+        const ok = window.confirm('Encerrar este ano? Todos os registros ABERTOS passarão a CONCLUIDO.');
+        if (!ok) return;
+        try{
+          const data = await postJSON('{{ url_for("api_palestras_encerrar_ano") }}', { ano: parseInt(v,10) });
+          if (data.ok) {
+            alert('Ano encerrado com sucesso!');
+            window.location.href = '{{ url_for("palestras_painel") }}';
+          } else {
+            alert(data.msg || 'Falha ao encerrar.');
+          }
+        }catch{
+          alert('Erro ao encerrar.');
+        }
+        return;
+      }
+
+      // Caso contrário, é apenas continuar (grid já visível)
       $msg.textContent = `Ano selecionado: ${v}`;
       $msg.className = 'status ok';
-      renderGrid();
     });
 
+    // Auto-render se ano veio na URL
     window.addEventListener('DOMContentLoaded', ()=>{
       if (anoPre) {
-        document.getElementById('btn-continuar').click();
+        $msg.textContent = `Ano selecionado: ${anoPre}`;
+        $msg.className = 'status ok';
+        renderGrid();
+        if (TEM_ABERTOS) $go.textContent = 'Encerrar';
       }
     });
   </script>
