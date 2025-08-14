@@ -1474,6 +1474,7 @@ def palestras_nova():
                            ano_preselecionado=ano_preselecionado,
                            titulos=PALESTRAS_TITULOS,
                            solo_titulos=list(PALESTRAS_SOLO),
+                           non_couple_titles=list(PALESTRAS_SOLO),  # <— ADICIONE ESTA LINHA
                            existentes=existentes)
 
 # =============================
