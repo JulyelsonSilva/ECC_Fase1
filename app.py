@@ -1577,6 +1577,23 @@ def api_palestras_adicionar():
         return jsonify({"ok": True})
     finally:
         cur.close(); conn.close()
+from flask import redirect, url_for, request
+
+# -----------------------------
+# Resolve erro de URL usadas antes
+# -----------------------------
+
+@app.route('/palestras/topico')
+def palestra_topico():
+    """
+    Alias de compatibilidade: muitos templates antigos chamavam 'palestra_topico'.
+    Redireciona para a tela única de cadastro por ano (palestras_nova).
+    Aceita ?ano=YYYY e opcionalmente ?titulo=... (ignorado na UI atual).
+    """
+    ano = request.args.get('ano', type=int)
+    if ano:
+        return redirect(url_for('palestras_nova', ano=ano))
+    return redirect(url_for('palestras_nova'))
 
 # -----------------------------
 # Main
