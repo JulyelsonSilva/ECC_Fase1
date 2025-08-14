@@ -1518,11 +1518,11 @@ def palestras_nova():
         finally:
             cur.close(); conn.close()
 
-    return render_template('palestras_nova.html',
-                           ano_preselecionado=ano_preselecionado,
-                           titulos=PALESTRAS_TITULOS,
-                           solo_titulos=list(PALESTRAS_SOLO),
-                           existentes=existentes)
+   return render_template('nova_palestras.html',
+                       ano_preselecionado=ano_preselecionado,
+                       titulos=PALESTRAS_TITULOS,
+                       solo_titulos=list(PALESTRAS_SOLO),
+                       existentes=existentes)
 
 # =============================
 #  PALESTRAS – APIs
