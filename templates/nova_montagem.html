@@ -6,26 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
-      --bg:#f6f7fb;
-      --ink:#0f172a;
-      --muted:#64748b;
-      --card:#ffffff;
-      --border:#e5e7eb;
-      --brand:#2563eb;
-      --brand-600:#1e40af;
-      --brand-50:#eff6ff;
-      --accent:#f59e0b;
-
-      --ok-bg:#d1fae5;      /* verde claro */
-      --ok-bd:#a7f3d0;
-      --warn-bg:#fef3c7;    /* amarelo claro */
-      --warn-bd:#fde68a;
+      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
+      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff;
+      --ok:#dcfce7;        /* verde claro */
+      --warn:#fef9c3;      /* amarelo claro */
+      --neutral:#ffffff;   /* branco */
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
     body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:var(--ink);
       background:
         radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
@@ -33,72 +22,40 @@
         var(--bg);
     }
     .wrap{max-width:1100px; margin:24px auto; padding:0 16px 64px;}
-    header{
-      display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap;
-      padding:12px 0 8px;
-    }
-    .brand{display:flex; align-items:center; gap:12px;}
-    .logo{
-      width:42px; height:42px; border-radius:50%;
-      display:grid; place-items:center;
-      background: linear-gradient(135deg, var(--brand), var(--brand-600));
-      color:white; font-size:22px; box-shadow: 0 8px 24px rgba(37,99,235,.25);
-    }
+    .header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
     h1{margin:0; font-size:22px;}
-    .muted{color:var(--muted);}
+    .muted{color:var(--muted)}
     .btn{appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit;}
-    .btn.primary{ background: var(--brand); color:#fff; border-color: var(--brand); }
-    .btn.danger{ border-color:#b91c1c; color:#b91c1c; }
-    .btn.warn{ border-color:#f59e0b; }
-    .grid{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
-    .card.team-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
-    .card.team-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
-    label{ display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px;}
-    input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-    .row{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    .status{ margin-top:8px; font-size:13px; }
-    .ok{ color:#065f46; }
-    .warn-t{ color:#92400e; }
-    .err{ color:#b91c1c; }
-    .disabled{ opacity:.6; pointer-events:none; }
-    .counter{ font-size:13px; color:#334155; }
-    .inline{ display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .justify{ display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
-    .pill{ display:inline-block; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#fff; }
-    .kpi{ font-weight:600; }
-    .kpi-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
-    .kpi-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
-        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
-        --ok-bg:#064e3b; --ok-bd:#065f46; --warn-bg:#78350f; --warn-bd:#854d0e;
-      }
-      .logo{ box-shadow:none; }
-      .card{ box-shadow:none; }
-      body{ background:
-        radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
-        radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
-        var(--bg); }
-    }
+    .btn.primary{background: var(--brand); color:#fff; border-color: var(--brand);}
+    .grid{display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: 0 8px 20px rgba(15,23,42,.05);}
+    label{display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px;}
+    input{width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff;}
+    .row{display:grid; gap:10px; grid-template-columns: 1fr 1fr;}
+    .status{margin-top:8px; font-size:13px;}
+    .ok{color:#065f46;}
+    .warn{color:#92400e;}
+    .err{color:#b91c1c;}
+    .disabled{opacity:.7; pointer-events:none;}
+    .inline{display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;}
+    .kpi{font-size:13px; color:#334155;}
+    .pill{display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff;}
+    .team-card{transition: background-color .2s ease, border-color .2s ease;}
+    .team-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+    .team-foot{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px;}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">🧩</div>
-        <div>
-          <h1>Nova Montagem</h1>
-          <p class="muted">Defina dirigentes, coordenador geral e coordenadores de equipe. Acompanhe o andamento das equipes.</p>
-        </div>
-      </div>
+    <div class="header">
+      <h1>Nova Montagem</h1>
       <div class="inline">
         <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
-    </header>
+    </div>
+
+    <p class="muted">Informe o ano e adicione os 5 <b>Dirigentes</b>. Depois de concluir, defina o <b>Coordenador Geral</b>. Em seguida, escolha os <b>Coordenadores de Equipe</b> (pode selecionar pelo histórico) e, quando quiser, monte cada equipe.</p>
 
     <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
@@ -111,7 +68,7 @@
     </div>
 
     <!-- Indicador -->
-    <p class="counter" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
+    <p class="kpi" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
 
     <!-- Passo 2: 5 caixas Dirigentes -->
     <div class="grid" id="dirigentes-grid" style="display:none;"></div>
@@ -141,79 +98,34 @@
       </div>
       <div class="row" style="margin-top:8px;">
         <button class="btn" id="cg_buscar" disabled>Buscar</button>
-        <button class="btn primary" id="cg_add" disabled data-mode="add">Adicionar</button>
-      </div>
-      <div class="justify" id="cg_justify">
-        <div class="row">
-          <div>
-            <label for="cg_novo_status">Novo status</label>
-            <select id="cg_novo_status">
-              <option value="Recusou">Recusou</option>
-              <option value="Desistiu">Desistiu</option>
-            </select>
-          </div>
-          <div>
-            <label for="cg_obs">Justificativa</label>
-            <input id="cg_obs" placeholder="Obrigatória para alterar">
-          </div>
-        </div>
-        <div class="inline">
-          <button class="btn danger" id="cg_confirm">Confirmar</button>
-          <button class="btn" id="cg_cancel">Cancelar</button>
-        </div>
+        <button class="btn primary" id="cg_add" disabled>Adicionar</button>
       </div>
       <div class="status" id="cg_status"></div>
-      <p class="muted" style="margin-top:8px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
+      <p class="muted" style="margin-top:8px; font-size:12px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
     </div>
 
     <!-- Coordenadores de Equipe -->
     <div class="card disabled" id="coord-equipes-card" style="margin-top:12px; display:none;">
       <h3 style="margin:0 0 8px;">Coordenadores de Equipe</h3>
-      <p class="muted" style="margin:0 0 8px;">Escolha um casal no histórico (opcional), cadastre o coordenador e acompanhe abaixo o andamento da equipe.</p>
+      <p class="muted" style="margin:0 0 8px; font-size:13px;">Use <b>Escolher no histórico</b> para abrir a Visão de Equipes e selecionar um casal. Após inserido (ou se já existir), surgirá o botão <b>Montar Equipe</b>. As caixas mudam de cor conforme os integrantes já montados (mín./máx.).</p>
       <div class="grid" id="coord-equipes-grid"></div>
     </div>
   </div>
 
   <script>
-    // --- CONSTANTES E DADOS INICIAIS ---
+    // ---------- CONSTANTES DO BACKEND/JINJA ----------
     const initialData = {{ (initial_data or {}) | tojson }};
     const anoPre = {{ ano_preselecionado | tojson }};
     const VISAO_EQ_URL = "{{ url_for('visao_equipes') }}";
+    const VISAO_EQ_SELECT = "{{ url_for('visao_equipes_select') }}";
     const EQUIPE_MONT_URL = "/equipe-montagem";
 
-    // Parâmetros de retorno da visao_equipes
+    // Parâmetros de retorno da visao_equipes (Jinja)
     const ret_target = {{ (request.args.get('target') or '') | tojson }};
-    const ret_ele    = {{ (request.args.get('selecionar_ele') or '') | tojson }};
-    const ret_ela    = {{ (request.args.get('selecionar_ela') or '') | tojson }};
+    const ret_ele    = {{ (request.args.get('selecionar_ele') or request.args.get('ele') or '') | tojson }};
+    const ret_ela    = {{ (request.args.get('selecionar_ela') or request.args.get('ela') or '') | tojson }};
 
-    // Fallback: se algum parâmetro veio vazio do Jinja, lê direto da URL
-    (function ensureReturnParams(){
-      const qs = new URLSearchParams(location.search);
-      window.ret_target = (typeof ret_target !== 'undefined' && ret_target && ret_target.length)
-      ? ret_target
-      : (qs.get('target') || qs.get('ret_target') || '');
-
-      window.ret_ele = (typeof ret_ele !== 'undefined' && ret_ele && ret_ele.length)
-      ? ret_ele
-      : (qs.get('selecionar_ele') || qs.get('ele') || qs.get('nome_ele') || '');
-
-      window.ret_ela = (typeof ret_ela !== 'undefined' && ret_ela && ret_ela.length)
-      ? ret_ela
-      : (qs.get('selecionar_ela') || qs.get('ela') || qs.get('nome_ela') || '');
-    })();
-
-  
-    
-    // Dirigentes
-    const DIRIGENTES = [
-      "Equipe Dirigente - MONTAGEM",
-      "Equipe Dirigente -FICHAS",
-      "Equipe Dirigente - FINANÇAS",
-      "Equipe Dirigente - PALESTRA",
-      "Equipe Dirigente - PÓS ENCONTRO",
-    ];
-
-    // Equipes (mesmos rótulos/filtros do backend)
+    // Mapas (devem espelhar o backend)
     const TEAM_MAP = {
       sala:      { rotulo:"Equipe de Sala - Coordenador/Apresentador", filtro:"Sala" },
       circulos:  { rotulo:"Equipe de Círculos", filtro:"Circulos" },
@@ -226,20 +138,28 @@
       cozinha:   { rotulo:"Equipe Cozinha", filtro:"Cozinha" },
       visitacao: { rotulo:"Equipe Visitação", filtro:"Visitação" },
     };
-
-    // Limites por equipe (mesmos do backend; fixo)
+    // Limites por equipe (usados só para pintar/contar)
     const TEAM_LIMITS = {
-      "Circulos": {"min": 5, "max": 5},
-      "Café e Minimercado": {"min": 3, "max": 7},
-      "Compras": {"min": 0, "max": 1},
-      "Acolhida": {"min": 4, "max": 6},
-      "Ordem e Limpeza": {"min": 3, "max": 7},
-      "Liturgia e Vigilia": {"min": 2, "max": 6},
-      "Secretaria": {"min": 3, "max": 5},
-      "Cozinha": {"min": 7, "max": 9},
-      "Visitação": {"min": 6, "max": 10}
+      "Circulos": {min:5, max:5},
+      "Café e Minimercado": {min:3, max:7},
+      "Compras": {min:0, max:1},
+      "Acolhida": {min:4, max:6},
+      "Ordem e Limpeza": {min:3, max:7},
+      "Liturgia e Vigilia": {min:2, max:6},
+      "Secretaria": {min:3, max:5},
+      "Cozinha": {min:7, max:9},
+      "Visitação": {min:6, max:10},
     };
 
+    const DIRIGENTES = [
+      "Equipe Dirigente - MONTAGEM",
+      "Equipe Dirigente -FICHAS",     // (mantém sem espaço, como no banco)
+      "Equipe Dirigente - FINANÇAS",
+      "Equipe Dirigente - PALESTRA",
+      "Equipe Dirigente - PÓS ENCONTRO",
+    ];
+
+    // ---------- ELEMENTOS ----------
     const anoInput = document.getElementById('ano');
     const btnContinuar = document.getElementById('btn-continuar');
     const anoMsg = document.getElementById('ano-msg');
@@ -256,29 +176,52 @@
     const cgBuscar = document.getElementById('cg_buscar');
     const cgAdd = document.getElementById('cg_add');
     const cgStatus = document.getElementById('cg_status');
-    const cgJust = document.getElementById('cg_justify');
-    const cgNewStatus = document.getElementById('cg_novo_status');
-    const cgObs = document.getElementById('cg_obs');
-    const cgConfirm = document.getElementById('cg_confirm');
-    const cgCancel = document.getElementById('cg_cancel');
 
     const coordCard = document.getElementById('coord-equipes-card');
     const coordGrid = document.getElementById('coord-equipes-grid');
 
+    // ---------- ESTADO ----------
     let anoSelecionado = null;
     let totalAdicionados = 0;
+    let countsByTeam = {}; // preenchido por /api/equipe-counts
 
-    // --- HELPERS ---
+    // ---------- HELPERS ----------
     function idFromLabel(label){ return label.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
-    async function postJSON(url, body) {
-      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
-      return await r.json();
+    function waitForEl(selector, timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        const t0 = performance.now();
+        (function check() {
+          const el = document.querySelector(selector);
+          if (el) return resolve(el);
+          if (performance.now() - t0 > timeout) return reject(new Error('timeout waiting for ' + selector));
+          requestAnimationFrame(check);
+        })();
+      });
     }
-    async function getJSON(url) {
-      const r = await fetch(url);
-      return await r.json();
+    async function fetchCounts(ano){
+      try{
+        const r = await fetch(`/api/equipe-counts?ano=${encodeURIComponent(ano)}`);
+        if (!r.ok) return {};
+        const j = await r.json();
+        if (j && j.ok && j.counts) return j.counts;
+      }catch(_){}
+      return {};
+    }
+    function teamBgColor(filtro, n){
+      const lim = TEAM_LIMITS[filtro] || {};
+      const min = typeof lim.min === 'number' ? lim.min : 0;
+      const max = typeof lim.max === 'number' ? lim.max : 8;
+      if (n >= max) return 'var(--ok)';       // verde claro (atingiu máximo)
+      if (n >= min) return 'var(--warn)';     // amarelo claro (atingiu mínimo)
+      return 'var(--neutral)';                // neutro
+    }
+    function countLabel(filtro, n){
+      const lim = TEAM_LIMITS[filtro] || {};
+      const max = typeof lim.max === 'number' ? lim.max : 8;
+      return `${n}/${max}`;
     }
 
+    // ---------- Construção UI ----------
     function makeInputRow(idSafe, preset) {
       return `
         <div class="row">
@@ -303,26 +246,7 @@
         </div>
         <div class="row" style="margin-top:8px;">
           <button class="btn" id="${idSafe}_buscar">Buscar</button>
-          <button class="btn primary" id="${idSafe}_add" data-mode="add">Adicionar</button>
-        </div>
-        <div class="justify" id="${idSafe}_justify">
-          <div class="row">
-            <div>
-              <label for="${idSafe}_novo_status">Novo status</label>
-              <select id="${idSafe}_novo_status">
-                <option value="Recusou">Recusou</option>
-                <option value="Desistiu">Desistiu</option>
-              </select>
-            </div>
-            <div>
-              <label for="${idSafe}_obs">Justificativa</label>
-              <input id="${idSafe}_obs" placeholder="Obrigatória para alterar">
-            </div>
-          </div>
-          <div class="inline">
-            <button class="btn danger" id="${idSafe}_confirm">Confirmar</button>
-            <button class="btn" id="${idSafe}_cancel">Cancelar</button>
-          </div>
+          <button class="btn primary" id="${idSafe}_add">Adicionar</button>
         </div>
         <div class="status" id="${idSafe}_status"></div>
       `;
@@ -336,11 +260,6 @@
       const $buscar = document.getElementById(`${idSafe}_buscar`);
       const $add = document.getElementById(`${idSafe}_add`);
       const $status = document.getElementById(`${idSafe}_status`);
-      const $just = document.getElementById(`${idSafe}_justify`);
-      const $novo = document.getElementById(`${idSafe}_novo_status`);
-      const $obs = document.getElementById(`${idSafe}_obs`);
-      const $confirm = document.getElementById(`${idSafe}_confirm`);
-      const $cancel = document.getElementById(`${idSafe}_cancel`);
 
       async function buscar() {
         $status.textContent = '';
@@ -348,7 +267,7 @@
         const nome_ela = ($ela.value || '').trim();
         if (!nome_ele || !nome_ela) {
           $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-          $status.className = 'status warn-t';
+          $status.className = 'status warn';
           return;
         }
         try {
@@ -367,8 +286,8 @@
             $status.className = 'status err';
           }
         } catch(e) {
-            $status.textContent = 'Erro ao buscar.';
-            $status.className = 'status err';
+          $status.textContent = 'Erro ao buscar.';
+          $status.className = 'status err';
         }
       }
 
@@ -380,12 +299,12 @@
         const endereco = ($end.value || '').trim();
         if (!anoSelecionado) {
           $status.textContent = 'Informe o ano antes.';
-          $status.className = 'status warn-t';
+          $status.className = 'status warn';
           return;
         }
         if (!nome_ele || !nome_ela) {
           $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-          $status.className = 'status warn-t';
+          $status.className = 'status warn';
           return;
         }
         try {
@@ -403,10 +322,10 @@
             $status.className = 'status ok';
             $ele.disabled = true; $ela.disabled = true;
             $tels.disabled = true; $end.disabled = true;
-            $buscar.disabled = true;
-            $add.textContent = 'Alterar';
-            $add.dataset.mode = 'alterar';
+            $buscar.disabled = true; $add.textContent = 'Alterar';
             if (montarBtn) montarBtn.style.display = 'inline-block';
+            // atualizar contadores após inserir coordenador
+            if (anoSelecionado) refreshCountsAndPaint();
           } else {
             $status.textContent = data.msg || 'Falha ao inserir.';
             $status.className = 'status err';
@@ -417,55 +336,10 @@
         }
       }
 
-      async function confirmarAlteracao() {
-        const novo_status = ($novo.value || '').trim();
-        const observacao = ($obs.value || '').trim();
-        if (!anoSelecionado) { $status.textContent = 'Informe o ano antes.'; $status.className = 'status warn-t'; return; }
-        if (!novo_status || !observacao) { $status.textContent = 'Selecione o novo status e informe a justificativa.'; $status.className = 'status err'; return; }
-        try {
-          const resp = await postJSON('{{ url_for("api_marcar_status_dirigente") }}', {
-            ano: anoSelecionado,
-            equipe: equipeInsert,
-            novo_status,
-            observacao
-          });
-          if (resp.ok) {
-            $status.textContent = `Status atualizado para ${novo_status}. Campos liberados.`;
-            $status.className = 'status ok';
-            // liberar para novo cadastro:
-            $ele.disabled = false; $ela.disabled = false;
-            $tels.disabled = false; $end.disabled = false;
-            $buscar.disabled = false;
-            $ele.value = ''; $ela.value=''; $tels.value=''; $end.value='';
-            $add.textContent = 'Adicionar';
-            $add.dataset.mode = 'add';
-            $just.style.display = 'none';
-            $obs.value = '';
-          } else {
-            $status.textContent = resp.msg || 'Falha ao alterar status.';
-            $status.className = 'status err';
-          }
-        } catch {
-          $status.textContent = 'Erro ao alterar status.';
-          $status.className = 'status err';
-        }
-      }
-
       $buscar.addEventListener('click', (e)=>{ e.preventDefault(); buscar(); });
+      $add.addEventListener('click', (e)=>{ e.preventDefault(); adicionar(); });
 
-      $add.addEventListener('click', (e)=>{
-        e.preventDefault();
-        if ($add.dataset.mode === 'alterar') {
-          $just.style.display = 'block';
-        } else {
-          adicionar();
-        }
-      });
-
-      $confirm.addEventListener('click', (e)=>{ e.preventDefault(); confirmarAlteracao(); });
-      $cancel.addEventListener('click', (e)=>{ e.preventDefault(); $just.style.display='none'; $obs.value=''; });
-
-      return { $add };
+      return { buscar, adicionar, $ele, $ela };
     }
 
     function renderDirigenteBox(equipe, preset) {
@@ -478,13 +352,10 @@
       attachBoxHandlers(idSafe, equipe, null);
 
       if (preset && (preset.nome_ele || preset.nome_ela)) {
-        ['ele','ela','telefones','endereco','buscar'].forEach(s=>{
+        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
           const el = document.getElementById(`${idSafe}_${s}`);
-          if (el) el.disabled = true;
+          if (el) { el.disabled = true; if (s==='add') el.textContent = 'Alterar'; }
         });
-        const addBtn = document.getElementById(`${idSafe}_add`);
-        addBtn.textContent = 'Alterar';
-        addBtn.dataset.mode = 'alterar';
         totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
       }
     }
@@ -493,18 +364,21 @@
       const info = TEAM_MAP[key];
       const idSafe = 'tc_'+key;
       const preset = (initialData.coord_teams && initialData.coord_teams[key]) ? initialData.coord_teams[key] : null;
+      const filtro = info.filtro;
+
+      const currentCount = countsByTeam[filtro] || 0;
+      const bg = teamBgColor(filtro, currentCount);
+      const labelCount = countLabel(filtro, currentCount);
 
       const card = document.createElement('div');
-      card.className = 'card';
-      card.id = `${idSafe}_card`;
+      card.className = 'card team-card';
+      card.style.background = bg;
 
       card.innerHTML = `
-        <div class="inline" style="justify-content:space-between; width:100%; gap:12px;">
-          <div class="inline" style="gap:10px;">
-            <h3 style="margin:0 0 8px;">${info.rotulo}</h3>
-            <span class="pill kpi" id="${idSafe}_kpi">Integrantes: —</span>
-          </div>
+        <div class="team-head">
+          <h3 style="margin:0;">${info.rotulo}</h3>
           <div class="inline">
+            <span class="pill" id="${idSafe}_kpi">${labelCount}</span>
             <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
             <a class="btn primary" id="${idSafe}_montar" href="#" style="display:none;">Montar Equipe</a>
           </div>
@@ -514,14 +388,16 @@
       coordGrid.appendChild(card);
 
       const montarBtn = document.getElementById(`${idSafe}_montar`);
-      attachBoxHandlers(idSafe, info.rotulo, montarBtn);
+      const { buscar } = attachBoxHandlers(idSafe, info.rotulo, montarBtn);
 
-      // Escolher no histórico
+      // Escolher no histórico → usa a rota intermediária que redireciona de volta já com params certos
       const chooseBtn = document.getElementById(`${idSafe}_choose`);
       chooseBtn.addEventListener('click', (e)=>{
         e.preventDefault();
         if (!anoSelecionado) { alert('Informe o ano primeiro.'); return; }
         const url = `${VISAO_EQ_URL}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
+        // alternativa robusta usando rota select diretamente:
+        // const url = `${VISAO_EQ_SELECT}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
         window.location.href = url;
       });
 
@@ -533,15 +409,12 @@
       }
       setMontarHref();
 
-      // Se já existe coordenador salvo (preset), travar e exibir "Alterar"
+      // Se já existe coordenador salvo (preset), preencher, desabilitar e exibir "Montar Equipe"
       if (preset) {
-        ['ele','ela','telefones','endereco','buscar'].forEach(s=>{
+        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
           const el = document.getElementById(`${idSafe}_${s}`);
-          if (el) el.disabled = true;
+          if (el) { el.value = el.value || (preset[s] || ''); el.disabled = true; if (s==='add') el.textContent = 'Alterar'; }
         });
-        const addBtn = document.getElementById(`${idSafe}_add`);
-        addBtn.textContent = 'Alterar';
-        addBtn.dataset.mode = 'alterar';
         montarBtn.style.display = 'inline-block';
       }
     }
@@ -551,8 +424,6 @@
       Object.keys(TEAM_MAP).forEach(k => renderTeamCoordBox(k));
       coordCard.style.display = '';
       coordCard.classList.remove('disabled');
-      // Depois de renderizar, buscar os KPIs
-      if (anoSelecionado) updateTeamKPIs();
     }
 
     function renderCGPresetIfAny() {
@@ -564,10 +435,7 @@
         cgStatus.textContent = '“Casal Coordenador Geral” já cadastrado para este ano.';
         cgStatus.className = 'status ok';
         cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
-        cgBuscar.disabled = true;
-        cgAdd.disabled = false;
-        cgAdd.textContent = 'Alterar';
-        cgAdd.dataset.mode = 'alterar';
+        cgBuscar.disabled = true; cgAdd.disabled = true;
         showTeamCoords();
       }
     }
@@ -579,8 +447,6 @@
         if (!initialData.cg) {
           cgEle.disabled = false; cgEla.disabled = false;
           cgBuscar.disabled = false; cgAdd.disabled = false;
-          cgAdd.dataset.mode = 'add';
-          cgAdd.textContent = 'Adicionar';
           cgEle.placeholder = 'Nome (Ele)';
           cgEla.placeholder = 'Nome (Ela)';
         }
@@ -589,42 +455,8 @@
       }
     }
 
-    // --- KPIs por equipe (chama /api/team-kpis?ano=YYYY) ---
-    async function updateTeamKPIs(){
-      try{
-        const data = await getJSON(`/api/team-kpis?ano=${encodeURIComponent(anoSelecionado)}`);
-        if (!data.ok) return;
-        const counts = data.counts || {};
-        // Para cada equipe, calcula classe e atualiza
-        Object.keys(TEAM_MAP).forEach(key => {
-          const info = TEAM_MAP[key];
-          const filtro = info.filtro; // ex: 'Circulos'
-          const lim = TEAM_LIMITS[filtro] || {min:0, max:8};
-          const count = counts[filtro] || 0;
-
-          const kpi = document.getElementById(`tc_${key}_kpi`);
-          const card = document.getElementById(`tc_${key}_card`);
-          if (!kpi || !card) return;
-
-          // texto do KPI
-          kpi.textContent = `Integrantes: ${count}/${lim.max}`;
-          kpi.classList.remove('kpi-warn','kpi-ok');
-          card.classList.remove('team-warn','team-ok');
-
-          // cores conforme regra
-          if (count >= lim.max){
-            kpi.classList.add('kpi-ok');
-            card.classList.add('team-ok');
-          } else if (count >= lim.min){
-            kpi.classList.add('kpi-warn');
-            card.classList.add('team-warn');
-          }
-        });
-      }catch{ /* silencioso */ }
-    }
-
-    // --- EVENTOS – ANO ---
-    btnContinuar.addEventListener('click', (e) => {
+    // ---------- Eventos ----------
+    btnContinuar.addEventListener('click', async (e) => {
       e.preventDefault();
       const val = (anoInput.value || '').trim();
       if (!/^\d{4}$/.test(val)) {
@@ -648,18 +480,27 @@
       kpiDone.textContent = String(totalAdicionados);
       document.getElementById('dirigentes-grid').style.display = '';
 
-      // CG
+      // CG: mostrar e/ou pré-preencher
       cgCard.style.display = '';
       renderCGPresetIfAny();
       maybeEnableCG();
 
-      // Seleção retornada da visão de equipes?
-      if (window.ret_target && window.ret_ele && window.ret_ela) {
-        applySelectedCoupleToTeam(window.ret_target, window.ret_ele, window.ret_ela);
-      }
+      // Atualiza contadores de equipes e pinta cartões
+      await refreshCountsAndPaint();
 
-      // Render e KPI das equipes
-      showTeamCoords();
+      // Se voltamos da visao_equipes com casal escolhido para uma equipe, aplica agora (esperando DOM)
+      const qs = new URLSearchParams(location.search);
+      const t = qs.get('target') || '';
+      const ele = qs.get('selecionar_ele') || qs.get('ele') || '';
+      const ela = qs.get('selecionar_ela') || qs.get('ela') || '';
+      if (t && ele && ela) {
+        try {
+          await waitForEl(`#${CSS.escape(t)}_ele`, 5000);
+          applySelectedCoupleToTeam(t, ele, ela);
+        } catch (err) {
+          console.warn('Não achei a caixa alvo para', t, err);
+        }
+      }
     });
 
     // CG handlers
@@ -670,7 +511,7 @@
       const nome_ela = (cgEla.value || '').trim();
       if (!nome_ele || !nome_ela) {
         cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-        cgStatus.className = 'status warn-t';
+        cgStatus.className = 'status warn';
         return;
       }
       try {
@@ -696,10 +537,6 @@
 
     cgAdd.addEventListener('click', async (e) => {
       e.preventDefault();
-      if (cgAdd.dataset.mode === 'alterar') {
-        cgJust.style.display = 'block';
-        return;
-      }
       cgStatus.textContent = '';
       const nome_ele = (cgEle.value || '').trim();
       const nome_ela = (cgEla.value || '').trim();
@@ -707,12 +544,12 @@
       const endereco = (cgEnd.value || '').trim();
       if (!anoSelecionado) {
         cgStatus.textContent = 'Informe o ano antes.';
-        cgStatus.className = 'status warn-t';
+        cgStatus.className = 'status warn';
         return;
       }
       if (!nome_ele || !nome_ela) {
         cgStatus.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
-        cgStatus.className = 'status warn-t';
+        cgStatus.className = 'status warn';
         return;
       }
       try {
@@ -725,10 +562,9 @@
           cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
           cgStatus.className = 'status ok';
           cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
-          cgBuscar.disabled = true;
-          cgAdd.textContent = 'Alterar';
-          cgAdd.dataset.mode = 'alterar';
+          cgBuscar.disabled = true; cgAdd.disabled = true;
           showTeamCoords();
+          await refreshCountsAndPaint();
         } else {
           cgStatus.textContent = data.msg || 'Falha ao adicionar.';
           cgStatus.className = 'status err';
@@ -739,41 +575,6 @@
       }
     });
 
-    cgConfirm.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      if (!anoSelecionado) { cgStatus.textContent='Informe o ano antes.'; cgStatus.className='status warn-t'; return; }
-      const novo_status = (cgNewStatus.value || '').trim();
-      const observacao = (cgObs.value || '').trim();
-      if (!observacao) { cgStatus.textContent='Justificativa é obrigatória.'; cgStatus.className='status err'; return; }
-      try {
-        const resp = await postJSON('{{ url_for("api_marcar_status_dirigente") }}', {
-          ano: anoSelecionado,
-          equipe: 'Casal Coordenador Geral',
-          novo_status,
-          observacao
-        });
-        if (resp.ok) {
-          cgStatus.textContent = `Status atualizado para ${novo_status}. Campos liberados.`;
-          cgStatus.className = 'status ok';
-          cgEle.disabled = false; cgEla.disabled = false; cgTel.disabled = false; cgEnd.disabled = false;
-          cgBuscar.disabled = false;
-          cgEle.value=''; cgEla.value=''; cgTel.value=''; cgEnd.value='';
-          cgAdd.textContent = 'Adicionar';
-          cgAdd.dataset.mode = 'add';
-          cgJust.style.display = 'none';
-          cgObs.value='';
-        } else {
-          cgStatus.textContent = resp.msg || 'Falha ao alterar status.';
-          cgStatus.className = 'status err';
-        }
-      } catch {
-        cgStatus.textContent = 'Erro ao alterar status.';
-        cgStatus.className = 'status err';
-      }
-    });
-
-    cgCancel.addEventListener('click', (e)=>{ e.preventDefault(); cgJust.style.display='none'; cgObs.value=''; });
-
     // Aplicar seleção vinda do visao_equipes
     function applySelectedCoupleToTeam(targetId, ele, ela) {
       if (coordCard.style.display === 'none') {
@@ -783,11 +584,13 @@
       const $ela = document.getElementById(`${targetId}_ela`);
       const $buscar = document.getElementById(`${targetId}_buscar`);
       const $montar = document.getElementById(`${targetId}_montar`);
-      if ($ele && $ela && $buscar) {
-        $ele.value = ele;
-        $ela.value = ela;
+      if ($ele && $ela) {
+        $ele.value = ele || '';
+        $ela.value = ela || '';
+      }
+      if ($buscar) {
+        // dispara a busca para preencher telefones/endereço
         $buscar.click();
-        document.getElementById(`${targetId}_ele`).scrollIntoView({ behavior:'smooth', block:'center' });
       }
       if ($montar && anoSelecionado) {
         const key = targetId.replace(/^tc_/, '');
@@ -796,11 +599,56 @@
           $montar.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
         }
       }
+      // foca na caixa
+      const field = document.getElementById(`${targetId}_ele`);
+      if (field) field.scrollIntoView({ behavior:'smooth', block:'center' });
     }
+
+    // Atualiza contadores e pinta os cartões das equipes
+    async function refreshCountsAndPaint(){
+      if (!anoSelecionado) return;
+      countsByTeam = await fetchCounts(anoSelecionado);
+      // repinta cada cartão
+      Object.keys(TEAM_MAP).forEach(k=>{
+        const filtro = TEAM_MAP[k].filtro;
+        const idSafe = 'tc_'+k;
+        const n = countsByTeam[filtro] || 0;
+        const bg = teamBgColor(filtro, n);
+        const card = document.getElementById(`${idSafe}_ele`)?.closest('.team-card');
+        if (card) card.style.background = bg;
+        const kpiEl = document.getElementById(`${idSafe}_kpi`);
+        if (kpiEl) kpiEl.textContent = countLabel(filtro, n);
+      });
+    }
+
+    // --- Autofluxo robusto ao voltar da Visão de Equipes ---
+    (async function autoHydrateFromQuery() {
+      const qs = new URLSearchParams(location.search);
+      const anoQS    = qs.get('ano') || qs.get('ano_montagem') || '';
+      const targetQS = qs.get('target') || qs.get('ret_target') || '';
+      const eleQS    = qs.get('selecionar_ele') || qs.get('ele') || qs.get('nome_ele') || '';
+      const elaQS    = qs.get('selecionar_ela') || qs.get('ela') || qs.get('nome_ela') || '';
+
+      // Preenche ano vindo da URL se necessário
+      if (anoQS && anoInput && !anoInput.value) anoInput.value = anoQS;
+
+      // Se vieram todos os parâmetros, dispare o fluxo completo
+      if (anoQS && targetQS && eleQS && elaQS) {
+        btnContinuar.click();
+        try {
+          await waitForEl(`#${CSS.escape(targetQS)}_ele`, 5000);
+          applySelectedCoupleToTeam(targetQS, eleQS, elaQS);
+        } catch (e) {
+          console.warn('Não consegui achar a caixa alvo:', targetQS, e);
+        }
+      }
+    })();
 
     // Auto-continuar se ano veio na URL
     window.addEventListener('DOMContentLoaded', () => {
-      if (anoPre) {
+      const qs = new URLSearchParams(location.search);
+      const haveAno = anoPre || qs.get('ano') || qs.get('ano_montagem');
+      if (haveAno) {
         btnContinuar.click();
       }
     });
