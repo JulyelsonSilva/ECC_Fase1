@@ -1817,6 +1817,87 @@ app.add_url_rule(
     methods=['POST']
 )
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# NOVA ROTA ADICIONADA: marcar Recusou/Desistiu em PALESTRAS (com justificativa)
+# Endpoint: api_palestras_marcar_status
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+@app.route('/api/palestras/marcar-status', methods=['POST'])
+def api_palestras_marcar_status():
+    """
+    Marca um registro de palestra como Recusou/Desistiu com justificativa.
+
+    Formato recomendado (por ID):
+      { "id": 123, "novo_status": "Recusou"|"Desistiu", "observacao": "texto" }
+
+    Alternativo (sem ID, usa chaves lógicas e pega o mais recente alterável):
+      { "ano": 2025, "palestra": "Harmonia Conjugal", "nome_ele": "João", "nome_ela": "Maria",
+        "novo_status": "Recusou"|"Desistiu", "observacao": "texto" }
+
+    Só altera se status atual for NULL, 'Aberto' ou 'Aceito'.
+    """
+    data = request.get_json(silent=True) or {}
+    _id = data.get('id')
+    novo_status = (data.get('novo_status') or '').strip().title()
+    observacao = (data.get('observacao') or '').strip()
+
+    if novo_status not in ('Recusou', 'Desistiu'):
+        return jsonify({"ok": False, "msg": "novo_status deve ser 'Recusou' ou 'Desistiu'."}), 400
+    if not observacao:
+        return jsonify({"ok": False, "msg": "Observação é obrigatória."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        if _id:
+            cur.execute("""
+                UPDATE palestras
+                   SET status = %s, observacao = %s
+                 WHERE id = %s
+                   AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO'))
+                 LIMIT 1
+            """, (novo_status, observacao, int(_id)))
+            conn.commit()
+            if cur.rowcount == 0:
+                return jsonify({"ok": False, "msg": "Registro não encontrado ou não alterável."}), 404
+            return jsonify({"ok": True})
+
+        ano = data.get('ano')
+        palestra = (data.get('palestra') or '').strip()
+        if not (ano and palestra):
+            return jsonify({"ok": False, "msg": "Informe id, ou ano e palestra."}), 400
+
+        nome_ele = (data.get('nome_ele') or '').strip()
+        nome_ela = (data.get('nome_ela') or '').strip()
+
+        clauses = [
+            "UPDATE palestras SET status=%s, observacao=%s",
+            "WHERE ano=%s AND palestra=%s",
+            "AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO'))"
+        ]
+        params = [novo_status, observacao, int(ano), palestra]
+
+        if nome_ele:
+            clauses.append("AND nome_ele=%s")
+            params.append(nome_ele)
+        if nome_ela:
+            clauses.append("AND nome_ela=%s")
+            params.append(nome_ela)
+
+        clauses.append("ORDER BY id DESC LIMIT 1")
+        sql = "\n".join(clauses)
+
+        cur.execute(sql, tuple(params))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"ok": False, "msg": "Registro não encontrado ou não alterável com os critérios informados."}), 404
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close(); conn.close()
+        except Exception:
+            pass
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 @app.route('/palestrantes')
 def palestrantes():
     """Lista de palestras por ano com filtros e ordem de títulos padronizada."""
