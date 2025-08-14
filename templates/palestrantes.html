@@ -22,8 +22,8 @@
   <h1>Palestrantes</h1>
 
   <div class="toolbar">
-    <a class="btn" href="{{ url_for('index') }}">← Página Inicial</a>
-    <a class="btn" href="{{ url_for('palestras_painel') }}">🎤 Palestras</a>
+    <a class="btn" href="{{ url_for('palestras_painel') }}">← Palestras</a>
+    <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
   </div>
 
   <form method="get">
@@ -55,9 +55,9 @@
           <tbody>
             {% for row in registros %}
               <tr>
-                <td>{{ row.get('palestra') | default('', true) }}</td>
-                <td>{{ row.get('nome_ele') | default('', true) | lower | title }}</td>
-                <td>{{ row.get('nome_ela') | default('', true) | lower | title }}</td>
+                <td>{{ row.get('palestra','') }}</td>
+                <td>{{ row.get('nome_ele','') }}</td>
+                <td>{{ row.get('nome_ela','') }}</td>
               </tr>
             {% endfor %}
           </tbody>
