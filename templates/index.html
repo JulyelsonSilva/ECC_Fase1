@@ -73,6 +73,9 @@
       width:10px; height:10px; border-radius:999px; background: var(--accent);
       box-shadow: 0 0 0 4px rgba(245,158,11,.15);
     }
+    .hero-actions{
+      display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-end;
+    }
 
     .grid{
       display:grid; gap:14px; margin-top:18px;
@@ -144,21 +147,32 @@
       </div>
     </header>
 
-    <section class="hero" role="region" aria-label="Saudação">
+    <section class="hero" role="region" aria-label="Ações do Encontro">
       <div class="text">
         <h2>Bem-vindos ao serviço do ECC</h2>
-        <p>Uma ferramenta para apoiar, com simplicidade e cuidado, a missão de acolher e organizar os casais.</p>
+        <p>Ferramentas de operação do Encontro: montagem das equipes e gestão das palestras.</p>
       </div>
-      <a class="card" href="{{ url_for('montagem') }}" style="max-width:320px;">
-        <div class="icon" aria-hidden="true">🧩</div>
-        <div>
-          <h3>Montagem</h3>
-          <p>Abra a visão geral das montagens por ano (abertas e concluídas).</p>
-        </div>
-      </a>
+
+      <div class="hero-actions" aria-label="Ações principais">
+        <a class="card" href="{{ url_for('montagem') }}" style="max-width:320px;">
+          <div class="icon" aria-hidden="true">🧩</div>
+          <div>
+            <h3>Montagem</h3>
+            <p>Abra a visão geral das montagens por ano (abertas e concluídas).</p>
+          </div>
+        </a>
+
+        <a class="card" href="{{ url_for('palestras_painel') }}" style="max-width:320px;">
+          <div class="icon" aria-hidden="true">🎤</div>
+          <div>
+            <h3>Palestras</h3>
+            <p>Cadastrar e acompanhar palestrantes por título e ano.</p>
+          </div>
+        </a>
+      </div>
     </section>
 
-    <main class="grid" aria-label="Navegação principal">
+    <main class="grid" aria-label="Consultas e relatórios">
       <a class="card" href="{{ url_for('encontristas') }}">
         <div class="icon" aria-hidden="true">📇</div>
         <div>
