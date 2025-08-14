@@ -55,9 +55,9 @@
           <tbody>
             {% for row in registros %}
               <tr>
-                <td>{{ row.get('palestra','') }}</td>
-                <td>{{ (row.get('nome_ele','')|lower)|title }}</td>
-                <td>{{ (row.get('nome_ela','')|lower)|title }}</td>
+                <td>{{ row.get('palestra') | default('', true) }}</td>
+                <td>{{ row.get('nome_ele') | default('', true) | lower | title }}</td>
+                <td>{{ row.get('nome_ela') | default('', true) | lower | title }}</td>
               </tr>
             {% endfor %}
           </tbody>
