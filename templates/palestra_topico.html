@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ titulo }} — {{ ano }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{--bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;}
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
+        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+        var(--bg);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
+    header{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:8px 0 12px;}
+    h1{margin:0; font-size:22px;}
+    .muted{color:var(--muted)}
+    .btn{appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:12px; text-decoration:none; color:inherit; cursor:pointer;}
+    .btn.primary{background:var(--brand); color:#fff; border-color:var(--brand);}
+    .layout{display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start;}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,.05);}
+    .suggest{display:block; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:#fff; text-decoration:none; color:inherit; margin-bottom:8px;}
+    label{display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px;}
+    input{width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff;}
+    .row{display:grid; gap:10px; grid-template-columns: 1fr 1fr;}
+    .status{margin-top:8px; font-size:13px;}
+    .ok{color:#065f46} .warn{color:#92400e} .err{color:#991b1b}
+    .readonly{background:#f8fafc}
+    .meter{height:8px; border-radius:999px; background:linear-gradient(90deg,#16a34a 0%, #f59e0b 50%, #dc2626 100%); position:relative; overflow:hidden;}
+    .meter .fill{height:100%; background:rgba(255,255,255,.6); width:0%;}
+    @media (prefers-color-scheme: dark){
+      :root{--bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;}
+      .card{box-shadow:none}
+      .readonly{background:#0b1220}
+      .meter .fill{background:rgba(0,0,0,.35)}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>{{ titulo }}</h1>
+        <div class="muted">Ano: <b>{{ ano }}</b></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('nova_palestra', ano=ano) }}">← Voltar ao Ano</a>
+        <a class="btn" href="{{ url_for('palestras_painel') }}">↩ Palestras</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+      </div>
+    </header>
+
+    <div class="layout" style="margin-top:8px;">
+      <!-- slot principal -->
+      <div class="card">
+        {% if is_couple %}
+          <div class="row">
+            <div>
+              <label for="ele">Nome (Ele)</label>
+              <input id="ele" value="{{ (existente.nome_ele if existente else '') or '' }}" placeholder="Ex.: João">
+            </div>
+            <div>
+              <label for="ela">Nome (Ela)</label>
+              <input id="ela" value="{{ (existente.nome_ela if existente else '') or '' }}" placeholder="Ex.: Maria">
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label for="tels">Telefones</label>
+              <input id="tels" class="readonly" placeholder="(preenchido no Buscar)" disabled>
+            </div>
+            <div>
+              <label for="end">Endereço</label>
+              <input id="end" class="readonly" placeholder="(preenchido no Buscar)" disabled>
+            </div>
+          </div>
+          <div class="muted" style="margin-top:6px;">Repetições deste casal neste título (0 a 5):</div>
+          <div class="meter" style="margin:6px 0 2px;"><div class="fill" id="meter" style="width:0%"></div></div>
+          <div class="muted" id="repinfo">0 / 5</div>
+          <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+            <button class="btn" id="buscar">Buscar</button>
+            <button class="btn primary" id="salvar">Salvar</button>
+          </div>
+        {% else %}
+          <div>
+            <label for="one">Nome (Palestrante)</label>
+            <input id="one" value="{{ (existente.nome_ele if existente else '') or '' }}" placeholder="Ex.: Pe. João">
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+            <button class="btn primary" id="salvar">Salvar</button>
+          </div>
+        {% endif %}
+        <div class="status" id="status"></div>
+      </div>
+
+      <!-- sugestões -->
+      <div class="card">
+        <h3 style="margin:0 0 8px;">Quem já apresentou</h3>
+        <p class="muted" style="margin-top:0;">Clique para preencher automaticamente.</p>
+        <div id="suggs">
+          {% for s in sugestoes %}
+            {% set label = (s.nome_ele ~ (s.nome_ela and (' e ' ~ s.nome_ela) or '')).strip() %}
+            <a href="#" class="suggest" data-ele="{{ s.nome_ele }}" data-ela="{{ s.nome_ela }}">
+              {{ s.ano }} — {{ label }}
+            </a>
+          {% else %}
+            <p class="muted">Sem histórico para este título.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ANO = {{ ano | int }};
+    const TITULO = {{ titulo | tojson }};
+    const IS_COUPLE = {{ 'true' if is_couple else 'false' }};
+
+    const status = document.getElementById('status');
+
+    function paintMeter(rep){
+      const meter = document.getElementById('meter');
+      const repinfo = document.getElementById('repinfo');
+      if(!meter || !repinfo) return;
+      const pct = Math.min(100, Math.max(0, (rep/5)*100));
+      meter.style.width = pct + '%';
+      repinfo.textContent = `${rep} / 5`;
+    }
+
+    if (IS_COUPLE){
+      const ele = document.getElementById('ele');
+      const ela = document.getElementById('ela');
+      const tels = document.getElementById('tels');
+      const end = document.getElementById('end');
+
+      document.getElementById('buscar').addEventListener('click', async (e)=>{
+        e.preventDefault();
+        status.textContent='';
+        const nome_ele = (ele.value||'').trim(), nome_ela = (ela.value||'').trim();
+        if(!nome_ele || !nome_ela){ status.textContent='Informe Nome (Ele) e Nome (Ela).'; status.className='status warn'; return; }
+        try{
+          const r = await fetch('{{ url_for("api_palestras_validate") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: ANO, titulo: TITULO, nome_ele, nome_ela })
+          });
+          const d = await r.json();
+          if(!d.ok){ status.textContent=d.msg||'Falha na validação.'; status.className='status err'; return; }
+          paintMeter(d.repeticoes||0);
+          tels.value = d.telefones||''; end.value = d.endereco||'';
+          if (!d.eligible){ status.textContent='Casal não elegível.'; status.className='status err'; return; }
+          if ((d.repeticoes||0) >= (d.cap||5)){ status.textContent='Limite de repetições atingido.'; status.className='status err'; return; }
+          status.textContent='Dados carregados e elegíveis.'; status.className='status ok';
+        }catch{ status.textContent='Erro na validação.'; status.className='status err'; }
+      });
+
+      document.getElementById('salvar').addEventListener('click', async (e)=>{
+        e.preventDefault();
+        status.textContent='';
+        const nome_ele = (ele.value||'').trim(), nome_ela = (ela.value||'').trim();
+        try{
+          const r = await fetch('{{ url_for("api_palestras_save") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: ANO, titulo: TITULO, nome_ele, nome_ela })
+          });
+          const d = await r.json();
+          if(d.ok){ status.textContent=(d.action==='insert'?'Registrado.':'Atualizado.'); status.className='status ok'; }
+          else { status.textContent = d.msg||'Falha ao salvar.'; status.className='status err'; }
+        }catch{ status.textContent='Erro ao salvar.'; status.className='status err'; }
+      });
+
+      document.getElementById('suggs').addEventListener('click', (e)=>{
+        const a = e.target.closest('.suggest'); if(!a) return; e.preventDefault();
+        ele.value = a.dataset.ele||''; ela.value = a.dataset.ela||'';
+        status.textContent = 'Sugestão aplicada. Clique em Buscar/Salvar.'; status.className='status ok';
+      });
+    } else {
+      const one = document.getElementById('one');
+      document.getElementById('salvar').addEventListener('click', async (e)=>{
+        e.preventDefault();
+        status.textContent='';
+        const nome_ele = (one.value||'').trim();
+        if(!nome_ele){ status.textContent='Informe o nome do palestrante.'; status.className='status warn'; return; }
+        try{
+          const r = await fetch('{{ url_for("api_palestras_save") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: ANO, titulo: TITULO, nome_ele, nome_ela: '' })
+          });
+          const d = await r.json();
+          if(d.ok){ status.textContent=(d.action==='insert'?'Registrado.':'Atualizado.'); status.className='status ok'; }
+          else { status.textContent = d.msg||'Falha ao salvar.'; status.className='status err'; }
+        }catch{ status.textContent='Erro ao salvar.'; status.className='status err'; }
+      });
+
+      document.getElementById('suggs').addEventListener('click', (e)=>{
+        const a = e.target.closest('.suggest'); if(!a) return; e.preventDefault();
+        one.value = a.dataset.ele||'';
+        status.textContent = 'Sugestão aplicada. Clique em Salvar.'; status.className='status ok';
+      });
+    }
+  </script>
+</body>
+</html>
