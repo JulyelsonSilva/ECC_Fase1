@@ -2,276 +2,262 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Cadastro de Palestras por Ano</title>
+  <title>Cadastro de Palestras</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root{--bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;}
-    *{box-sizing:border-box} html,body{height:100%}
-    body{
-      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-        var(--bg);
-    }
-    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
-    header{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:8px 0 12px;}
-    h1{margin:0; font-size:22px;}
-    .btn{appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:12px; text-decoration:none; color:inherit; cursor:pointer;}
-    .btn.primary{background:var(--brand); color:#fff; border-color:var(--brand);}
-    .muted{color:var(--muted)}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,.05);}
-    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));}
-    label{display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px;}
-    input{width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff;}
-    .inline{display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;}
-    .status{margin-top:6px; font-size:13px;}
-    .ok{color:#065f46} .warn{color:#92400e} .err{color:#991b1b}
-    /* medidor de repetições (0..5) */
-    .meter{height:8px; border-radius:999px; background:linear-gradient(90deg,#16a34a 0%, #f59e0b 50%, #dc2626 100%); position:relative; overflow:hidden;}
-    .meter .fill{height:100%; background:rgba(255,255,255,.6); width:0%;}
-    .info{font-size:12px; color:#334155}
-    .row{display:grid; gap:10px; grid-template-columns: 1fr 1fr;}
-    .readonly{background:#f8fafc}
-    @media (prefers-color-scheme: dark){
-      :root{--bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;}
-      .card{box-shadow:none}
-      .readonly{background:#0b1220}
-      .meter .fill{background:rgba(0,0,0,.35)}
-    }
+    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    *{box-sizing:border-box}
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
+      radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
+      radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+      var(--bg); }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size: 22px; }
+    .muted { color:var(--muted); }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .status { margin-top:8px; font-size:13px; }
+    .ok { color:#065f46; }
+    .warn { color:#92400e; }
+    .err { color:#b91c1c; }
+    .repbar { height:8px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
+    .repbar > div { height:100%; width:0%; transition: width .2s ease; }
+    .rep0 { background:#10b981; }   /* 0 */
+    .rep1 { background:#22c55e; }
+    .rep2 { background:#eab308; }   /* 2 */
+    .rep3 { background:#f59e0b; }
+    .rep4 { background:#f97316; }
+    .rep5 { background:#ef4444; }   /* 5 */
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <h1>Cadastro de Palestras por Ano</h1>
-      <div class="inline">
+    <div class="header">
+      <h1>Palestras — Ano</h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <a class="btn" href="{{ url_for('palestras_painel') }}">← Palestras</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
       </div>
-    </header>
-
-    <p class="muted">Selecione o <b>ano</b> e preencha os palestrantes. Para títulos de casal, é feito controle de <b>repetições (máx. 5)</b>, elegibilidade e exibição de <b>telefones/endereço</b>.</p>
-
-    <div class="card">
-      <label for="ano">Ano</label>
-      <div class="inline">
-        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}" style="max-width:180px;">
-        <button class="btn primary" id="btn-aplicar">Aplicar</button>
-      </div>
-      <div class="status" id="ano-status"></div>
     </div>
 
-    <p class="muted" id="kpi" style="display:none; margin:8px 0;">Preenchidos: <b id="kpi-done">0</b>/<b id="kpi-total">{{ titulos|length }}</b></p>
+    <!-- Passo 1: Ano -->
+    <div class="card">
+      <label for="ano">Ano do Encontro</label>
+      <div class="row">
+        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}">
+        <button class="btn primary" id="btn-continuar">Continuar</button>
+      </div>
+      <div class="status" id="ano-msg"></div>
+    </div>
 
-    <div class="grid" id="grid" style="display:none;"></div>
+    <!-- Cards de palestras -->
+    <div class="grid" id="grid" style="margin-top:12px; display:none;"></div>
   </div>
 
   <script>
+    // Dados vindos do backend
     const TITULOS = {{ titulos | tojson }};
-    const NON_COUPLE = new Set({{ non_couple_titles | tojson }});
-    const INITIAL = {{ (initial or {}) | tojson }};
-    const ANO_PRE = {{ ano_preselecionado | tojson }};
+    const SOLO = new Set({{ solo_titulos | tojson }});  // palestras “solo” (Penitência, Testem. Jovem, Ceia Eucarística)
+    const EXIST = {{ existentes | tojson }};            // { titulo -> {nome_ele, nome_ela} } para o ano
+    const anoPre = {{ ano_preselecionado | tojson }};
 
-    const anoInput = document.getElementById('ano');
-    const btnAplicar = document.getElementById('btn-aplicar');
-    const anoStatus = document.getElementById('ano-status');
-    const grid = document.getElementById('grid');
-    const kpi = document.getElementById('kpi');
-    const kpiDone = document.getElementById('kpi-done');
+    const $ano = document.getElementById('ano');
+    const $go  = document.getElementById('btn-continuar');
+    const $msg = document.getElementById('ano-msg');
+    const $grid= document.getElementById('grid');
 
-    let anoSel = null;
+    function idFrom(title){ return title.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
+    function repClass(n){
+      if (n <= 0) return 'rep0';
+      if (n === 1) return 'rep1';
+      if (n === 2) return 'rep2';
+      if (n === 3) return 'rep3';
+      if (n === 4) return 'rep4';
+      return 'rep5';
+    }
 
-    function slug(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_'); }
+    function makeCard(title){
+      const id = idFrom(title);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'card';
+      const ex = EXIST[title] || null;
+      const disabled = !!ex;
 
-    function renderCard(titulo, preset){
-      const id = slug(titulo);
-      const isCouple = !NON_COUPLE.has(titulo);
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      let namesBlock = '';
-      let toolsBlock = '';
-      let extraBlock = '';
-
-      if (isCouple){
-        namesBlock = `
-          <div class="row" style="margin-bottom:8px;">
+      if (SOLO.has(title)) {
+        wrapper.innerHTML = `
+          <h3 style="margin:0 0 8px;">${title} <span class="muted">(solo)</span></h3>
+          <label for="${id}_nome">Nome</label>
+          <input id="${id}_nome" placeholder="Ex.: Pe. João da Silva" value="${ex ? (ex.nome_ele||'') : ''}" ${disabled ? 'disabled' : ''}>
+          <div class="status" id="${id}_status">${disabled ? 'Palestra já cadastrada para este ano.' : ''}</div>
+          <div style="margin-top:8px;">
+            <button class="btn primary" id="${id}_add" ${disabled ? 'disabled' : ''}>${ex ? 'Alterar' : 'Adicionar'}</button>
+          </div>
+        `;
+      } else {
+        wrapper.innerHTML = `
+          <h3 style="margin:0 0 8px;">${title}</h3>
+          <div class="row">
             <div>
               <label for="${id}_ele">Nome (Ele)</label>
-              <input id="${id}_ele" placeholder="Ex.: João" value="${preset?.nome_ele||''}">
+              <input id="${id}_ele" value="${ex ? (ex.nome_ele||'') : ''}" placeholder="Ex.: João" ${disabled ? 'disabled' : ''}>
             </div>
             <div>
               <label for="${id}_ela">Nome (Ela)</label>
-              <input id="${id}_ela" placeholder="Ex.: Maria" value="${preset?.nome_ela||''}">
+              <input id="${id}_ela" value="${ex ? (ex.nome_ela||'') : ''}" placeholder="Ex.: Maria" ${disabled ? 'disabled' : ''}>
             </div>
           </div>
-          <div class="row" style="margin-bottom:8px;">
+          <div class="row" style="margin-top:8px;">
             <div>
-              <label for="${id}_tels">Telefones</label>
-              <input id="${id}_tels" class="readonly" placeholder="(preenchido no Buscar)" disabled>
+              <label for="${id}_tel">Telefones</label>
+              <input id="${id}_tel" placeholder="preenchido pela busca (não grava)" ${disabled ? 'disabled' : ''}>
             </div>
             <div>
               <label for="${id}_end">Endereço</label>
-              <input id="${id}_end" class="readonly" placeholder="(preenchido no Buscar)" disabled>
+              <input id="${id}_end" placeholder="preenchido pela busca (não grava)" ${disabled ? 'disabled' : ''}>
             </div>
           </div>
-          <div class="info">Repetições deste casal neste título (0 a 5):</div>
-          <div class="meter" style="margin:6px 0 2px;">
-            <div class="fill" id="${id}_meter" style="width:0%"></div>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+            <button class="btn" id="${id}_buscar" ${disabled ? 'disabled' : ''}>Buscar</button>
+            <div class="repbar" style="flex:1;">
+              <div id="${id}_rep" class="rep0" style="width:0%"></div>
+            </div>
+            <span class="muted" id="${id}_replabel">0/5</span>
           </div>
-          <div class="info" id="${id}_repinfo">0 / 5</div>
-        `;
-        toolsBlock = `
-          <div class="inline" style="margin-top:8px;">
-            <button class="btn" id="${id}_buscar">Buscar</button>
-            <button class="btn primary" id="${id}_salvar">Salvar</button>
-          </div>
-        `;
-      } else {
-        namesBlock = `
-          <div>
-            <label for="${id}_one">Nome (Palestrante)</label>
-            <input id="${id}_one" placeholder="Ex.: Pe. João" value="${preset?.nome_ele||''}">
-          </div>
-        `;
-        toolsBlock = `
-          <div class="inline" style="margin-top:8px;">
-            <button class="btn primary" id="${id}_salvar">Salvar</button>
+          <div class="status" id="${id}_status">${disabled ? 'Palestra já cadastrada para este ano.' : ''}</div>
+          <div style="margin-top:8px;">
+            <button class="btn primary" id="${id}_add" ${disabled ? 'disabled' : ''}>${ex ? 'Alterar' : 'Adicionar'}</button>
           </div>
         `;
       }
 
-      card.innerHTML = `
-        <div class="inline" style="justify-content:space-between; width:100%; margin-bottom:6px;">
-          <h3 style="margin:0;">${titulo}</h3>
-          <div class="inline">
-            <a class="btn" href="{{ url_for('palestra_topico') }}?ano=${encodeURIComponent(anoSel)}&titulo=${encodeURIComponent(titulo)}">Abrir</a>
-          </div>
-        </div>
-        ${namesBlock}
-        ${toolsBlock}
-        <div class="status" id="${id}_status"></div>
-        ${extraBlock}
-      `;
-      grid.appendChild(card);
+      $grid.appendChild(wrapper);
 
       const $status = document.getElementById(`${id}_status`);
 
-      if (isCouple){
-        const $ele = document.getElementById(`${id}_ele`);
-        const $ela = document.getElementById(`${id}_ela`);
-        const $tels = document.getElementById(`${id}_tels`);
-        const $end = document.getElementById(`${id}_end`);
-        const $meter = document.getElementById(`${id}_meter`);
-        const $repinfo = document.getElementById(`${id}_repinfo`);
-        const $buscar = document.getElementById(`${id}_buscar`);
-        const $salvar = document.getElementById(`${id}_salvar`);
-
-        function paintMeter(rep){
-          const pct = Math.min(100, Math.max(0, (rep/5)*100));
-          $meter.style.width = pct + '%';
-          $repinfo.textContent = `${rep} / 5`;
-        }
-
-        async function validate(){
+      // Buscar (somente para palestras de casal)
+      if (!SOLO.has(title) && !disabled) {
+        document.getElementById(`${id}_buscar`).addEventListener('click', async (e)=>{
+          e.preventDefault();
           $status.textContent = '';
-          const nome_ele = ($ele.value||'').trim();
-          const nome_ela = ($ela.value||'').trim();
-          if(!anoSel){ $status.textContent='Selecione o ano.'; $status.className='status warn'; return; }
-          if(!nome_ele || !nome_ela){ $status.textContent='Informe Nome (Ele) e (Ela).'; $status.className='status warn'; return; }
+          const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
+          const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
+          if (!nome_ele || !nome_ela) {
+            $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+            $status.className = 'status warn';
+            return;
+          }
           try{
-            const r = await fetch('{{ url_for("api_palestras_validate") }}', {
+            const resp = await fetch('{{ url_for("api_palestras_buscar") }}', {
               method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ ano: anoSel, titulo: titulo, nome_ele, nome_ela })
+              body: JSON.stringify({ palestra: title, nome_ele, nome_ela })
             });
-            const d = await r.json();
-            if(!d.ok){ $status.textContent = d.msg || 'Falha na validação.'; $status.className='status err'; return; }
-            paintMeter(d.repeticoes||0);
-            $tels.value = d.telefones||''; $end.value = d.endereco||'';
-            if (!d.eligible){ $status.textContent = 'Casal não elegível (precisa ser encontrista ou já ter trabalhado).'; $status.className='status err'; return; }
-            if ((d.repeticoes||0) >= (d.cap||5)){ $status.textContent = 'Limite de repetições atingido para este casal.'; $status.className='status err'; return; }
-            $status.textContent = 'Dados carregados e elegíveis.'; $status.className='status ok';
-          }catch{ $status.textContent='Erro na validação.'; $status.className='status err'; }
-        }
+            const data = await resp.json();
+            if (!data.ok) {
+              $status.textContent = data.msg || 'Falha na busca.';
+              $status.className = 'status err';
+              return;
+            }
+            document.getElementById(`${id}_tel`).value = data.telefones || '';
+            document.getElementById(`${id}_end`).value = data.endereco || '';
+            const n = Math.max(0, Math.min(5, data.repeticoes||0));
+            const bar = document.getElementById(`${id}_rep`);
+            bar.className = repClass(n);
+            bar.style.width = (n*20) + '%';
+            document.getElementById(`${id}_replabel`).textContent = `${n}/5`;
+            $status.textContent = (n >= 5) ? 'Limite atingido — não pode cadastrar.' : 'Dados carregados.';
+            $status.className = (n >= 5) ? 'status err' : 'status ok';
+          }catch{
+            $status.textContent = 'Erro na busca.';
+            $status.className = 'status err';
+          }
+        });
+      }
 
-        async function salvar(){
+      // Adicionar / Alterar
+      if (!disabled) {
+        document.getElementById(`${id}_add`).addEventListener('click', async (e)=>{
+          e.preventDefault();
           $status.textContent = '';
-          const nome_ele = ($ele.value||'').trim();
-          const nome_ela = ($ela.value||'').trim();
-          if(!anoSel){ $status.textContent='Selecione o ano.'; $status.className='status warn'; return; }
-          try{
-            const r = await fetch('{{ url_for("api_palestras_save") }}', {
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ ano: anoSel, titulo: titulo, nome_ele, nome_ela })
-            });
-            const d = await r.json();
-            if(d.ok){ $status.textContent = (d.action==='insert'?'Registrado.':'Atualizado.'); $status.className='status ok'; updateKPI(); }
-            else { $status.textContent = d.msg||'Falha ao salvar.'; $status.className='status err'; }
-          }catch{ $status.textContent='Erro ao salvar.'; $status.className='status err'; }
-        }
+          const ano = (document.getElementById('ano').value || '').trim();
+          if (!/^\d{4}$/.test(ano)) {
+            $msg.textContent = 'Informe o ano antes.'; $msg.className = 'status err';
+            return;
+          }
 
-        $buscar.addEventListener('click', (e)=>{ e.preventDefault(); validate(); });
-        $salvar.addEventListener('click', (e)=>{ e.preventDefault(); salvar(); });
+          let payload = { ano: parseInt(ano,10), palestra: title };
 
-        // pinta o meter se já houver valor
-        if (preset && (preset.nome_ele || preset.nome_ela)) paintMeter(1);
-      } else {
-        const $one = document.getElementById(`${id}_one`);
-        const $salvar = document.getElementById(`${id}_salvar`);
-        async function salvarOne(){
-          $status.textContent = '';
-          const nome_ele = ($one.value||'').trim(); // vai em nome_ele
-          if(!anoSel){ $status.textContent='Selecione o ano.'; $status.className='status warn'; return; }
-          if(!nome_ele){ $status.textContent='Informe o nome do palestrante.'; $status.className='status warn'; return; }
+          if (SOLO.has(title)) {
+            const nome = (document.getElementById(`${id}_nome`).value || '').trim();
+            if (!nome) { $status.textContent = 'Preencha o nome.'; $status.className = 'status warn'; return; }
+            payload.nome_ele = nome;
+          } else {
+            const nome_ele = (document.getElementById(`${id}_ele`).value || '').trim();
+            const nome_ela = (document.getElementById(`${id}_ela`).value || '').trim();
+            if (!nome_ele || !nome_ela) { $status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; $status.className = 'status warn'; return; }
+            payload.nome_ele = nome_ele;
+            payload.nome_ela = nome_ela;
+          }
+
           try{
-            const r = await fetch('{{ url_for("api_palestras_save") }}', {
+            const resp = await fetch('{{ url_for("api_palestras_adicionar") }}', {
               method:'POST', headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ ano: anoSel, titulo: titulo, nome_ele, nome_ela: '' })
+              body: JSON.stringify(payload)
             });
-            const d = await r.json();
-            if(d.ok){ $status.textContent = (d.action==='insert'?'Registrado.':'Atualizado.'); $status.className='status ok'; updateKPI(); }
-            else { $status.textContent = d.msg||'Falha ao salvar.'; $status.className='status err'; }
-          }catch{ $status.textContent='Erro ao salvar.'; $status.className='status err'; }
-        }
-        $salvar.addEventListener('click', (e)=>{ e.preventDefault(); salvarOne(); });
+            const data = await resp.json();
+            if (data.ok) {
+              $status.textContent = 'Palestra cadastrada com sucesso.';
+              $status.className = 'status ok';
+              // trava campos
+              if (SOLO.has(title)) {
+                document.getElementById(`${id}_nome`).disabled = true;
+                document.getElementById(`${id}_add`).disabled = true;
+              } else {
+                ['ele','ela','tel','end','buscar','add'].forEach(s=>{
+                  const el = document.getElementById(`${id}_${s}`);
+                  if (el) el.disabled = true;
+                });
+              }
+            } else {
+              $status.textContent = data.msg || 'Falha ao cadastrar.';
+              $status.className = 'status err';
+            }
+          }catch{
+            $status.textContent = 'Erro ao cadastrar.';
+            $status.className = 'status err';
+          }
+        });
       }
     }
 
-    function updateKPI(){
-      let done = 0;
-      for(const t of TITULOS){
-        const id = slug(t);
-        if (NON_COUPLE.has(t)){
-          const one = document.getElementById(`${id}_one`);
-          if ((one && one.value.trim()) || (INITIAL[t] && INITIAL[t].nome_ele)) done++;
-        } else {
-          const ele = document.getElementById(`${id}_ele`);
-          const ela = document.getElementById(`${id}_ela`);
-          const has = (ele && ele.value.trim()) || (ela && ela.value.trim()) || (INITIAL[t] && (INITIAL[t].nome_ele || INITIAL[t].nome_ela));
-          if (has) done++;
-        }
-      }
-      kpiDone.textContent = String(done);
+    function renderGrid(){
+      $grid.innerHTML = '';
+      TITULOS.forEach(t => makeCard(t));
+      $grid.style.display = '';
     }
 
-    btnAplicar.addEventListener('click', (e)=>{
+    document.getElementById('btn-continuar').addEventListener('click', (e)=>{
       e.preventDefault();
-      const val = (anoInput.value||'').trim();
-      if(!/^\d{4}$/.test(val)){ anoStatus.textContent='Ano inválido (YYYY).'; anoStatus.className='status err'; return; }
-      anoSel = parseInt(val,10);
-      anoStatus.textContent = `Ano selecionado: ${anoSel}`; anoStatus.className='status ok';
-      grid.innerHTML = '';
-      for(const t of TITULOS){
-        renderCard(t, INITIAL[t]);
+      const v = ($ano.value || '').trim();
+      if (!/^\d{4}$/.test(v)) {
+        $msg.textContent = 'Informe um ano válido (YYYY).';
+        $msg.className = 'status err';
+        return;
       }
-      grid.style.display = '';
-      kpi.style.display = '';
-      updateKPI();
+      $msg.textContent = `Ano selecionado: ${v}`;
+      $msg.className = 'status ok';
+      renderGrid();
     });
 
     window.addEventListener('DOMContentLoaded', ()=>{
-      if(ANO_PRE){ btnAplicar.click(); }
+      if (anoPre) {
+        document.getElementById('btn-continuar').click();
+      }
     });
   </script>
 </body>
