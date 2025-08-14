@@ -43,21 +43,21 @@
     {% for ano, registros in por_ano.items() %}
       <h2 class="year">{{ ano }}</h2>
 
-      {% if registros and colunas_visiveis %}
+      {% if registros %}
         <table>
           <thead>
             <tr>
-              {% for col in colunas_visiveis %}
-                <th>{{ col.replace('_', ' ').title() }}</th>
-              {% endfor %}
+              <th>Palestra</th>
+              <th>Nome Ele</th>
+              <th>Nome Ela</th>
             </tr>
           </thead>
           <tbody>
             {% for row in registros %}
               <tr>
-                {% for col in colunas_visiveis %}
-                  <td>{{ row.get(col, '') }}</td>
-                {% endfor %}
+                <td>{{ row.get('palestra','') }}</td>
+                <td>{{ (row.get('nome_ele','')|lower)|title }}</td>
+                <td>{{ (row.get('nome_ela','')|lower)|title }}</td>
               </tr>
             {% endfor %}
           </tbody>
