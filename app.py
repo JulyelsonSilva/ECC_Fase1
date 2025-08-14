@@ -1479,7 +1479,7 @@ def palestrantes():
     ano_filtro = (request.args.get('ano', '') or '').strip()
 
     query = """
-        SELECT ano, palestra, nome_ele, nome_ela, status
+        SELECT ano, palestra, nome_ele, nome_ela
           FROM palestras
          WHERE 1=1
     """
@@ -1494,6 +1494,7 @@ def palestrantes():
         query += " AND ano = %s"
         params.append(ano_filtro)
 
+    # ordena por ano desc, palestra depois ordenaremos manualmente
     query += " ORDER BY ano DESC, palestra ASC"
 
     cursor.execute(query, params)
@@ -1501,16 +1502,36 @@ def palestrantes():
     cursor.close()
     conn.close()
 
-    # Agrupa por ano (exatamente como em 'encontreiros')
+    # Agrupar por ano
     por_ano = defaultdict(list)
     for r in rows:
         por_ano[r['ano']].append(r)
 
-    colunas_visiveis = ['palestra', 'nome_ele', 'nome_ela', 'status']
+    # Ordem fixa das palestras
+    ordem_palestras = [
+        "Plano de Deus",
+        "Testem.Plano de Deus",
+        "Harmonia Conjugal",
+        "Diálogo c/ filhos",
+        "Penitência",
+        "Testem. Jovem",
+        "Ceia Eucarística",
+        "N.SrªVida da Família",
+        "Testem. Ceia Eucarística",
+        "Fé Revezes da Vida",
+        "Sentido da Vida",
+        "Oração",
+        "Corresponsabilidade",
+        "Vivência do Sacramento do Matrimônio",
+        "O casal Cristão no Mundo de Hoje",
+    ]
+    idx = {t: i for i, t in enumerate(ordem_palestras)}
 
-    return render_template('palestrantes.html',
-                           por_ano=por_ano,
-                           colunas_visiveis=colunas_visiveis)
+    # ordenar registros de cada ano pela sequência acima
+    for ano in list(por_ano.keys()):
+        por_ano[ano].sort(key=lambda r: idx.get(r.get('palestra', ''), 9999))
+
+    return render_template('palestrantes.html', por_ano=por_ano)
 
 # ===============================
 # Organograma
