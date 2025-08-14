@@ -186,6 +186,24 @@
     const ret_ele    = {{ (request.args.get('selecionar_ele') or '') | tojson }};
     const ret_ela    = {{ (request.args.get('selecionar_ela') or '') | tojson }};
 
+    // Fallback: se algum parâmetro veio vazio do Jinja, lê direto da URL
+    (function ensureReturnParams(){
+      const qs = new URLSearchParams(location.search);
+      window.ret_target = (typeof ret_target !== 'undefined' && ret_target && ret_target.length)
+      ? ret_target
+      : (qs.get('target') || qs.get('ret_target') || '');
+
+      window.ret_ele = (typeof ret_ele !== 'undefined' && ret_ele && ret_ele.length)
+      ? ret_ele
+      : (qs.get('selecionar_ele') || qs.get('ele') || qs.get('nome_ele') || '');
+
+      window.ret_ela = (typeof ret_ela !== 'undefined' && ret_ela && ret_ela.length)
+      ? ret_ela
+      : (qs.get('selecionar_ela') || qs.get('ela') || qs.get('nome_ela') || '');
+    })();
+
+  
+    
     // Dirigentes
     const DIRIGENTES = [
       "Equipe Dirigente - MONTAGEM",
@@ -636,8 +654,8 @@
       maybeEnableCG();
 
       // Seleção retornada da visão de equipes?
-      if (ret_target && ret_ele && ret_ela) {
-        applySelectedCoupleToTeam(ret_target, ret_ele, ret_ela);
+      if (window.ret_target && window.ret_ele && window.ret_ela) {
+        applySelectedCoupleToTeam(window.ret_target, window.ret_ele, window.ret_ela);
       }
 
       // Render e KPI das equipes
