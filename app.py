@@ -559,7 +559,65 @@ def api_adicionar_cg():
             conn.close()
         except Exception:
             pass
+# -----------------------------------------
+# API: contagem de integrantes por equipe
+# usado por nova_montagem (sem contar coordenador)
+# -----------------------------------------
+@app.route('/api/equipe-counts')
+def api_equipe_counts():
+    ano = request.args.get('ano', type=int)
+    if not ano:
+        return jsonify({"ok": False, "msg": "Ano obrigatório.", "counts": {}}), 400
 
+    # Vamos carregar todas as linhas do ano, ativas,
+    # e agrupar no Python para mapear corretamente a equipe "Sala"
+    # (que possui subfunções como Canto, Boa Vontade etc).
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT equipe, coordenador
+            FROM encontreiros
+            WHERE ano = %s
+              AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+        """, (ano,))
+        rows = cur.fetchall()
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    # Mapa rotulo -> filtro (igual ao TEAM_MAP do app)
+    rotulo_to_filtro = {info["rotulo"]: info["filtro"] for info in TEAM_MAP.values()}
+
+    # Inicializa todas as equipes com zero
+    counts = {info["filtro"]: 0 for info in TEAM_MAP.values()}
+
+    for r in rows:
+        equipe_txt = (r.get("equipe") or "").strip()
+        is_coord = (r.get("coordenador") or "").strip().upper() == "SIM"
+
+        # Não contar coordenadores no total de integrantes
+        if is_coord:
+            continue
+
+        eq_upper = equipe_txt.upper()
+
+        # Regra especial para SALA: qualquer equipe que contenha "SALA"
+        # (inclui Boa Vontade, Canto, Som/Projeção, Recepção etc.)
+        if "SALA" in eq_upper:
+            counts["Sala"] = counts.get("Sala", 0) + 1
+            continue
+
+        # Demais equipes: tentar casar exatamente pelo rótulo gravado
+        filtro = rotulo_to_filtro.get(equipe_txt)
+        if filtro:
+            counts[filtro] = counts.get(filtro, 0) + 1
+        # Se não casou, ignoramos a linha (pode ser alguma variação não mapeada)
+
+    return jsonify({"ok": True, "counts": counts})
 # =========================
 # ENCONTREIROS (listagem – sem edição)
 # =========================
