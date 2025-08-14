@@ -2,68 +2,56 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Palestras</title>
+  <title>Palestras — Painel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root{
-      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-        var(--bg);
-    }
-    .wrap{max-width:1100px; margin:24px auto; padding:0 16px 64px;}
-    header{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px;}
-    h1{margin:0; font-size:22px;}
-    .btn{appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; cursor:pointer;}
-    .btn.primary{background:var(--brand); color:#fff; border-color:var(--brand);}
-    .cols{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;}
-    .muted{color:var(--muted);}
-    .tags{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
-    .tag{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--border); border-radius:999px; text-decoration:none; color:inherit; background:#fff;}
-    .tag:hover{background:#f8fafc;}
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; }
+    h1 { margin:0; font-size: 22px; }
+    a.btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .tag { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; text-decoration:none; color:#0f172a; background:#fff; margin:6px 6px 0 0; }
+    .muted { color:var(--muted); }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <h1>Palestras</h1>
+    <div class="header">
+      <h1>Painel de Palestras</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('palestras_nova') }}">+ Novo ano / Continuar</a>
+        <a class="btn" href="{{ url_for('palestrantes') }}">👥 Palestrantes</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-        <a class="btn primary" href="{{ url_for('palestras_nova') }}">+ Novo Ano de Palestras</a>
       </div>
-    </header>
+    </div>
 
     <div class="cols">
-      <section class="card">
-        <h3 style="margin:0 0 6px;">Aberto</h3>
-        <p class="muted" style="margin:0 0 10px;">Anos com cadastro de palestras em andamento.</p>
-        <div class="tags">
+      <div class="card">
+        <h3 style="margin-top:0;">Aberto</h3>
+        <p class="muted">Anos com ao menos um registro em <b>Aberto</b>.</p>
+        <div>
           {% for r in anos_aberto %}
-            <a class="tag" href="{{ url_for('palestras_nova', ano=r.ano) }}">{{ r.ano }}</a>
+            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; abertos: {{ r.abertos }} / total: {{ r.total }}</a>
           {% else %}
             <span class="muted">Nenhum ano em aberto.</span>
           {% endfor %}
         </div>
-      </section>
+      </div>
 
-      <section class="card">
-        <h3 style="margin:0 0 6px;">Concluído</h3>
-        <p class="muted" style="margin:0 0 10px;">Anos com todas as palestras definidas.</p>
-        <div class="tags">
+      <div class="card">
+        <h3 style="margin-top:0;">Concluído</h3>
+        <p class="muted">Anos sem registros em <b>Aberto</b>.</p>
+        <div>
           {% for r in anos_concluidos %}
-            <a class="tag" href="{{ url_for('palestrantes') }}?ano={{ r.ano }}">{{ r.ano }}</a>
+            <a class="tag" href="{{ url_for('palestrantes') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; total: {{ r.total }}</a>
           {% else %}
             <span class="muted">Nenhum ano concluído.</span>
           {% endfor %}
         </div>
-      </section>
+      </div>
     </div>
   </div>
 </body>
