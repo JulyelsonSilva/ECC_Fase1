@@ -1337,6 +1337,15 @@ def dados_organograma():
         conn.close()
 
     return jsonify(dados)
+    
+# -----------------------------
+# Palestras (painel inicial - placeholder)
+# -----------------------------
+@app.route('/palestras')
+def palestras_painel():
+    # Render de um painel simples só para evitar o BuildError.
+    # Depois você pode expandir isso com a lógica real das palestras.
+    return render_template('palestras_painel.html')
 
 # -----------------------------
 # Main
