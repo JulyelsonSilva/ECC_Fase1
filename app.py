@@ -1338,14 +1338,302 @@ def dados_organograma():
 
     return jsonify(dados)
     
-# -----------------------------
-# Palestras (painel inicial - placeholder)
-# -----------------------------
+# =============================
+#  PALESTRAS – Configuração
+# =============================
+PALESTRAS_TABLE = "palestras"  # ajuste aqui se seu nome de tabela for diferente
+
+# Lista canônica de títulos (iguais aos do seu histórico)
+PALESTRAS_TITULOS = [
+    "Plano de Deus",
+    "Testem.Plano de Deus",
+    "Harmonia Conjugal",
+    "Diálogo c/ filhos",
+    "Penitência",
+    "Testem. Jovem",
+    "Ceia Eucarística",
+    "N.SrªVida da Família",
+    "Testem. Ceia Eucarística",
+    "Fé Revezes da Vida",
+    "Sentido da Vida",
+    "Oração",
+    "Corresponsabilidade",
+    "Vivência do Sacramento do Matrimônio",
+    "O casal Cristão no Mundo de Hoje",
+]
+
+# Títulos que NÃO são por casal (só um nome livre, salvo em nome_ele)
+PALESTRAS_SOLO = {"Penitência", "Testem. Jovem", "Ceia Eucarística"}
+
+def _contato_mais_recente(cur, nome_ele, nome_ela):
+    """
+    Retorna (telefones, endereco) mais recentes do casal:
+    1) encontreiros (mais recente)
+    2) encontristas (nomes usuais)
+    """
+    # 1) encontreiros
+    cur.execute("""
+        SELECT telefones, endereco
+          FROM encontreiros
+         WHERE nome_ele = %s AND nome_ela = %s
+         ORDER BY ano DESC
+         LIMIT 1
+    """, (nome_ele, nome_ela))
+    r = cur.fetchone()
+    if r:
+        return (r.get("telefones") or ""), (r.get("endereco") or "")
+
+    # 2) encontristas (usando nomes usuais)
+    cur.execute("""
+        SELECT telefone_ele, telefone_ela, endereco
+          FROM encontristas
+         WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+         ORDER BY ano DESC
+         LIMIT 1
+    """, (nome_ele, nome_ela))
+    r2 = cur.fetchone()
+    if r2:
+        tel_ele = (r2.get("telefone_ele") or "").strip()
+        tel_ela = (r2.get("telefone_ela") or "").strip()
+        tels = " / ".join([t for t in [tel_ele, tel_ela] if t]) or ""
+        return tels, (r2.get("endereco") or "")
+
+    return "", ""
+
+def _casal_elegivel(cur, nome_ele, nome_ela):
+    """
+    Casal elegível = já foi encontrista OU encontreiros.
+    Fazemos busca exata pelos campos principais utilizados no app.
+    """
+    # encontreiros
+    cur.execute("""
+        SELECT 1 FROM encontreiros
+         WHERE nome_ele = %s AND nome_ela = %s
+         LIMIT 1
+    """, (nome_ele, nome_ela))
+    if cur.fetchone():
+        return True
+
+    # encontristas (nomes usuais)
+    cur.execute("""
+        SELECT 1 FROM encontristas
+         WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+         LIMIT 1
+    """, (nome_ele, nome_ela))
+    return cur.fetchone() is not None
+
+def _ja_existe_palestra_no_ano(cur, ano:int, titulo:str):
+    cur.execute(f"""
+        SELECT 1 FROM {PALESTRAS_TABLE}
+         WHERE ano = %s AND palestra = %s
+         LIMIT 1
+    """, (ano, titulo))
+    return cur.fetchone() is not None
+
+def _repeticoes_casal_palestra(cur, nome_ele:str, nome_ela:str, titulo:str) -> int:
+    """
+    Quantas vezes ESTE casal já deu ESTA palestra (todos os anos)?
+    Regra: máximo permitido = 5; acima disso, bloquear.
+    """
+    cur.execute(f"""
+        SELECT COUNT(*) AS qtd
+          FROM {PALESTRAS_TABLE}
+         WHERE LOWER(COALESCE(nome_ele,'')) = LOWER(%s)
+           AND LOWER(COALESCE(nome_ela,'')) = LOWER(%s)
+           AND palestra = %s
+    """, (nome_ele, nome_ela, titulo))
+    r = cur.fetchone()
+    return int(r["qtd"]) if r and "qtd" in r else 0
+
+# =============================
+#  PALESTRAS – Painel
+# =============================
 @app.route('/palestras')
 def palestras_painel():
-    # Render de um painel simples só para evitar o BuildError.
-    # Depois você pode expandir isso com a lógica real das palestras.
-    return render_template('palestras_painel.html')
+    """
+    Mostra 'Aberto' x 'Concluído' por ano:
+     - Concluído: se o ano tiver pelo menos 1 registro para CADA título da lista PALESTRAS_TITULOS
+     - Aberto: caso contrário (tem faltando)
+    """
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute(f"""
+            SELECT ano, palestra, COUNT(*) AS qtd
+              FROM {PALESTRAS_TABLE}
+             GROUP BY ano, palestra
+        """)
+        rows = cur.fetchall()
+    finally:
+        cur.close(); conn.close()
+
+    # agrega por ano
+    por_ano = {}
+    for r in rows or []:
+        a = r["ano"]
+        t = r["palestra"]
+        por_ano.setdefault(a, set()).add(t)
+
+    anos_aberto = []
+    anos_concluidos = []
+    total_titulos = len(PALESTRAS_TITULOS)
+
+    for ano, tit_set in sorted(por_ano.items(), key=lambda x: x[0], reverse=True):
+        faltando = total_titulos - len(tit_set.intersection(set(PALESTRAS_TITULOS)))
+        item = {"ano": ano, "feitas": total_titulos - faltando, "total": total_titulos}
+        if faltando == 0:
+            anos_concluidos.append(item)
+        else:
+            anos_aberto.append(item)
+
+    # anos que ainda não existem na tabela não aparecem; a criação é iniciada na tela "nova"
+    return render_template('palestras_painel.html',
+                           anos_aberto=anos_aberto,
+                           anos_concluidos=anos_concluidos)
+
+# =============================
+#  PALESTRAS – Nova (ano)
+# =============================
+@app.route('/palestras/nova')
+def palestras_nova():
+    ano_preselecionado = request.args.get('ano', type=int)
+
+    # carrega já existentes para o ano
+    existentes = {}
+    if ano_preselecionado:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cur = conn.cursor(dictionary=True)
+        try:
+            cur.execute(f"""
+                SELECT id, ano, palestra, nome_ele, nome_ela
+                  FROM {PALESTRAS_TABLE}
+                 WHERE ano = %s
+            """, (ano_preselecionado,))
+            for r in cur.fetchall():
+                existentes[r["palestra"]] = {
+                    "id": r["id"],
+                    "nome_ele": r.get("nome_ele") or "",
+                    "nome_ela": r.get("nome_ela") or ""
+                }
+        finally:
+            cur.close(); conn.close()
+
+    return render_template('palestras_nova.html',
+                           ano_preselecionado=ano_preselecionado,
+                           titulos=PALESTRAS_TITULOS,
+                           solo_titulos=list(PALESTRAS_SOLO),
+                           existentes=existentes)
+
+# =============================
+#  PALESTRAS – APIs
+# =============================
+
+@app.route('/api/palestras/buscar', methods=['POST'])
+def api_palestras_buscar():
+    """
+    Body: {palestra, nome_ele, nome_ela?}
+    Regras:
+      - Se for palestra SOLO: não precisa de casal; apenas retorna ok=True (sem telefones/endereço).
+      - Se for palestra de CASAL: precisa validar elegibilidade; retorna contato mais recente.
+      - Sempre retorna 'repeticoes' (casal+palestra), para color bar 0..5.
+    """
+    data = request.get_json(silent=True) or {}
+    palestra = (data.get("palestra") or "").strip()
+    nome_ele = (data.get("nome_ele") or "").strip()
+    nome_ela = (data.get("nome_ela") or "").strip()
+
+    if not palestra or palestra not in PALESTRAS_TITULOS:
+        return jsonify({"ok": False, "msg": "Palestra inválida."}), 400
+
+    # SOLO
+    if palestra in PALESTRAS_SOLO:
+        # para solo não há regra de elegibilidade nem repetição por casal
+        return jsonify({"ok": True, "solo": True, "telefones": "", "endereco": "", "repeticoes": 0})
+
+    # CASAL: precisa de ambos os nomes
+    if not nome_ele or not nome_ela:
+        return jsonify({"ok": False, "msg": "Informe Nome (Ele) e Nome (Ela)."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        if not _casal_elegivel(cur, nome_ele, nome_ela):
+            return jsonify({"ok": False, "msg": "Casal não é elegível (não encontrado como encontrista ou encontreiros)."}), 404
+
+        telefones, endereco = _contato_mais_recente(cur, nome_ele, nome_ela)
+        rep = _repeticoes_casal_palestra(cur, nome_ele, nome_ela, palestra)
+        return jsonify({"ok": True, "solo": False, "telefones": telefones, "endereco": endereco, "repeticoes": rep})
+    finally:
+        cur.close(); conn.close()
+
+@app.route('/api/palestras/adicionar', methods=['POST'])
+def api_palestras_adicionar():
+    """
+    Body: {ano, palestra, nome_ele, [nome_ela], [telefones], [endereco]}
+    Regras:
+      - Único registro por (ano, palestra).
+      - SOLO: exige apenas nome_ele.
+      - CASAL: exige nome_ele e nome_ela, casal elegível, repeticoes < 5.
+      - status = 'Concluido' por padrão.
+    """
+    data = request.get_json(silent=True) or {}
+    ano_raw = str(data.get("ano") or "").strip()
+    palestra = (data.get("palestra") or "").strip()
+    nome_ele = (data.get("nome_ele") or "").strip()
+    nome_ela = (data.get("nome_ela") or "").strip()
+    telefones = (data.get("telefones") or "").strip()
+    endereco = (data.get("endereco") or "").strip()
+
+    if not (ano_raw.isdigit() and len(ano_raw) == 4):
+        return jsonify({"ok": False, "msg": "Ano inválido."}), 400
+    ano = int(ano_raw)
+    if not palestra or palestra not in PALESTRAS_TITULOS:
+        return jsonify({"ok": False, "msg": "Palestra inválida."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        # Um por título/ano
+        if _ja_existe_palestra_no_ano(cur, ano, palestra):
+            return jsonify({"ok": False, "msg": "Já existe registro para esta palestra neste ano."}), 409
+
+        if palestra in PALESTRAS_SOLO:
+            if not nome_ele:
+                return jsonify({"ok": False, "msg": "Preencha o nome."}), 400
+            cur2 = conn.cursor()
+            cur2.execute(f"""
+                INSERT INTO {PALESTRAS_TABLE}
+                    (ano, palestra, nome_ele, nome_ela, status)
+                VALUES (%s, %s, %s, %s, 'Concluido')
+            """, (ano, palestra, nome_ele, ""))
+            conn.commit()
+            cur2.close()
+            return jsonify({"ok": True})
+
+        # CASAL
+        if not (nome_ele and nome_ela):
+            return jsonify({"ok": False, "msg": "Preencha Nome (Ele) e Nome (Ela)."}), 400
+
+        if not _casal_elegivel(cur, nome_ele, nome_ela):
+            return jsonify({"ok": False, "msg": "Casal não é elegível (não encontrado como encontrista ou encontreiros)."}), 404
+
+        rep = _repeticoes_casal_palestra(cur, nome_ele, nome_ela, palestra)
+        if rep >= 5:
+            return jsonify({"ok": False, "msg": "Limite de 5 repetições atingido para este casal nesta palestra."}), 409
+
+        # Insere (telefones/endereco são apenas exibidos; não precisa gravar aqui, igual você faz em encontreiros)
+        cur2 = conn.cursor()
+        cur2.execute(f"""
+            INSERT INTO {PALESTRAS_TABLE}
+                (ano, palestra, nome_ele, nome_ela, status)
+            VALUES (%s, %s, %s, %s, 'Concluido')
+        """, (ano, palestra, nome_ele, nome_ela))
+        conn.commit()
+        cur2.close()
+        return jsonify({"ok": True})
+    finally:
+        cur.close(); conn.close()
+
 
 # -----------------------------
 # Main
