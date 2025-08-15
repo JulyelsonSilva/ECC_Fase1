@@ -31,6 +31,17 @@ def safe_fetch_one(cur, sql, params):
         return None
 
 # =========================
+# Admin helpers
+# =========================
+def _get_db():
+    # Alias para reutilizar o que você já tem
+    return db_conn()
+
+def _admin_ok():
+    token = request.args.get("token") or request.form.get("token")
+    return bool(token) and token == os.environ.get("ADMIN_TOKEN", "")
+
+# =========================
 # Constantes de Equipes
 # =========================
 TEAM_MAP = {
