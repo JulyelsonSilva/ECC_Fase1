@@ -58,10 +58,12 @@
       padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff;
     }
 
-    .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px; }
-    canvas{ background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px; }
-
-    @media (max-width:900px){ .grid-2{ grid-template-columns:1fr; } }
+    /* Pilha vertical: DONUT em cima, BARRAS embaixo */
+    .stack{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:18px; }
+    .chart{
+      background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px;
+      height:420px; /* Chart.js usa com maintainAspectRatio:false */
+    }
 
     @media (prefers-color-scheme: dark){
       :root{
@@ -75,6 +77,7 @@
           radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
           var(--bg);
       }
+      .chart{ background:var(--card); }
     }
   </style>
 </head>
@@ -97,7 +100,7 @@
     <section class="hero" role="region" aria-label="Filtros e ações">
       <div class="text">
         <h2>Visão estatística do ECC</h2>
-        <p>Casais que trabalharam por ano e origem por ano de encontro.</p>
+        <p>Origem (ano de encontro) e total de casais que trabalharam por ano.</p>
       </div>
       <div class="actions">
         <label for="anoSel" style="color:var(--muted); font-size:13px;">Ano de trabalho:</label>
@@ -110,9 +113,10 @@
       </div>
     </section>
 
-    <div class="grid-2" aria-label="Gráficos de Relatórios">
-      <canvas id="barTrabalhos"></canvas>
-      <canvas id="distAnoEncontro"></canvas>
+    <!-- DONUT em cima, BARRAS embaixo -->
+    <div class="stack" aria-label="Gráficos de Relatórios">
+      <canvas id="distAnoEncontro" class="chart"></canvas>
+      <canvas id="barTrabalhos" class="chart"></canvas>
     </div>
   </div>
 
@@ -148,9 +152,10 @@ async function carregaDistribuicaoAnoEncontro(ano){
 
 document.getElementById("anoSel").addEventListener("change", e => carregaDistribuicaoAnoEncontro(e.target.value));
 window.addEventListener("DOMContentLoaded", async () => {
-  await carregaTrabalhosPorAno();
+  // Carrega ambos ao entrar: donut do ano selecionado e barras gerais
   const anoIni = document.getElementById("anoSel").value;
   await carregaDistribuicaoAnoEncontro(anoIni);
+  await carregaTrabalhosPorAno();
 });
 </script>
 </body>
