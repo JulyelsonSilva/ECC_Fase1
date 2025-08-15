@@ -2031,34 +2031,64 @@ def admin_match_fuzzy():
     if token != os.environ.get("ADMIN_TOKEN", ""):
         return "Unauthorized", 401
 
+    # Parâmetros de lote
+    try:
+        batch_size = int(request.args.get("size", "300"))
+    except ValueError:
+        batch_size = 300
+
     AUTO_THRESHOLD = 0.92
     SUGGEST_THRESHOLD = 0.80
 
     conn = _get_db()
     cur = conn.cursor(dictionary=True)
 
-    # Limpa pendências antigas (opcional)
-    cur.execute("DELETE FROM pendencias_encontreiros")
-    conn.commit()
+    # NÃO apaga pendências antigas em massa aqui.
+    # Mantemos histórico e apenas acrescentamos novas sugestões quando houver.
 
-    # Base de comparação
+    # Base de comparação (encontristas)
     cur.execute("SELECT id, nome_usual_ele, nome_usual_ela FROM encontristas")
     base = cur.fetchall()
 
-    # Bucket simples por primeira letra p/ acelerar
+    # Bucket simples por 1ª letra
     from collections import defaultdict
+    def _norm(s: str) -> str:
+        if s is None:
+            return ""
+        s = s.strip().lower()
+        s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
+        s = re.sub(r"\s+", " ", s)
+        return s
+
+    def _sim(a: str, b: str) -> float:
+        return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
+
     bucket = defaultdict(list)
     for r in base:
         key = (_norm(r['nome_usual_ele'])[:1], _norm(r['nome_usual_ela'])[:1])
         bucket[key].append(r)
 
-    # Registros sem vínculo
-    cur.execute("SELECT id, nome_ele, nome_ela FROM encontreiros WHERE casal IS NULL")
+    # Pega um LOTE de pendentes (casal IS NULL)
+    cur.execute("""
+        SELECT id, nome_ele, nome_ela
+        FROM encontreiros
+        WHERE casal IS NULL
+        ORDER BY id ASC
+        LIMIT %s
+    """, (batch_size,))
     pend = cur.fetchall()
+
+    if not pend:
+        cur.close()
+        conn.close()
+        return {"message": "Nada a processar. Já está zerado.", "processed": 0}, 200
 
     auto_count = 0
     pend_count = 0
 
+    # Prepara insert de pendências (evita duplicar mesma sugestão)
+    # Cria índice único opcional (faça uma vez só no MySQL):
+    # ALTER TABLE pendencias_encontreiros ADD UNIQUE KEY uniq_sug (encontreiros_id, candidato_id);
     for row in pend:
         e_id = row['id']
         n_ele = row['nome_ele'] or ""
@@ -2088,27 +2118,48 @@ def admin_match_fuzzy():
             except mysql_errors.Error as err:
                 print(f"[fuzzy] erro ao atualizar encontreiros.id={e_id}: {err}")
         else:
-            # guarda até 3 sugestões
+            # guarda até 3 sugestões; ignora se já existir sugestão idêntica
             suggestions = [s for s in scored if s[0] >= SUGGEST_THRESHOLD][:3]
             for s in suggestions:
                 score, s_ele, s_ela, s_id, s_nele, s_nela = s
-                cur.execute("""
-                    INSERT INTO pendencias_encontreiros
-                      (encontreiros_id, nome_ele, nome_ela, candidato_id,
-                       candidato_nome_usual_ele, candidato_nome_usual_ela,
-                       score_ele, score_ela, score_medio)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """, (e_id, n_ele, n_ela, s_id, s_nele, s_nela,
-                      round(s_ele,4), round(s_ela,4), round(score,4)))
+                try:
+                    cur.execute("""
+                        INSERT INTO pendencias_encontreiros
+                          (encontreiros_id, nome_ele, nome_ela, candidato_id,
+                           candidato_nome_usual_ele, candidato_nome_usual_ela,
+                           score_ele, score_ela, score_medio)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        ON DUPLICATE KEY UPDATE
+                          score_ele=VALUES(score_ele),
+                          score_ela=VALUES(score_ela),
+                          score_medio=VALUES(score_medio),
+                          nome_ele=VALUES(nome_ele),
+                          nome_ela=VALUES(nome_ela),
+                          candidato_nome_usual_ele=VALUES(candidato_nome_usual_ele),
+                          candidato_nome_usual_ela=VALUES(candidato_nome_usual_ela)
+                    """, (e_id, n_ele, n_ela, s_id, s_nele, s_nela,
+                          round(s_ele,4), round(s_ela,4), round(score,4)))
+                except mysql_errors.Error as err:
+                    # Se a tabela não tem UNIQUE, ignore esse ON DUPLICATE e use INSERT simples
+                    print(f"[pendencia] falha ao inserir sugestao e_id={e_id}, cand={s_id}: {err}")
             pend_count += 1
 
     conn.commit()
+
+    # Quantos ainda faltam no total (para progresso)
+    cur.execute("SELECT COUNT(*) AS faltando FROM encontreiros WHERE casal IS NULL")
+    faltando = cur.fetchone()["faltando"]
+
     cur.close()
     conn.close()
+
     return {
-        "preenchimentos_automaticos": auto_count,
-        "pendencias_com_sugestoes": pend_count
+        "processados_neste_lote": len(pend),
+        "preenchimentos_automaticos_neste_lote": auto_count,
+        "pendencias_neste_lote": pend_count,
+        "restantes_no_total": faltando
     }, 200
+
 
 
 # =========================
