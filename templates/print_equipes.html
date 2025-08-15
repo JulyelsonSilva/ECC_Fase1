@@ -1,0 +1,30 @@
+{% extends "_print_base.html" %}
+{% block content %}
+<h1>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h1>
+<p class="muted">Coordenadores destacados.</p>
+
+{% set atual = None %}
+{% for r in rows %}
+  {% if not equipe and (atual != r.equipe) %}
+    {% if not loop.first %}</table>{% endif %}
+    <h2>{{ r.equipe or '—' }}</h2>
+    <table>
+      <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
+      <tbody>
+    {% set atual = r.equipe %}
+  {% endif %}
+  <tr>
+    <td>
+      {% if r.is_coord %}<span class="badge coord">Coordenador</span> {% endif %}
+      {{ r.ele or '' }} &amp; {{ r.ela or '' }}
+    </td>
+    <td>{{ r.telefones or '' }}</td>
+    <td>{{ r.endereco or '' }}</td>
+  </tr>
+  {% if loop.last %}</tbody></table>{% endif %}
+{% endfor %}
+
+{% if equipe and not rows|length %}
+<p>Nenhum integrante encontrado para {{equipe}} em {{ano}}.</p>
+{% endif %}
+{% endblock %}
