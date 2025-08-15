@@ -2007,11 +2007,6 @@ def api_trabalhos_por_ano():
 
 @app.get("/api/ano_origem_dos_trabalhadores")
 def api_ano_origem_dos_trabalhadores():
-    """
-    Para um ano de TRABALHO (ex.: 2024), mostra de que ano de ENCONTRO eram os casais.
-    Join por nomes com ENCONTRISTAS (usando nome_usual_* quando existir, senão nome_*).
-    Ignora status Desistiu/Recusou.
-    """
     ano = request.args.get("ano", type=int)
     if not ano:
         return jsonify({"error":"ano requerido"}), 400
@@ -2023,8 +2018,8 @@ def api_ano_origem_dos_trabalhadores():
           COUNT(DISTINCT CONCAT('NM#', LOWER(TRIM(e.nome_ele)), '#', LOWER(TRIM(e.nome_ela)))) AS qtd
         FROM encontreiros e
         LEFT JOIN encontristas i
-          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele)))
-         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela)))
+          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(i.nome_usual_ele))
+         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(i.nome_usual_ela))
         WHERE e.ano = %s
           AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
         GROUP BY ano_encontro
@@ -2034,6 +2029,7 @@ def api_ano_origem_dos_trabalhadores():
     """, [ano])
     cur.close(); conn.close()
     return jsonify({"ano_trabalho": ano, "dist": rows})
+
 
 @app.route("/docs")
 def docs_index():
@@ -2063,8 +2059,8 @@ def imprimir_coordenadores():
           COALESCE(i.endereco, e.endereco) AS endereco
         FROM encontreiros e
         LEFT JOIN encontristas i
-          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele)))
-         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela)))
+          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(i.nome_usual_ele))
+         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(i.nome_usual_ela))
         WHERE e.ano = %s
           AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
           AND LOWER(TRIM(COALESCE(e.coordenador,''))) IN ('sim','s','coordenador','coordenadora','sim coordenador','sim - coordenador')
@@ -2083,7 +2079,7 @@ def imprimir_coordenadores():
 @app.get("/imprimir/equipes")
 def imprimir_equipes():
     ano = request.args.get("ano", type=int)
-    equipe = request.args.get("equipe")  # opcional
+    equipe = request.args.get("equipe")
     if not ano: return "Informe ?ano=YYYY", 400
 
     params = [ano]
@@ -2106,8 +2102,8 @@ def imprimir_equipes():
           COALESCE(i.endereco, e.endereco) AS endereco
         FROM encontreiros e
         LEFT JOIN encontristas i
-          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele)))
-         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela)))
+          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(i.nome_usual_ele))
+         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(i.nome_usual_ela))
         WHERE e.ano = %s
           {where_equipe}
           AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
@@ -2116,7 +2112,6 @@ def imprimir_equipes():
     cur.close(); conn.close()
 
     return render_template("print_equipes.html", ano=ano, equipe=equipe, rows=rows)
-
 # --------------------------------------------
 # 3) VIGÍLIA VOLUNTÁRIA (N casais)
 #    - ?ids=1,2,3 (lista específica) OU seleção automática
@@ -2126,7 +2121,7 @@ def imprimir_equipes():
 def imprimir_vigilia():
     ano = request.args.get("ano", type=int)
     qtd = request.args.get("qtd", default=56, type=int)
-    ids = request.args.get("ids")  # "1,2,3"
+    ids = request.args.get("ids")
     seed = request.args.get("seed", default="vigilia")
     if not ano: return "Informe ?ano=YYYY", 400
 
@@ -2138,28 +2133,35 @@ def imprimir_vigilia():
             return "Parâmetro ids inválido.", 400
         placeholders = ",".join(["%s"]*len(lista_ids))
         rows = _q(cur, f"""
-            SELECT id, nome_ele, nome_ela, nome_usual_ele, nome_usual_ela,
+            SELECT id,
+                   -- se quiser manter compatibilidade com o template:
+                   nome_usual_ele AS nome_ele,
+                   nome_usual_ela AS nome_ela,
+                   nome_usual_ele, nome_usual_ela,
                    endereco, telefone_ele, telefone_ela
             FROM encontristas
             WHERE id IN ({placeholders})
             ORDER BY FIELD(id, {placeholders})
         """, lista_ids + lista_ids)
     else:
-        # Exclui quem está escalado (aberto/concluído), mantendo quem desistiu/recusou como elegível
         rows = _q(cur, """
-            SELECT i.id, i.nome_ele, i.nome_ela, i.nome_usual_ele, i.nome_usual_ela,
+            SELECT i.id,
+                   -- entregar campos com os nomes esperados pelo template
+                   i.nome_usual_ele AS nome_ele,
+                   i.nome_usual_ela AS nome_ela,
+                   i.nome_usual_ele, i.nome_usual_ela,
                    i.endereco, i.telefone_ele, i.telefone_ela
             FROM encontristas i
             LEFT JOIN (
               SELECT DISTINCT
-                LOWER(TRIM(nome_ele))  AS nme,
-                LOWER(TRIM(nome_ela))  AS nma
+                LOWER(TRIM(nome_ele)) AS nme,
+                LOWER(TRIM(nome_ela)) AS nma
               FROM encontreiros
               WHERE ano = %s
                 AND LOWER(TRIM(COALESCE(status,''))) NOT IN ('desistiu','recusou')
             ) e
-              ON LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele))) = e.nme
-             AND LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela))) = e.nma
+              ON LOWER(TRIM(i.nome_usual_ele)) = e.nme
+             AND LOWER(TRIM(i.nome_usual_ela)) = e.nma
             WHERE e.nme IS NULL
             ORDER BY MD5(CONCAT_WS('#', i.id, %s))
             LIMIT %s
