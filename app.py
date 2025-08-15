@@ -2,7 +2,8 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 import mysql.connector
 from collections import defaultdict
 import math
-import re
+import os, re
+from difflib import SequenceMatcher
 from mysql.connector import errors as mysql_errors
 
 app = Flask(__name__)
@@ -2005,6 +2006,110 @@ def autocomplete_nomes():
             cur.close(); conn.close()
         except Exception:
             pass
+
+# =========================
+# Rotas para ligação entre as tabelas encontristas e encontreiros
+# =========================
+def _norm(s: str) -> str:
+    if s is None:
+        return ""
+    s = s.strip().lower()
+    s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+def _sim(a: str, b: str) -> float:
+    return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
+
+def _get_db():
+    return mysql.connector.connect(**DB_CONFIG)
+
+@app.route("/admin/match-fuzzy")
+def admin_match_fuzzy():
+    # Segurança via token
+    token = request.args.get("token", "")
+    if token != os.environ.get("ADMIN_TOKEN", ""):
+        return "Unauthorized", 401
+
+    AUTO_THRESHOLD = 0.92
+    SUGGEST_THRESHOLD = 0.80
+
+    conn = _get_db()
+    cur = conn.cursor(dictionary=True)
+
+    # Limpa pendências antigas (opcional)
+    cur.execute("DELETE FROM pendencias_encontreiros")
+    conn.commit()
+
+    # Base de comparação
+    cur.execute("SELECT id, nome_usual_ele, nome_usual_ela FROM encontristas")
+    base = cur.fetchall()
+
+    # Bucket simples por primeira letra p/ acelerar
+    from collections import defaultdict
+    bucket = defaultdict(list)
+    for r in base:
+        key = (_norm(r['nome_usual_ele'])[:1], _norm(r['nome_usual_ela'])[:1])
+        bucket[key].append(r)
+
+    # Registros sem vínculo
+    cur.execute("SELECT id, nome_ele, nome_ela FROM encontreiros WHERE casal IS NULL")
+    pend = cur.fetchall()
+
+    auto_count = 0
+    pend_count = 0
+
+    for row in pend:
+        e_id = row['id']
+        n_ele = row['nome_ele'] or ""
+        n_ela = row['nome_ela'] or ""
+
+        key = (_norm(n_ele)[:1], _norm(n_ela)[:1])
+        candidates = bucket.get(key, base)
+
+        scored = []
+        for c in candidates:
+            s_ele = _sim(n_ele, c['nome_usual_ele'])
+            s_ela = _sim(n_ela, c['nome_usual_ela'])
+            score = (s_ele + s_ela) / 2.0
+            scored.append((score, s_ele, s_ela, c['id'], c['nome_usual_ele'], c['nome_usual_ela']))
+
+        if not scored:
+            continue
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        best = scored[0]
+        best_score, best_ele, best_ela, best_id, best_nele, best_nela = best
+
+        if best_ele >= AUTO_THRESHOLD and best_ela >= AUTO_THRESHOLD:
+            try:
+                cur.execute("UPDATE encontreiros SET casal=%s WHERE id=%s", (best_id, e_id))
+                auto_count += 1
+            except mysql_errors.Error as err:
+                print(f"[fuzzy] erro ao atualizar encontreiros.id={e_id}: {err}")
+        else:
+            # guarda até 3 sugestões
+            suggestions = [s for s in scored if s[0] >= SUGGEST_THRESHOLD][:3]
+            for s in suggestions:
+                score, s_ele, s_ela, s_id, s_nele, s_nela = s
+                cur.execute("""
+                    INSERT INTO pendencias_encontreiros
+                      (encontreiros_id, nome_ele, nome_ela, candidato_id,
+                       candidato_nome_usual_ele, candidato_nome_usual_ela,
+                       score_ele, score_ela, score_medio)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (e_id, n_ele, n_ela, s_id, s_nele, s_nela,
+                      round(s_ele,4), round(s_ela,4), round(score,4)))
+            pend_count += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {
+        "preenchimentos_automaticos": auto_count,
+        "pendencias_com_sugestoes": pend_count
+    }, 200
+
 
 # =========================
 # Main
