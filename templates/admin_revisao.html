@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Revisão de Vínculos — ECC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --ink:#0f172a; --muted:#475569; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--ink);}
+    .wrap { max-width:1100px; margin:32px auto; padding:0 16px; }
+    .toolbar { display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+    .small { color:var(--muted); font-size:12px;}
+    .btn { background:var(--brand); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
+    .btn.secondary { background:#0f172a; }
+    .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--border); }
+    .grid { display:grid; grid-template-columns:1fr; gap:8px; }
+    .group { border:1px dashed var(--border); border-radius:12px; padding:12px; }
+    .cand { display:grid; grid-template-columns: 24px 1fr 140px 110px; gap:8px; align-items:center; padding:6px 8px; border-radius:10px;}
+    .cand:hover { background:#f8fafc; }
+    .cand strong { font-weight:600; }
+    .rowhead { font-weight:600; margin-bottom:4px; }
+    .foot { display:flex; justify-content:space-between; align-items:center; margin-top:12px;}
+    input[type="number"], select, input[type="text"] { padding:8px 10px; border:1px solid var(--border); border-radius:10px; }
+    .badge { padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border); background:#f8fafc;}
+    .muted { color:var(--muted); }
+    .hint { font-size:12px; color:var(--muted); }
+    .hl { background:#ecfeff; border-radius:6px; padding:2px 6px; }
+    .sep { height:1px; background:var(--border); margin:8px 0; }
+    .pag { display:flex; gap:8px; align-items:center; }
+    .sticky { position:sticky; top:0; background:linear-gradient(#fff, #fff8); padding:12px 0; z-index:2; }
+    @media (min-width:900px){
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    code { background:#f1f5f9; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h2>Revisão de Vínculos (pendências)</h2>
+    <div class="small">Token ok • Página {{page}} de {{total_pages}} • Grupos: {{total_groups}}</div>
+  </div>
+
+  <form class="toolbar sticky" method="get" action="{{ url_for('admin_revisao') }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <div>
+      <div class="small">Score mínimo</div>
+      <input type="number" step="0.01" min="0" max="1" name="min_score" value="{{min_score}}">
+    </div>
+    <div>
+      <div class="small">Por página</div>
+      <select name="per_page">
+        {% for k in [20,30,40,50,75,100] %}
+        <option value="{{k}}" {% if per_page==k %}selected{% endif %}>{{k}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <div class="small">Ir para página</div>
+      <input type="number" min="1" max="{{ total_pages }}" name="page" value="{{page}}">
+    </div>
+    <button class="btn" type="submit">Filtrar/Ir</button>
+    {% if ok_count is not none %}
+      <span class="badge">Confirmados: {{ ok_count }}</span>
+      {% if skipped_count is not none %}<span class="badge">Ignorados: {{ skipped_count }}</span>{% endif %}
+    {% endif %}
+    <div style="margin-left:auto; display:flex; gap:8px;">
+      <button class="btn ghost" type="button" id="selTop">Selecionar 1º de cada grupo</button>
+      <button class="btn ghost" type="button" id="selNone">Marcar “Nenhum”</button>
+    </div>
+  </form>
+
+  <form method="post" action="{{ url_for('admin_revisao_confirmar') }}?token={{ token }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="page" value="{{ page }}">
+    <input type="hidden" name="per_page" value="{{ per_page }}">
+    <input type="hidden" name="min_score" value="{{ min_score }}">
+
+    <div class="grid">
+      {% for g in groups %}
+      <div class="group">
+        <div class="rowhead">
+          <span class="badge">encontreiros_id: {{ g.encontreiros.id }}</span>
+          <span class="badge">melhor score: {{ "%.3f"|format(g.best_score) }}</span>
+        </div>
+        <div class="small muted">
+          <strong>Original:</strong>
+          Ele: <span class="hl">{{ g.encontreiros.nome_ele or "—" }}</span> •
+          Ela: <span class="hl">{{ g.encontreiros.nome_ela or "—" }}</span> •
+          Tel: <span class="hl">{{ g.encontreiros.telefones or "—" }}</span> •
+          End.: <span class="hl">{{ g.encontreiros.endereco or "—" }}</span>
+        </div>
+        <div class="sep"></div>
+        {% for c in g.candidatos %}
+        <label class="cand">
+          <input type="radio" name="sel_{{ g.encontreiros.id }}" value="{{ c.candidato_id }}" {% if loop.index==1 %}checked{% endif %}>
+          <div>
+            <div><strong>{{ c.candidato_nome_usual_ele }}</strong> &amp; <strong>{{ c.candidato_nome_usual_ela }}</strong></div>
+            <div class="hint">ele={{ "%.3f"|format(c.score_ele) }} • ela={{ "%.3f"|format(c.score_ela) }}</div>
+          </div>
+          <div class="badge">score {{ "%.3f"|format(c.score_medio) }}</div>
+          <div class="muted">id #{{ c.candidato_id }}</div>
+        </label>
+        {% endfor %}
+        <label class="cand">
+          <input type="radio" name="sel_{{ g.encontreiros.id }}" value="">
+          <div class="muted">Nenhum (manter sem vínculo)</div>
+          <div></div><div></div>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="foot">
+      <div class="pag">
+        {% if page>1 %}
+          <a class="btn secondary" href="{{ url_for('admin_revisao', token=token, page=page-1, per_page=per_page, min_score=min_score) }}">◀ Página anterior</a>
+        {% endif %}
+        {% if page<total_pages %}
+          <a class="btn secondary" href="{{ url_for('admin_revisao', token=token, page=page+1, per_page=per_page, min_score=min_score) }}">Próxima página ▶</a>
+        {% endif %}
+      </div>
+      <button class="btn" type="submit">Confirmar selecionados desta página</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const selTop = document.getElementById('selTop');
+  const selNone = document.getElementById('selNone');
+  selTop?.addEventListener('click', () => {
+    const groups = new Set();
+    document.querySelectorAll('input[type=radio]').forEach(r => {
+      const m = r.name.match(/^sel_(\d+)/);
+      if(!m) return;
+      const key = m[1];
+      if(groups.has(key)) return;
+      // seleciona o primeiro radio daquele grupo
+      const first = document.querySelector('input[name="sel_'+key+'"]');
+      if(first) first.checked = true;
+      groups.add(key);
+    });
+  });
+  selNone?.addEventListener('click', () => {
+    document.querySelectorAll('input[type=radio][value=""]').forEach(r => r.checked = true);
+  });
+</script>
+</body>
+</html>
