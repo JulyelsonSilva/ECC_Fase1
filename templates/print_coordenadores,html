@@ -1,0 +1,20 @@
+{% extends "_print_base.html" %}
+{% block content %}
+<h1>Coordenadores • {{ ano }}</h1>
+<p class="muted">Endereços e telefones puxados dos <em>encontristas</em>. Atualize lá para manter “mais recentes”.</p>
+<table>
+  <thead>
+    <tr><th>Equipe</th><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.equipe or '' }}</td>
+      <td><span class="badge coord">Coordenador</span> {{ r.ele or '' }} &amp; {{ r.ela or '' }}</td>
+      <td>{{ r.telefones or '' }}</td>
+      <td>{{ r.endereco or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
