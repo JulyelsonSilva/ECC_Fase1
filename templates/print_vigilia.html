@@ -1,0 +1,23 @@
+{% extends "_print_base.html" %}
+{% block content %}
+<h1>Vigília Voluntária • {{ ano }}</h1>
+<p class="muted">
+  Lista com {{ rows|length }} casal(is){% if seed %} • seed: <code>{{seed}}</code>{% endif %}.
+  <br>Critério padrão: exclui quem já está escalado em {{ano}}. Para uma lista específica, use <code>?ids=1,2,3</code>.
+</p>
+<table>
+  <thead>
+    <tr><th>#</th><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ r.nome_usual_ele or r.nome_ele or '' }} &amp; {{ r.nome_usual_ela or r.nome_ela or '' }}</td>
+      <td>{{ (r.telefone_ele or '') ~ (' / ' if r.telefone_ele and r.telefone_ela else '') ~ (r.telefone_ela or '') }}</td>
+      <td>{{ r.endereco or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
