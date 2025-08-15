@@ -1964,6 +1964,207 @@ def palestrantes():
                            por_ano=por_ano,
                            colunas=colunas)
 
+# ============================================
+# RELATÓRIOS (sem precisar de vínculos agora)
+# ============================================
+from flask import render_template, request, jsonify
+
+def _q(cur, sql, params=None):
+    cur.execute(sql, params or [])
+    return cur.fetchall()
+
+def _yes_coord():
+    # interpretações comuns para "sim coordenador"
+    return ("sim","s","coordenador","coordenadora","sim coordenador","sim - coordenador")
+
+@app.route("/relatorios")
+def relatorios():
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    anos = [r["ano"] for r in _q(cur, "SELECT DISTINCT ano FROM encontreiros WHERE ano IS NOT NULL ORDER BY ano")]
+    cur.close(); conn.close()
+    return render_template("relatorios.html", anos=anos)
+
+@app.get("/api/trabalhos_por_ano")
+def api_trabalhos_por_ano():
+    """Quantos casais distintos trabalharam em cada ano (dedup por par de nomes)."""
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    rows = _q(cur, """
+        SELECT ano,
+               COUNT(DISTINCT CONCAT(
+                   'NM#',
+                   LOWER(TRIM(COALESCE(nome_usual_ele, nome_ele))), '#',
+                   LOWER(TRIM(COALESCE(nome_usual_ela, nome_ela)))
+               )) AS qtd
+        FROM encontreiros
+        WHERE ano IS NOT NULL
+        GROUP BY ano
+        ORDER BY ano
+    """)
+    cur.close(); conn.close()
+    return jsonify(rows)
+
+@app.get("/api/ano_origem_dos_trabalhadores")
+def api_ano_origem_dos_trabalhadores():
+    """
+    Para um ano de TRABALHO (ex.: 2024), mostra de que ano de ENCONTRO eram os casais.
+    Faz join por nomes (sem usar encontrista_id).
+    'Não informado' quando não achar ano nos encontristas.
+    """
+    ano = request.args.get("ano", type=int)
+    if not ano:
+        return jsonify({"error":"ano requerido"}), 400
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    rows = _q(cur, """
+        SELECT
+          COALESCE(CAST(i.ano AS CHAR), 'Não informado') AS ano_encontro,
+          COUNT(DISTINCT CONCAT(
+            'NM#',
+            LOWER(TRIM(COALESCE(e.nome_usual_ele, e.nome_ele))), '#',
+            LOWER(TRIM(COALESCE(e.nome_usual_ela, e.nome_ela)))
+          )) AS qtd
+        FROM encontreiros e
+        LEFT JOIN encontristas i
+          ON LOWER(TRIM(COALESCE(e.nome_usual_ele, e.nome_ele))) = LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele)))
+         AND LOWER(TRIM(COALESCE(e.nome_usual_ela, e.nome_ela))) = LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela)))
+        WHERE e.ano = %s
+        GROUP BY ano_encontro
+        ORDER BY
+          CASE WHEN ano_encontro = 'Não informado' THEN 1 ELSE 0 END,
+          ano_encontro
+    """, [ano])
+    cur.close(); conn.close()
+    return jsonify({"ano_trabalho": ano, "dist": rows})
+
+# ============================================
+# PÁGINA DE DOCUMENTOS (parametrização)
+# ============================================
+@app.route("/docs")
+def docs_index():
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    anos = [r["ano"] for r in _q(cur, "SELECT DISTINCT ano FROM encontreiros WHERE ano IS NOT NULL ORDER BY ano")]
+    equipes = [r["equipe"] for r in _q(cur, "SELECT DISTINCT equipe FROM encontreiros WHERE equipe IS NOT NULL AND equipe<>'' ORDER BY equipe")]
+    cur.close(); conn.close()
+    return render_template("docs.html", anos=anos, equipes=equipes)
+
+# --------------------------------------------
+# 1) COORDENADORES (por ano) com endereço/telefone
+# --------------------------------------------
+@app.get("/imprimir/coordenadores")
+def imprimir_coordenadores():
+    ano = request.args.get("ano", type=int)
+    if not ano: return "Informe ?ano=YYYY", 400
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    rows = _q(cur, f"""
+        SELECT
+          e.equipe,
+          COALESCE(e.nome_usual_ele, e.nome_ele) AS ele,
+          COALESCE(e.nome_usual_ela, e.nome_ela) AS ela,
+          i.endereco,
+          CONCAT_WS(' / ', i.telefone_ele, i.telefone_ela) AS telefones
+        FROM encontreiros e
+        LEFT JOIN encontristas i
+          ON LOWER(TRIM(COALESCE(e.nome_usual_ele, e.nome_ele))) = LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele)))
+         AND LOWER(TRIM(COALESCE(e.nome_usual_ela, e.nome_ela))) = LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela)))
+        WHERE e.ano = %s
+          AND LOWER(TRIM(COALESCE(e.coordenador,''))) IN ({",".join(["%s"]*len(_yes_coord()))})
+        ORDER BY e.equipe, ele, ela
+    """, [ano, *_yes_coord()])
+    cur.close(); conn.close()
+
+    return render_template("print_coordenadores.html", ano=ano, rows=rows)
+
+# --------------------------------------------
+# 2) INTEGRANTES por equipe (ano)
+#     - se ?equipe=... imprime só aquela
+#     - senão, imprime todas agrupadas
+# --------------------------------------------
+@app.get("/imprimir/equipes")
+def imprimir_equipes():
+    ano = request.args.get("ano", type=int)
+    equipe = request.args.get("equipe")  # opcional
+    if not ano: return "Informe ?ano=YYYY", 400
+
+    params = [ano]
+    where_equipe = ""
+    if equipe:
+        where_equipe = " AND e.equipe = %s "
+        params.append(equipe)
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    rows = _q(cur, f"""
+        SELECT
+          e.equipe,
+          COALESCE(e.nome_usual_ele, e.nome_ele) AS ele,
+          COALESCE(e.nome_usual_ela, e.nome_ela) AS ela,
+          LOWER(TRIM(COALESCE(e.coordenador,''))) IN ({",".join(["%s"]*len(_yes_coord()))}) AS is_coord,
+          i.endereco,
+          CONCAT_WS(' / ', i.telefone_ele, i.telefone_ela) AS telefones
+        FROM encontreiros e
+        LEFT JOIN encontristas i
+          ON LOWER(TRIM(COALESCE(e.nome_usual_ele, e.nome_ele))) = LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele)))
+         AND LOWER(TRIM(COALESCE(e.nome_usual_ela, e.nome_ela))) = LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela)))
+        WHERE e.ano = %s
+        {where}
+        ORDER BY e.equipe, is_coord DESC, ele, ela
+    """.format(where=where_equipe), params + list(_yes_coord()))
+    cur.close(); conn.close()
+
+    # Agrupa por equipe no template
+    return render_template("print_equipes.html", ano=ano, equipe=equipe, rows=rows)
+
+# --------------------------------------------
+# 3) VIGÍLIA VOLUNTÁRIA (N casais)
+#     - modo A: ?ids=1,2,3   -> imprime exatamente esses encontristas.id
+#     - modo B: automático   -> escolhe N casais aleatórios (determinístico com seed)
+#       filtros padrão: excluir quem já está em alguma equipe no ano alvo
+# --------------------------------------------
+@app.get("/imprimir/vigilia")
+def imprimir_vigilia():
+    ano = request.args.get("ano", type=int)
+    qtd = request.args.get("qtd", default=56, type=int)
+    ids = request.args.get("ids")  # "1,2,3"
+    seed = request.args.get("seed", default="vigilia")  # p/ ordem determinística
+    if not ano: return "Informe ?ano=YYYY", 400
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+
+    if ids:
+        lista_ids = [int(x) for x in ids.split(",") if x.strip().isdigit()]
+        if not lista_ids:
+            return "Parâmetro ids inválido.", 400
+        placeholders = ",".join(["%s"]*len(lista_ids))
+        rows = _q(cur, f"""
+            SELECT id, nome_ele, nome_ela, nome_usual_ele, nome_usual_ela,
+                   endereco, telefone_ele, telefone_ela
+            FROM encontristas
+            WHERE id IN ({placeholders})
+            ORDER BY FIELD(id, {placeholders})
+        """, lista_ids + lista_ids)
+    else:
+        # Exclui quem já está escalado em alguma equipe no ano alvo
+        rows = _q(cur, f"""
+            SELECT i.id, i.nome_ele, i.nome_ela, i.nome_usual_ele, i.nome_usual_ela,
+                   i.endereco, i.telefone_ele, i.telefone_ela
+            FROM encontristas i
+            LEFT JOIN (
+              SELECT DISTINCT
+                LOWER(TRIM(COALESCE(nome_usual_ele, nome_ele))) AS nme,
+                LOWER(TRIM(COALESCE(nome_usual_ela, nome_ela))) AS nma
+              FROM encontreiros
+              WHERE ano = %s
+            ) e
+              ON LOWER(TRIM(COALESCE(i.nome_usual_ele, i.nome_ele))) = e.nme
+             AND LOWER(TRIM(COALESCE(i.nome_usual_ela, i.nome_ela))) = e.nma
+            WHERE e.nme IS NULL
+            ORDER BY MD5(CONCAT_WS('#', i.id, %s))
+            LIMIT %s
+        """, [ano, seed, qtd])
+
+    cur.close(); conn.close()
+    return render_template("print_vigilia.html", ano=ano, qtd=qtd, seed=seed, rows=rows)
+
 # =========================
 # Autocomplete simples (se você já tem outro, pode manter o seu)
 # =========================
