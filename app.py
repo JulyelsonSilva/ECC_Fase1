@@ -2171,6 +2171,157 @@ def admin_match_fuzzy():
         "restantes_no_total": faltando
     }, 200
 
+@app.route("/admin/revisao")
+def admin_revisao():
+    if not _admin_ok():
+        return "Unauthorized", 401
+
+    # parâmetros
+    try:
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "50"))
+        min_score = float(request.args.get("min_score", "0.85"))
+    except ValueError:
+        page, per_page, min_score = 1, 50, 0.85
+    page = max(1, page)
+    per_page = max(10, min(per_page, 100))
+    offset = (page - 1) * per_page
+    token = request.args.get("token")
+
+    conn = _get_db()
+    cur = conn.cursor(dictionary=True)
+
+    # total de grupos (encontreiros com pendências) acima do min_score
+    cur.execute("""
+        SELECT COUNT(*) AS total_groups FROM (
+          SELECT p.encontreiros_id
+          FROM pendencias_encontreiros p
+          JOIN encontreiros e ON e.id = p.encontreiros_id
+          WHERE e.casal IS NULL AND p.score_medio >= %s
+          GROUP BY p.encontreiros_id
+        ) t
+    """, (min_score,))
+    total_groups = cur.fetchone()["total_groups"]
+    total_pages = max(1, (total_groups + per_page - 1) // per_page)
+
+    # ids desta página, ordenados pelo melhor score desc
+    cur.execute("""
+        SELECT p.encontreiros_id, MAX(p.score_medio) AS best_score
+        FROM pendencias_encontreiros p
+        JOIN encontreiros e ON e.id = p.encontreiros_id
+        WHERE e.casal IS NULL AND p.score_medio >= %s
+        GROUP BY p.encontreiros_id
+        ORDER BY best_score DESC, p.encontreiros_id ASC
+        LIMIT %s OFFSET %s
+    """, (min_score, per_page, offset))
+    rows = cur.fetchall()
+    ids = [r["encontreiros_id"] for r in rows]
+    id2best = {r["encontreiros_id"]: r["best_score"] for r in rows}
+
+    groups = []
+    if ids:
+        placeholders = ",".join(["%s"] * len(ids))
+        # base (origem)
+        cur.execute(f"""
+            SELECT id, nome_ele, nome_ela, telefones, endereco
+            FROM encontreiros
+            WHERE id IN ({placeholders})
+        """, ids)
+        base = {r["id"]: r for r in cur.fetchall()}
+
+        # candidatos desta página
+        cur.execute(f"""
+            SELECT *
+            FROM pendencias_encontreiros
+            WHERE encontreiros_id IN ({placeholders})
+            ORDER BY encontreiros_id ASC, score_medio DESC, id ASC
+        """, ids)
+        cand = cur.fetchall()
+
+        # agrupa
+        from collections import defaultdict
+        bucket = defaultdict(list)
+        for c in cand:
+            bucket[c["encontreiros_id"]].append(c)
+
+        for eid in ids:
+            groups.append({
+                "best_score": id2best.get(eid, 0),
+                "encontreiros": base.get(eid),
+                "candidatos": bucket.get(eid, [])
+            })
+
+    cur.close(); conn.close()
+
+    # feedback pós-POST (querystring)
+    ok_count = request.args.get("ok", None)
+    skipped_count = request.args.get("skipped", None)
+    ok_count = int(ok_count) if ok_count is not None and ok_count.isdigit() else None
+    skipped_count = int(skipped_count) if skipped_count is not None and skipped_count.isdigit() else None
+
+    return render_template(
+        "admin_revisao.html",
+        token=token,
+        page=page, per_page=per_page, min_score=min_score,
+        total_groups=total_groups, total_pages=total_pages,
+        groups=groups, ok_count=ok_count, skipped_count=skipped_count
+    )
+@app.route("/admin/revisao/confirmar", methods=["POST"])
+def admin_revisao_confirmar():
+    if not _admin_ok():
+        return "Unauthorized", 401
+
+    token = request.form.get("token", "")
+    page = request.form.get("page", "1")
+    per_page = request.form.get("per_page", "50")
+    min_score = request.form.get("min_score", "0.85")
+
+    conn = _get_db()
+    cur = conn.cursor()
+    ok_count = 0
+    skipped = 0
+
+    # Cada grupo vem como sel_<encontreiros_id> = <candidato_id ou vazio>
+    for key, val in request.form.items():
+        if not key.startswith("sel_"):
+            continue
+        try:
+            eid = int(key.split("_", 1)[1])
+        except:
+            continue
+
+        if not val:  # “Nenhum”
+            skipped += 1
+            continue
+
+        try:
+            cid = int(val)
+        except:
+            skipped += 1
+            continue
+
+        # Confirma: seta casal e limpa pendências daquele id
+        try:
+            cur.execute("UPDATE encontreiros SET casal=%s WHERE id=%s AND casal IS NULL", (cid, eid))
+            if cur.rowcount > 0:
+                cur.execute("DELETE FROM pendencias_encontreiros WHERE encontreiros_id=%s", (eid,))
+                ok_count += 1
+            else:
+                # já estava preenchido por outro fluxo
+                skipped += 1
+        except Exception as err:
+            print(f"[revisao] falha ao confirmar (eid={eid}, cid={cid}): {err}")
+            skipped += 1
+
+    conn.commit()
+    cur.close(); conn.close()
+
+    # redireciona de volta para a mesma página, com contagem
+    return redirect(url_for(
+        "admin_revisao",
+        token=token, page=page, per_page=per_page, min_score=min_score,
+        ok=ok_count, skipped=skipped
+    ))
 
 
 # =========================
