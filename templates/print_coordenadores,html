@@ -1,6 +1,8 @@
 {% extends "_print_base.html" %}
 {% block content %}
-<h1>Coordenadores • {{ ano }}</h1>
+{% set _title = "Coordenadores • " ~ ano %}
+{% set title = _title %}
+<h2>Coordenadores • {{ ano }}</h2>
 <p class="muted">Endereços e telefones puxados dos <em>encontristas</em>. Atualize lá para manter “mais recentes”.</p>
 <table>
   <thead>
@@ -10,7 +12,7 @@
     {% for r in rows %}
     <tr>
       <td>{{ r.equipe or '' }}</td>
-      <td><span class="badge coord">Coordenador</span> {{ r.ele or '' }} &amp; {{ r.ela or '' }}</td>
+      <td><span class="badge">Coordenador</span> {{ r.ele or '' }} &amp; {{ r.ela or '' }}</td>
       <td>{{ r.telefones or '' }}</td>
       <td>{{ r.endereco or '' }}</td>
     </tr>
