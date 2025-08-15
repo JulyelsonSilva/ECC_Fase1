@@ -5,74 +5,139 @@
   <title>Documentos de Impressão • ECC</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b; --border:#e5e7eb; --brand:#2563eb; }
-    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
-    .container { max-width:900px; margin:24px auto; padding:0 16px; }
-    h1 { font-size:20px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; }
-    label { display:block; font-size:14px; color:var(--muted); margin-bottom:4px; }
-    select, input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .btn { display:inline-block; margin-top:12px; text-decoration:none; background:var(--brand); color:#fff; padding:8px 12px; border-radius:8px; }
+    :root{
+      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
+      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
+        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+        var(--bg);
+    }
+    .wrap{max-width:900px; margin:0 auto; padding:24px 16px 64px;}
+    header{
+      display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap; padding:12px 0 8px;
+    }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{
+      width:54px; height:54px; border-radius:50%; display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color:white; font-size:28px; box-shadow: 0 8px 24px rgba(37,99,235,.25);
+    }
+    .titles h1{ margin:0; font-size:22px; letter-spacing:.2px; }
+    .titles p{ margin:2px 0 0; color:var(--muted); font-size:13px; }
+    .stamp{
+      display:flex; align-items:center; gap:10px; color:#334155; font-size:13px;
+      background: var(--brand-50); border:1px solid #dbeafe; padding:8px 12px; border-radius:999px;
+    }
+    .stamp .dot{
+      width:10px; height:10px; border-radius:999px; background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(245,158,11,.15);
+    }
+
+    .grid{ display:grid; grid-template-columns:1fr; gap:14px; margin-top:18px; }
+    .card{
+      background: var(--card); border:1px solid var(--border); border-radius:14px; padding:16px;
+      box-shadow: 0 8px 20px rgba(15,23,42,.04);
+    }
+    .card h2{ margin:0 0 8px; font-size:18px; }
+    label{ display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+    select, input{
+      width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff;
+    }
+    .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .btn{ display:inline-block; margin-top:12px; text-decoration:none; background:var(--brand); color:#fff; padding:8px 12px; border-radius:8px; border:1px solid var(--brand-600); }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
+        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
+      }
+      .logo, .card{ box-shadow:none; }
+      body{
+        background:
+          radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
+          var(--bg);
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Documentos de Impressão</h1>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🕊️</div>
+        <div class="titles">
+          <h1>Documentos de Impressão</h1>
+          <p>Paróquia Divino Espírito Santo — Jatiúca • Arquidiocese de Maceió</p>
+        </div>
+      </div>
+      <div class="stamp" title="Serviço Pastoral">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Serviço à comunidade</span>
+      </div>
+    </header>
 
-    <div class="card">
-      <h2>1) Coordenadores por ano</h2>
-      <div class="grid">
-        <div>
-          <label>Ano</label>
-          <select id="ano1">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+    <main class="grid">
+      <section class="card">
+        <h2>1) Coordenadores por ano</h2>
+        <div class="grid-2">
+          <div>
+            <label>Ano</label>
+            <select id="ano1">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+          </div>
         </div>
-      </div>
-      <a class="btn" target="_blank" id="btn1">Abrir</a>
-    </div>
+        <a class="btn" target="_blank" id="btn1">Abrir</a>
+      </section>
 
-    <div class="card">
-      <h2>2) Integrantes por equipe</h2>
-      <div class="grid">
-        <div>
-          <label>Ano</label>
-          <select id="ano2">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+      <section class="card">
+        <h2>2) Integrantes por equipe</h2>
+        <div class="grid-2">
+          <div>
+            <label>Ano</label>
+            <select id="ano2">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+          </div>
+          <div>
+            <label>Equipe (opcional)</label>
+            <select id="equipe2">
+              <option value="">Todas</option>
+              {% for e in equipes %}<option value="{{e}}">{{e}}</option>{% endfor %}
+            </select>
+          </div>
         </div>
-        <div>
-          <label>Equipe (opcional)</label>
-          <select id="equipe2">
-            <option value="">Todas</option>
-            {% for e in equipes %}<option value="{{e}}">{{e}}</option>{% endfor %}
-          </select>
-        </div>
-      </div>
-      <a class="btn" target="_blank" id="btn2">Abrir</a>
-    </div>
+        <a class="btn" target="_blank" id="btn2">Abrir</a>
+      </section>
 
-    <div class="card">
-      <h2>3) Vigília voluntária</h2>
-      <div class="grid">
-        <div>
-          <label>Ano (excluir quem já está escalado)</label>
-          <select id="ano3">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+      <section class="card">
+        <h2>3) Vigília voluntária</h2>
+        <div class="grid-2">
+          <div>
+            <label>Ano (excluir quem já está escalado)</label>
+            <select id="ano3">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+          </div>
+          <div>
+            <label>Quantidade</label>
+            <input id="qtd3" type="number" min="1" max="200" value="56"/>
+          </div>
         </div>
-        <div>
-          <label>Quantidade</label>
-          <input id="qtd3" type="number" min="1" max="200" value="56"/>
+        <div class="grid-2">
+          <div>
+            <label>Seed (opcional, para repetir a mesma lista)</label>
+            <input id="seed3" placeholder="vigilia"/>
+          </div>
+          <div>
+            <label>IDs específicos (opcional, separados por vírgula)</label>
+            <input id="ids3" placeholder="1,2,3"/>
+          </div>
         </div>
-      </div>
-      <div class="grid">
-        <div>
-          <label>Seed (opcional, para repetir a mesma lista)</label>
-          <input id="seed3" placeholder="vigilia"/>
-        </div>
-        <div>
-          <label>IDs específicos (opcional, separados por vírgula)</label>
-          <input id="ids3" placeholder="1,2,3"/>
-        </div>
-      </div>
-      <a class="btn" target="_blank" id="btn3">Abrir</a>
-    </div>
+        <a class="btn" target="_blank" id="btn3">Abrir</a>
+      </section>
+    </main>
   </div>
 
 <script>
@@ -82,15 +147,15 @@ const b2 = document.getElementById("btn2");
 const b3 = document.getElementById("btn3");
 
 function upd(){
-  link(b1, `/imprimir/coordenadores?ano=${document.getElementById("ano1").value}`);
+  link(b1, `{{ url_for('imprimir_coordenadores') }}?ano=${document.getElementById("ano1").value}`);
   const ano2 = document.getElementById("ano2").value;
   const eq2  = document.getElementById("equipe2").value;
-  link(b2, `/imprimir/equipes?ano=${ano2}${eq2 ? `&equipe=${encodeURIComponent(eq2)}` : ""}`);
+  link(b2, `{{ url_for('imprimir_equipes') }}?ano=${ano2}${eq2 ? `&equipe=${encodeURIComponent(eq2)}` : ""}`);
   const ano3 = document.getElementById("ano3").value;
   const qtd3 = document.getElementById("qtd3").value || 56;
   const seed3= document.getElementById("seed3").value || "vigilia";
   const ids3 = document.getElementById("ids3").value.trim();
-  link(b3, `/imprimir/vigilia?ano=${ano3}&qtd=${qtd3}${seed3?`&seed=${encodeURIComponent(seed3)}`:""}${ids3?`&ids=${encodeURIComponent(ids3)}`:""}`);
+  link(b3, `{{ url_for('imprimir_vigilia') }}?ano=${ano3}&qtd=${qtd3}${seed3?`&seed=${encodeURIComponent(seed3)}`:""}${ids3?`&ids=${encodeURIComponent(ids3)}`:""}`);
 }
 document.querySelectorAll("select,input").forEach(x => x.addEventListener("input", upd));
 upd();
