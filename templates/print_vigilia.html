@@ -1,9 +1,11 @@
 {% extends "_print_base.html" %}
 {% block content %}
-<h1>Vigília Voluntária • {{ ano }}</h1>
+{% set _title = "Vigília Voluntária • " ~ ano %}
+{% set title = _title %}
+<h2>Vigília Voluntária • {{ ano }}</h2>
 <p class="muted">
   Lista com {{ rows|length }} casal(is){% if seed %} • seed: <code>{{seed}}</code>{% endif %}.
-  <br>Critério padrão: exclui quem já está escalado em {{ano}}. Para uma lista específica, use <code>?ids=1,2,3</code>.
+  <br>Critério padrão: exclui quem já está escalado em {{ano}}. Para lista específica, use <code>?ids=1,2,3</code>.
 </p>
 <table>
   <thead>
