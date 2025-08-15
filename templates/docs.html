@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Documentos de Impressão • ECC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b; --border:#e5e7eb; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+    .container { max-width:900px; margin:24px auto; padding:0 16px; }
+    h1 { font-size:20px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; }
+    label { display:block; font-size:14px; color:var(--muted); margin-bottom:4px; }
+    select, input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .btn { display:inline-block; margin-top:12px; text-decoration:none; background:var(--brand); color:#fff; padding:8px 12px; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Documentos de Impressão</h1>
+
+    <div class="card">
+      <h2>1) Coordenadores por ano</h2>
+      <div class="grid">
+        <div>
+          <label>Ano</label>
+          <select id="ano1">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+        </div>
+      </div>
+      <a class="btn" target="_blank" id="btn1">Abrir</a>
+    </div>
+
+    <div class="card">
+      <h2>2) Integrantes por equipe</h2>
+      <div class="grid">
+        <div>
+          <label>Ano</label>
+          <select id="ano2">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Equipe (opcional)</label>
+          <select id="equipe2">
+            <option value="">Todas</option>
+            {% for e in equipes %}<option value="{{e}}">{{e}}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <a class="btn" target="_blank" id="btn2">Abrir</a>
+    </div>
+
+    <div class="card">
+      <h2>3) Vigília voluntária</h2>
+      <div class="grid">
+        <div>
+          <label>Ano (excluir quem já está escalado)</label>
+          <select id="ano3">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+        </div>
+        <div>
+          <label>Quantidade</label>
+          <input id="qtd3" type="number" min="1" max="200" value="56"/>
+        </div>
+      </div>
+      <div class="grid">
+        <div>
+          <label>Seed (opcional, para repetir a mesma lista)</label>
+          <input id="seed3" placeholder="vigilia"/>
+        </div>
+        <div>
+          <label>IDs específicos (opcional, separados por vírgula)</label>
+          <input id="ids3" placeholder="1,2,3"/>
+        </div>
+      </div>
+      <a class="btn" target="_blank" id="btn3">Abrir</a>
+    </div>
+  </div>
+
+<script>
+function link(el, href){ el.setAttribute("href", href); }
+const b1 = document.getElementById("btn1");
+const b2 = document.getElementById("btn2");
+const b3 = document.getElementById("btn3");
+
+function upd(){
+  link(b1, `/imprimir/coordenadores?ano=${document.getElementById("ano1").value}`);
+  const ano2 = document.getElementById("ano2").value;
+  const eq2  = document.getElementById("equipe2").value;
+  link(b2, `/imprimir/equipes?ano=${ano2}${eq2 ? `&equipe=${encodeURIComponent(eq2)}` : ""}`);
+  const ano3 = document.getElementById("ano3").value;
+  const qtd3 = document.getElementById("qtd3").value || 56;
+  const seed3= document.getElementById("seed3").value || "vigilia";
+  const ids3 = document.getElementById("ids3").value.trim();
+  link(b3, `/imprimir/vigilia?ano=${ano3}&qtd=${qtd3}${seed3?`&seed=${encodeURIComponent(seed3)}`:""}${ids3?`&ids=${encodeURIComponent(ids3)}`:""}`);
+}
+document.querySelectorAll("select,input").forEach(x => x.addEventListener("input", upd));
+upd();
+</script>
+</body>
+</html>
