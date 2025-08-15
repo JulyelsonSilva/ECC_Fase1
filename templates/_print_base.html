@@ -5,26 +5,48 @@
   <title>{{ title or "Impressão" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    @page { size: A4; margin: 14mm; }
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size: 12pt; color:#111; }
-    h1 { font-size: 18pt; margin: 0 0 8pt 0; }
-    h2 { font-size: 14pt; margin: 14pt 0 6pt 0; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { border: 1px solid #999; padding: 6px 8px; font-size: 11pt; }
-    th { background:#f2f2f2; text-align:left; }
-    .muted { color:#666; font-size:10pt; }
-    .badge { display:inline-block; font-size:10pt; padding:2px 6px; border:1px solid #aaa; border-radius:6px; }
-    .coord { background:#fff7cc; border-color:#e0c200; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
-    @media print {
-      .no-print { display:none; }
+    :root{
+      --ink:#0f172a; --muted:#64748b; --brand:#2563eb; --brand-600:#1e40af;
+      --border:#b9c1d0; --bg:#ffffff;
     }
+    @page { size: A4; margin: 14mm; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size: 12pt; color:var(--ink); background:#fff; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12pt; margin-bottom:10pt; }
+    .brand{ display:flex; align-items:center; gap:10pt; }
+    .logo{
+      width:36pt; height:36pt; border-radius:50%; display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--brand), var(--brand-600)); color:#fff; font-size:18pt;
+    }
+    .titles h1{ margin:0; font-size:16pt; }
+    .titles p{ margin:2pt 0 0; color:var(--muted); font-size:9.5pt; }
+    .muted { color:#475569; font-size:10.5pt; }
+    h2 { font-size: 13.5pt; margin: 12pt 0 6pt 0; }
+
+    table { width:100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--border); padding: 6px 8px; font-size: 11pt; }
+    th { background:#f2f6ff; text-align:left; }
+    .badge { display:inline-block; font-size:10pt; padding:2px 6px; border:1px solid #b3a100; border-radius:6px; background:#fff7cc; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+
+    .toolbar { margin-bottom:8pt; }
+    .toolbar button{
+      background:var(--brand); color:#fff; border:1px solid var(--brand-600); border-radius:8px; padding:6px 10px;
+    }
+    @media print { .toolbar { display:none; } }
   </style>
 </head>
 <body>
-  <div class="no-print" style="margin-bottom:8pt;">
-    <button onclick="window.print()">🖨️ Imprimir</button>
-  </div>
+  <div class="toolbar"><button onclick="window.print()">🖨️ Imprimir</button></div>
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🕊️</div>
+      <div class="titles">
+        <h1>{{ title or "Impressão" }}</h1>
+        <p>Paróquia Divino Espírito Santo — Jatiúca • Arquidiocese de Maceió</p>
+      </div>
+    </div>
+  </header>
+
   {% block content %}{% endblock %}
 </body>
 </html>
