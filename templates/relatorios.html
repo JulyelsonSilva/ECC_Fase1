@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Relatórios • ECC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b; --border:#e5e7eb; --brand:#2563eb; }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:16px 20px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:10;}
+    h1 { font-size:18px; margin:0; }
+    .container { max-width:1200px; margin:24px auto; padding:0 16px; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    canvas { background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px; }
+    .controls { margin-left:auto; display:flex; align-items:center; gap:8px; }
+    .btn { text-decoration:none; background:var(--brand); color:#fff; padding:8px 12px; border-radius:8px; }
+    select { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    @media (max-width: 900px){ .grid-2{ grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="btn" href="/docs" target="_blank">🖨️ Documentos de impressão</a>
+    <h1>Relatórios</h1>
+    <div class="controls">
+      <label for="anoSel">Ano de trabalho:</label>
+      <select id="anoSel">
+        {% for a in anos %}
+          <option value="{{a}}">{{a}}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="grid-2">
+      <canvas id="barTrabalhos"></canvas>
+      <canvas id="distAnoEncontro"></canvas>
+    </div>
+  </div>
+
+<script>
+let chBar, chDist;
+
+function destroyIf(c){ if(c) c.destroy(); }
+
+async function carregaTrabalhosPorAno(){
+  const r = await fetch("/api/trabalhos_por_ano");
+  const data = await r.json();
+  const labels = data.map(d => d.ano);
+  const valores = data.map(d => d.qtd);
+  destroyIf(chBar);
+  chBar = new Chart(document.getElementById("barTrabalhos"), {
+    type: "bar",
+    data: { labels, datasets: [{ label: "Casais que trabalharam por ano", data: valores }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+}
+
+async function carregaDistribuicaoAnoEncontro(ano){
+  const r = await fetch(`/api/ano_origem_dos_trabalhadores?ano=${ano}`);
+  const data = await r.json();
+  const labels = data.dist.map(d => d.ano_encontro);
+  const valores = data.dist.map(d => d.qtd);
+  destroyIf(chDist);
+  chDist = new Chart(document.getElementById("distAnoEncontro"), {
+    type: "doughnut",
+    data: { labels, datasets: [{ label: `Ano de encontro de quem trabalhou em ${ano}`, data: valores }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+}
+
+document.getElementById("anoSel").addEventListener("change", e => carregaDistribuicaoAnoEncontro(e.target.value));
+window.addEventListener("DOMContentLoaded", async () => {
+  await carregaTrabalhosPorAno();
+  const anoIni = document.getElementById("anoSel").value;
+  await carregaDistribuicaoAnoEncontro(anoIni);
+});
+</script>
+</body>
+</html>
