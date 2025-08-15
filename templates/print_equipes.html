@@ -1,13 +1,15 @@
 {% extends "_print_base.html" %}
 {% block content %}
-<h1>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h1>
+{% set _title = "Equipes • " ~ ano ~ (equipe and (" • " ~ equipe) or "") %}
+{% set title = _title %}
+<h2>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h2>
 <p class="muted">Coordenadores destacados.</p>
 
 {% set atual = None %}
 {% for r in rows %}
   {% if not equipe and (atual != r.equipe) %}
-    {% if not loop.first %}</table>{% endif %}
-    <h2>{{ r.equipe or '—' }}</h2>
+    {% if not loop.first %}</tbody></table>{% endif %}
+    <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ r.equipe or '—' }}</h3>
     <table>
       <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
       <tbody>
@@ -15,7 +17,7 @@
   {% endif %}
   <tr>
     <td>
-      {% if r.is_coord %}<span class="badge coord">Coordenador</span> {% endif %}
+      {% if r.is_coord %}<span class="badge">Coordenador</span> {% endif %}
       {{ r.ele or '' }} &amp; {{ r.ela or '' }}
     </td>
     <td>{{ r.telefones or '' }}</td>
@@ -25,6 +27,6 @@
 {% endfor %}
 
 {% if equipe and not rows|length %}
-<p>Nenhum integrante encontrado para {{equipe}} em {{ano}}.</p>
+<p class="muted">Nenhum integrante encontrado para {{equipe}} em {{ano}}.</p>
 {% endif %}
 {% endblock %}
