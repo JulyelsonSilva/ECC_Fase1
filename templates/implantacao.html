@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Implantação / Outra Paróquia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46;}
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size: 22px; }
+    .muted { color:var(--muted); }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .btn.warn { border-color:#f59e0b; }
+    .btn.danger { border-color: var(--danger); color: var(--danger); }
+    .btn[disabled] { opacity:.6; cursor:not-allowed; }
+    .layout { display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .slot { background:var(--card); border:1px dashed var(--border); border-radius:12px; padding:12px; }
+    .slot + .slot { margin-top:10px; }
+    label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input, select, textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .status { margin-top:8px; font-size:13px; }
+    .ok { color:var(--ok); }
+    .warn-t { color:var(--warn); }
+    .err { color:var(--danger); }
+    .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; }
+    .side-title { margin:0 0 8px; font-size:16px; }
+    .suggest { display:block; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; text-decoration:none; color:inherit; margin-bottom:8px; }
+    .suggest:hover { background:#f1f5f9; }
+    .small { font-size:12px; color:#475569; }
+    .kpis { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>Implantação / Outra Paróquia</h1>
+        <div class="muted">Montagem simplificada (sem Dirigentes / CG)</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('implantacao_painel') }}">← Implantação</a>
+        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+      </div>
+    </div>
+
+    <div class="card" id="ano-card">
+      <label for="ano">Ano</label>
+      <div class="row">
+        <input id="ano" type="number" inputmode="numeric" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}">
+        <button class="btn primary" id="btn-continuar">Continuar</button>
+      </div>
+      <div class="status" id="ano-msg"></div>
+    </div>
+
+    <div class="kpis" id="kpis" style="display:none; margin-top:8px;">
+      {% for key, info in team_map.items() %}
+        <span class="pill" id="kpi_{{ info.filtro|replace(' ', '_') }}">
+          {{ info.filtro }}: <b>0</b>/<span class="small">{{ (team_limits.get(info.filtro, {}).max or 8) }}</span>
+        </span>
+      {% endfor %}
+    </div>
+
+    <div class="layout" style="margin-top:12px;">
+      <!-- Esquerda: slots -->
+      <div class="card">
+        <h3 style="margin:0 0 12px;">Lançamentos</h3>
+        <p class="small muted" style="margin-top:0;">Cada caixa permite escolher a <b>Equipe</b>, definir se é <b>Coordenador</b>, buscar dados e adicionar.</p>
+        <div id="slots"></div>
+      </div>
+
+      <!-- Direita: sugestões do ano anterior -->
+      <div class="card">
+        <h3 class="side-title">Encontristas do ano {{ (ano_preselecionado or 0) - 1 }}</h3>
+        <p class="small muted" style="margin-top:0;">Clique em um casal para preencher a próxima caixa vazia. Após inserir com sucesso, ele some desta lista.</p>
+        <div id="sugestoes">
+          {% for s in sugestoes_prev_ano %}
+            {% set label = (s.nome_ele ~ ' e ' ~ s.nome_ela).strip() %}
+            <a href="#" class="suggest" data-ele="{{ s.nome_ele }}" data-ela="{{ s.nome_ela }}">
+              {{ label }}
+            </a>
+          {% else %}
+            <p class="small muted">Sem registros para o ano anterior.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ----- Dados do servidor -----
+    const ANO_PRE = {{ ano_preselecionado | tojson }};
+    const TEAM_CHOICES = {{ team_choices | tojson }};
+    const TEAM_LIMITS = {{ team_limits | tojson }};
+    const SLOTS_MAX = 12;
+
+    const slotsWrap = document.getElementById('slots');
+    const kpis = document.getElementById('kpis');
+
+    const anoInput = document.getElementById('ano');
+    const btnContinuar = document.getElementById('btn-continuar');
+    const anoMsg = document.getElementById('ano-msg');
+
+    // ----- Utils -----
+    function h(tag, attrs={}, html='') {
+      const el = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs||{})) {
+        if (k === 'class') el.className = v;
+        else if (k.startsWith('data-')) el.setAttribute(k, v);
+        else if (k === 'disabled' && v) el.setAttribute('disabled', 'disabled');
+        else el.setAttribute(k, v);
+      }
+      if (html !== undefined && html !== null) el.innerHTML = html;
+      return el;
+    }
+    async function postJSON(url, body) {
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
+      return await r.json();
+    }
+    async function getJSON(url) {
+      const r = await fetch(url);
+      return await r.json();
+    }
+    function firstEmptySlot() {
+      for (let i=0; i<SLOTS_MAX; i++) {
+        const s = document.getElementById(`slot_${i}`);
+        if (s && s.dataset.locked !== '1') return i;
+      }
+      return -1;
+    }
+    function updateTeamKPIs(counts) {
+      Object.entries(counts || {}).forEach(([filtro, n])=>{
+        const id = 'kpi_'+filtro.replaceAll(' ','_');
+        const el = document.getElementById(id);
+        if (el) {
+          const max = (TEAM_LIMITS[filtro] && TEAM_LIMITS[filtro].max) || 8;
+          el.querySelector('b').textContent = String(n);
+          el.querySelector('.small').textContent = String(max);
+        }
+      });
+    }
+    async function refreshCounts(ano) {
+      try {
+        const j = await getJSON(`/api/implantacao/equipe-counts?ano=${encodeURIComponent(ano)}`);
+        if (j && j.ok) updateTeamKPIs(j.counts || {});
+      } catch(_) {}
+    }
+
+    function fillSlot(i, data) {
+      ['ele','ela','tel','end'].forEach(k=>{
+        const id = {ele:`ele_${i}`, ela:`ela_${i}`, tel:`tel_${i}`, end:`end_${i}`}[k];
+        const val = {ele:data.nome_ele||'', ela:data.nome_ela||'', tel:data.telefones||'', end:data.endereco||''}[k];
+        const el = document.getElementById(id); if (el) el.value = val;
+      });
+    }
+
+    function lockSlot(i, locked, memberId=null) {
+      const slot = document.getElementById(`slot_${i}`);
+      const fields = ['team','coord','ele','ela','tel','end'].map(p=>document.getElementById(`${p}_${i}`));
+      const buscar = document.getElementById(`buscar_${i}`);
+      const add = document.getElementById(`add_${i}`);
+
+      if (locked) {
+        slot.dataset.locked = '1';
+        if (memberId) slot.dataset.memberId = String(memberId);
+        fields.forEach(f=>{ if (f) f.disabled = true; });
+        if (buscar) buscar.disabled = true;
+        if (add) { add.textContent = 'Alterar'; add.dataset.mode = 'alterar'; }
+      } else {
+        slot.dataset.locked = '';
+        slot.dataset.memberId = '';
+        fields.forEach(f=>{ if (f) { f.disabled = false; if (f.tagName === 'INPUT') f.value = ''; }});
+        if (buscar) buscar.disabled = false;
+        if (add) { add.textContent = 'Adicionar'; add.dataset.mode = 'add'; }
+        const jwrap = document.getElementById(`justify_wrap_${i}`);
+        const jtxt  = document.getElementById(`justify_${i}`);
+        if (jwrap) jwrap.style.display = 'none';
+        if (jtxt) jtxt.value = '';
+      }
+    }
+
+    function renderSlot(i) {
+      const slot = h('div', {class:'slot', id:`slot_${i}`});
+      slot.dataset.locked = ''; slot.dataset.memberId = '';
+
+      // linha equipe + coordenador
+      const rowTop = h('div', {class:'row'});
+      const teamSel = h('div', {}, `
+        <label for="team_${i}">Equipe</label>
+        <select id="team_${i}">
+          <option value="">— Selecione —</option>
+          ${TEAM_CHOICES.map(t=>`<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`).join('')}
+        </select>
+      `);
+      const coordSel = h('div', {}, `
+        <label>Coordenador</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <label><input type="radio" name="coord_${i}" value="Não" id="coord_${i}" checked> Não</label>
+          <label><input type="radio" name="coord_${i}" value="Sim"> Sim</label>
+        </div>
+      `);
+      rowTop.append(teamSel, coordSel);
+
+      // nomes
+      const rowNames = h('div', {class:'row', style:'margin-top:8px;'});
+      rowNames.append(
+        h('div', {}, `<label for="ele_${i}">Nome (Ele)</label><input id="ele_${i}" placeholder="Ex.: João">`),
+        h('div', {}, `<label for="ela_${i}">Nome (Ela)</label><input id="ela_${i}" placeholder="Ex.: Maria">`)
+      );
+
+      // contatos
+      const rowCont = h('div', {class:'row', style:'margin-top:8px;'});
+      rowCont.append(
+        h('div', {}, `<label for="tel_${i}">Telefones</label><input id="tel_${i}" placeholder="Preenchido pela busca (editável)">`),
+        h('div', {}, `<label for="end_${i}">Endereço</label><input id="end_${i}" placeholder="Preenchido pela busca (editável)">`)
+      );
+
+      // ações
+      const actions = h('div', {class:'row', style:'margin-top:8px; grid-template-columns: auto auto 1fr;'});
+      const btnBuscar = h('button', {class:'btn', id:`buscar_${i}`}, 'Buscar');
+      const btnAdd = h('button', {class:'btn primary', id:`add_${i}`, 'data-mode':'add'}, 'Adicionar');
+      actions.append(btnBuscar, btnAdd, h('div'));
+
+      // justificativa
+      const justifyWrap = h('div', {class:'justify-box', id:`justify_wrap_${i}`, style:'display:none; margin-top:8px;'}, `
+        <label for="justify_${i}">Justificativa (obrigatória para Recusou/Desistiu)</label>
+        <textarea id="justify_${i}" rows="3" placeholder="Descreva a justificativa..."></textarea>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn danger" id="mark_recusou_${i}">Confirmar Recusou</button>
+          <button class="btn warn" id="mark_desistiu_${i}">Confirmar Desistiu</button>
+          <button class="btn" id="cancel_alter_${i}">Cancelar</button>
+        </div>
+      `);
+
+      const status = h('div', {class:'status', id:`status_${i}`});
+
+      slot.append(rowTop, rowNames, rowCont, actions, justifyWrap, status);
+      slotsWrap.appendChild(slot);
+
+      // handlers
+      btnBuscar.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        status.textContent = '';
+        const nome_ele = document.getElementById(`ele_${i}`).value.trim();
+        const nome_ela = document.getElementById(`ela_${i}`).value.trim();
+        const equipe = document.getElementById(`team_${i}`).value.trim();
+        const ano = anoInput.value.trim();
+        if (!ano) { status.textContent='Informe o ano.'; status.className='status warn-t'; return; }
+        if (!equipe) { status.textContent='Selecione a equipe.'; status.className='status warn-t'; return; }
+        if (!nome_ele || !nome_ela) { status.textContent='Preencha Nome (Ele) e Nome (Ela).'; status.className='status warn-t'; return; }
+        try {
+          const data = await postJSON('{{ url_for("api_implantacao_check_casal") }}', { ano, equipe, nome_ele, nome_ela });
+          if (!data.ok) { status.textContent = data.msg || 'Falha na validação.'; status.className='status err'; return; }
+          if (data.ja_no_ano) { status.textContent='Casal já está lançado neste ano (Implantação).'; status.className='status err'; return; }
+          document.getElementById(`tel_${i}`).value = data.telefones || '';
+          document.getElementById(`end_${i}`).value = data.endereco || '';
+          if (data.ja_coordenador) { status.textContent='Esse casal já foi coordenador desta equipe (em algum ano).'; status.className='status warn-t'; }
+          else if (data.trabalhou_antes) { status.textContent='Casal já trabalhou nesta equipe. Confirme ao adicionar.'; status.className='status warn-t'; }
+          else { status.textContent='Dados carregados.'; status.className='status ok'; }
+          slot.dataset.trabalhouAntes = data.trabalhou_antes ? '1' : '';
+        } catch { status.textContent='Erro na validação/busca.'; status.className='status err'; }
+      });
+
+      btnAdd.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const mode = btnAdd.dataset.mode || 'add';
+        const ano = anoInput.value.trim();
+        const equipe = document.getElementById(`team_${i}`).value.trim();
+        const coord = document.querySelector(`input[name="coord_${i}"]:checked`)?.value || 'Não';
+        const nome_ele = document.getElementById(`ele_${i}`).value.trim();
+        const nome_ela = document.getElementById(`ela_${i}`).value.trim();
+        const telefones = document.getElementById(`tel_${i}`).value.trim();
+        const endereco = document.getElementById(`end_${i}`).value.trim();
+
+        if (mode === 'add') {
+          if (!ano) { status.textContent='Informe o ano.'; status.className='status warn-t'; return; }
+          if (!equipe) { status.textContent='Selecione a equipe.'; status.className='status warn-t'; return; }
+          if (!nome_ele || !nome_ela) { status.textContent='Preencha Nome (Ele) e Nome (Ela).'; status.className='status warn-t'; return; }
+          let confirmar_repeticao = false;
+          if (slot.dataset.trabalhouAntes === '1') {
+            confirmar_repeticao = window.confirm('Casal já trabalhou nesta equipe. Confirmar para lançar novamente?');
+            if (!confirmar_repeticao) return;
+          }
+          try {
+            const resp = await postJSON('{{ url_for("api_implantacao_add_membro") }}', {
+              ano, equipe, coordenador: coord, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao
+            });
+            if (resp.ok) {
+              status.textContent='Lançamento inserido com sucesso.'; status.className='status ok';
+              lockSlot(i, true, resp.id || null);
+              // atualiza KPIs
+              await refreshCounts(ano);
+              // remove da sugestão, se veio dali
+              const sug = document.querySelector(`.suggest[data-ele="${CSS.escape(nome_ele)}"][data-ela="${CSS.escape(nome_ela)}"]`);
+              if (sug) sug.remove();
+            } else if (resp.needs_confirm) {
+              const ok = window.confirm(resp.msg || 'Confirmar?');
+              if (ok) {
+                const resp2 = await postJSON('{{ url_for("api_implantacao_add_membro") }}', {
+                  ano, equipe, coordenador: coord, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao: true
+                });
+                if (resp2.ok) { status.textContent='Lançamento inserido com sucesso.'; status.className='status ok'; lockSlot(i, true, resp2.id || null); await refreshCounts(ano); }
+                else { status.textContent = resp2.msg || 'Falha ao inserir.'; status.className='status err'; }
+              }
+            } else {
+              status.textContent = resp.msg || 'Falha ao inserir.'; status.className='status err';
+            }
+          } catch { status.textContent='Erro ao inserir.'; status.className='status err'; }
+        } else {
+          // alterar -> mostrar justificativa Recusou/Desistiu
+          document.getElementById(`justify_wrap_${i}`).style.display = 'block';
+        }
+      });
+
+      // listeners de justificativa
+      document.getElementById(`mark_recusou_${i}`).addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const obs = document.getElementById(`justify_${i}`).value.trim();
+        const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
+        if (!obs) { status.textContent='Justificativa é obrigatória.'; status.className='status err'; return; }
+        if (!memberId) { status.textContent='Sem ID. Recarregue a página.'; status.className='status err'; return; }
+        try {
+          const resp = await postJSON('{{ url_for("api_implantacao_marcar_status") }}', { id: parseInt(memberId,10), novo_status:'Recusou', observacao: obs });
+          if (resp.ok) { status.textContent='Status atualizado para Recusou. Campos liberados.'; status.className='status ok'; lockSlot(i,false,null); await refreshCounts(anoInput.value.trim()); }
+          else { status.textContent = resp.msg || 'Falha ao alterar status.'; status.className='status err'; }
+        } catch { status.textContent='Erro ao alterar status.'; status.className='status err'; }
+      });
+      document.getElementById(`mark_desistiu_${i}`).addEventListener('click', async (e)=>{
+        e.preventDefault();
+        const obs = document.getElementById(`justify_${i}`).value.trim();
+        const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
+        if (!obs) { status.textContent='Justificativa é obrigatória.'; status.className='status err'; return; }
+        if (!memberId) { status.textContent='Sem ID. Recarregue a página.'; status.className='status err'; return; }
+        try {
+          const resp = await postJSON('{{ url_for("api_implantacao_marcar_status") }}', { id: parseInt(memberId,10), novo_status:'Desistiu', observacao: obs });
+          if (resp.ok) { status.textContent='Status atualizado para Desistiu. Campos liberados.'; status.className='status ok'; lockSlot(i,false,null); await refreshCounts(anoInput.value.trim()); }
+          else { status.textContent = resp.msg || 'Falha ao alterar status.'; status.className='status err'; }
+        } catch { status.textContent='Erro ao alterar status.'; status.className='status err'; }
+      });
+      document.getElementById(`cancel_alter_${i}`).addEventListener('click', (e)=>{
+        e.preventDefault();
+        document.getElementById(`justify_wrap_${i}`).style.display = 'none';
+        document.getElementById(`justify_${i}`).value = '';
+      });
+    }
+
+    function renderAll() {
+      slotsWrap.innerHTML = '';
+      for (let i=0; i<SLOTS_MAX; i++) renderSlot(i);
+    }
+
+    // Sugestões
+    (function wireSuggestions(){
+      const box = document.getElementById('sugestoes');
+      if (!box) return;
+      box.addEventListener('click', async (e)=>{
+        const a = e.target.closest('.suggest'); if (!a) return; e.preventDefault();
+        const idx = firstEmptySlot();
+        if (idx === -1) { alert('Não há slots vazios. Libere um com Alterar -> Recusou/Desistiu.'); return; }
+        fillSlot(idx, {nome_ele: a.dataset.ele || '', nome_ela: a.dataset.ela || ''});
+        // sugere buscar
+        document.getElementById(`buscar_${idx}`).click();
+      });
+    })();
+
+    // Continuar
+    btnContinuar.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const val = (anoInput.value || '').trim();
+      if (!/^\d{4}$/.test(val)) { anoMsg.textContent='Informe um ano válido (YYYY).'; anoMsg.className='status err'; return; }
+      anoMsg.textContent = `Ano selecionado: ${val}`; anoMsg.className='status ok';
+      renderAll();
+      kpis.style.display = '';
+      await refreshCounts(val);
+    });
+
+    // auto fill se ano veio na URL
+    window.addEventListener('DOMContentLoaded', ()=>{
+      if (ANO_PRE) { anoInput.value = ANO_PRE; btnContinuar.click(); }
+    });
+  </script>
+</body>
+</html>
