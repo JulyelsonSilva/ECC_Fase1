@@ -1980,30 +1980,33 @@ def _yes_coord_vals():
 @app.route("/relatorios")
 def relatorios():
     conn = db_conn(); cur = conn.cursor(dictionary=True)
-    anos = [r["ano"] for r in _q(cur, "SELECT DISTINCT ano FROM encontreiros WHERE ano IS NOT NULL ORDER BY ano")]
-    cur.close(); conn.close()
-    return render_template("relatorios.html", anos=anos)
-
-@app.get("/api/trabalhos_por_ano")
-def api_trabalhos_por_ano():
-    """
-    Casais distintos que TRABALHARAM por ano, deduplicando por par (nome_ele, nome_ela),
-    ignorando status Desistiu/Recusou.
-    """
-    conn = db_conn(); cur = conn.cursor(dictionary=True)
-    rows = _q(cur, """
-        SELECT ano,
-               COUNT(DISTINCT CONCAT(
-                   'NM#', LOWER(TRIM(nome_ele)), '#', LOWER(TRIM(nome_ela))
-               )) AS qtd
+    cur.execute("""
+        SELECT DISTINCT ano
         FROM encontreiros
         WHERE ano IS NOT NULL
+          AND ano NOT IN (2020, 2021)
+        ORDER BY ano DESC
+    """)
+    anos = [r["ano"] for r in cur.fetchall()]
+    cur.close(); conn.close()
+    return render_template("relatorios.html", anos=anos)
+@app.get("/api/trabalhos_por_ano")
+def api_trabalhos_por_ano():
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    cur.execute("""
+        SELECT ano,
+               COUNT(DISTINCT CONCAT('NM#', LOWER(TRIM(nome_ele)), '#', LOWER(TRIM(nome_ela)))) AS qtd
+        FROM encontreiros
+        WHERE ano IS NOT NULL
+          AND ano NOT IN (2020, 2021)
           AND LOWER(TRIM(COALESCE(status,''))) NOT IN ('desistiu','recusou')
         GROUP BY ano
         ORDER BY ano
     """)
+    rows = cur.fetchall()
     cur.close(); conn.close()
     return jsonify(rows)
+
 
 @app.get("/api/ano_origem_dos_trabalhadores")
 def api_ano_origem_dos_trabalhadores():
@@ -2029,15 +2032,49 @@ def api_ano_origem_dos_trabalhadores():
     """, [ano])
     cur.close(); conn.close()
     return jsonify({"ano_trabalho": ano, "dist": rows})
+@app.get("/api/encontreiros_por_ano")
+def api_encontreiros_por_ano():
+    """
+    Contagem de REGISTROS em 'encontreiros' por ano (não deduplica casal).
+    Ignora status Desistiu/Recusou e exclui 2020/2021.
+    """
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    cur.execute("""
+        SELECT ano, COUNT(*) AS qtd
+        FROM encontreiros
+        WHERE ano IS NOT NULL
+          AND ano NOT IN (2020, 2021)
+          AND LOWER(TRIM(COALESCE(status,''))) NOT IN ('desistiu','recusou')
+        GROUP BY ano
+        ORDER BY ano
+    """)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return jsonify(rows)
 
 
 @app.route("/docs")
 def docs_index():
     conn = db_conn(); cur = conn.cursor(dictionary=True)
-    anos = [r["ano"] for r in _q(cur, "SELECT DISTINCT ano FROM encontreiros WHERE ano IS NOT NULL ORDER BY ano")]
-    equipes = [r["equipe"] for r in _q(cur, "SELECT DISTINCT equipe FROM encontreiros WHERE equipe IS NOT NULL AND equipe<>'' ORDER BY equipe")]
+    cur.execute("""
+        SELECT DISTINCT ano
+        FROM encontreiros
+        WHERE ano IS NOT NULL
+          AND ano NOT IN (2020, 2021)
+        ORDER BY ano DESC
+    """)
+    anos = [r["ano"] for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT DISTINCT equipe
+        FROM encontreiros
+        WHERE equipe IS NOT NULL AND equipe <> ''
+        ORDER BY equipe
+    """)
+    equipes = [r["equipe"] for r in cur.fetchall()]
     cur.close(); conn.close()
     return render_template("docs.html", anos=anos, equipes=equipes)
+
 
 # --------------------------------------------
 # 1) COORDENADORES (por ano) com endereço/telefones mais recentes
