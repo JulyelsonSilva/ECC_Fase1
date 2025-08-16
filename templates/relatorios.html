@@ -58,11 +58,16 @@
       padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff;
     }
 
-    /* Pilha vertical: DONUT em cima, BARRAS embaixo */
+    /* Pilha vertical: DONUT em cima; duas barras embaixo */
     .stack{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:18px; }
-    .chart{
+    .chart-card{
       background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px;
-      height:420px; /* Chart.js usa com maintainAspectRatio:false */
+      min-height:340px; position:relative;
+    }
+    .chart-card canvas{ height: 100%; width: 100%; }
+    .msg{
+      position:absolute; inset:0; display:grid; place-items:center;
+      color:var(--muted); font-size:14px; padding:12px; text-align:center;
     }
 
     @media (prefers-color-scheme: dark){
@@ -77,7 +82,7 @@
           radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
           var(--bg);
       }
-      .chart{ background:var(--card); }
+      .chart-card{ background:var(--card); }
     }
   </style>
 </head>
@@ -100,7 +105,7 @@
     <section class="hero" role="region" aria-label="Filtros e ações">
       <div class="text">
         <h2>Visão estatística do ECC</h2>
-        <p>Origem (ano de encontro) e total de casais que trabalharam por ano.</p>
+        <p>Origem (ano de encontro), casais que trabalharam (dedup) e total de registros por ano.</p>
       </div>
       <div class="actions">
         <label for="anoSel" style="color:var(--muted); font-size:13px;">Ano de trabalho:</label>
@@ -113,49 +118,110 @@
       </div>
     </section>
 
-    <!-- DONUT em cima, BARRAS embaixo -->
+    <!-- DONUT em cima -->
     <div class="stack" aria-label="Gráficos de Relatórios">
-      <canvas id="distAnoEncontro" class="chart"></canvas>
-      <canvas id="barTrabalhos" class="chart"></canvas>
+      <div class="chart-card">
+        <canvas id="distAnoEncontro"></canvas>
+        <div id="msgDist" class="msg" style="display:none;"></div>
+      </div>
+
+      <!-- Barras: casais (dedup) -->
+      <div class="chart-card">
+        <canvas id="barTrabalhos"></canvas>
+        <div id="msgBar" class="msg" style="display:none;"></div>
+      </div>
+
+      <!-- NOVO: Barras — registros em 'encontreiros' por ano -->
+      <div class="chart-card">
+        <canvas id="barEncontreiros"></canvas>
+        <div id="msgEnctr" class="msg" style="display:none;"></div>
+      </div>
     </div>
   </div>
 
 <script>
-let chBar, chDist;
+let chBar, chDist, chEnctr;
 function destroyIf(c){ if(c) c.destroy(); }
+function showMsg(id, text){ const el = document.getElementById(id); if(!el) return; el.textContent = text; el.style.display = 'grid'; }
+function hideMsg(id){ const el = document.getElementById(id); if(!el) return; el.style.display = 'none'; }
+
+async function safeFetchJson(url){
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(`HTTP ${res.status} em ${url} → ${t.slice(0,200)}`);
+  }
+  return res.json();
+}
 
 async function carregaTrabalhosPorAno(){
-  const r = await fetch("/api/trabalhos_por_ano");
-  const data = await r.json();
-  const labels = data.map(d => d.ano);
-  const valores = data.map(d => d.qtd);
-  destroyIf(chBar);
-  chBar = new Chart(document.getElementById("barTrabalhos"), {
-    type: "bar",
-    data: { labels, datasets: [{ label: "Casais que trabalharam por ano", data: valores }] },
-    options: { responsive:true, maintainAspectRatio:false }
-  });
+  try{
+    hideMsg('msgBar');
+    const data = await safeFetchJson("/api/trabalhos_por_ano");
+    const labels = data.map(d => d.ano);
+    const valores = data.map(d => d.qtd);
+    destroyIf(chBar);
+    chBar = new Chart(document.getElementById("barTrabalhos"), {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Casais que trabalharam por ano (dedup)", data: valores }] },
+      options: { responsive:true, maintainAspectRatio:false }
+    });
+  }catch(err){
+    console.error(err);
+    showMsg('msgBar', "Erro ao carregar 'casais que trabalharam por ano'. Verifique /api/trabalhos_por_ano.");
+  }
+}
+
+async function carregaEncontreirosPorAno(){
+  try{
+    hideMsg('msgEnctr');
+    const data = await safeFetchJson("/api/encontreiros_por_ano");
+    const labels = data.map(d => d.ano);
+    const valores = data.map(d => d.qtd);
+    destroyIf(chEnctr);
+    chEnctr = new Chart(document.getElementById("barEncontreiros"), {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Registros de encontreiros por ano", data: valores }] },
+      options: { responsive:true, maintainAspectRatio:false }
+    });
+  }catch(err){
+    console.error(err);
+    showMsg('msgEnctr', "Erro ao carregar 'encontreiros por ano'. Verifique /api/encontreiros_por_ano.");
+  }
 }
 
 async function carregaDistribuicaoAnoEncontro(ano){
-  const r = await fetch(`/api/ano_origem_dos_trabalhadores?ano=${ano}`);
-  const data = await r.json();
-  const labels = data.dist.map(d => d.ano_encontro);
-  const valores = data.dist.map(d => d.qtd);
-  destroyIf(chDist);
-  chDist = new Chart(document.getElementById("distAnoEncontro"), {
-    type: "doughnut",
-    data: { labels, datasets: [{ label: `Ano de encontro dos casais que trabalharam em ${ano}`, data: valores }] },
-    options: { responsive:true, maintainAspectRatio:false }
-  });
+  try{
+    hideMsg('msgDist');
+    if(!ano){ throw new Error("Ano inválido"); }
+    const data = await safeFetchJson(`/api/ano_origem_dos_trabalhadores?ano=${encodeURIComponent(ano)}`);
+    if(!data.dist){ throw new Error("Resposta inesperada da API"); }
+    const labels = data.dist.map(d => d.ano_encontro);
+    const valores = data.dist.map(d => d.qtd);
+    destroyIf(chDist);
+    chDist = new Chart(document.getElementById("distAnoEncontro"), {
+      type: "doughnut",
+      data: { labels, datasets: [{ label: `Ano de encontro de quem trabalhou em ${ano}`, data: valores }] },
+      options: { responsive:true, maintainAspectRatio:false }
+    });
+  }catch(err){
+    console.error(err);
+    showMsg('msgDist', "Erro ao carregar 'origem (ano de encontro)'. Verifique /api/ano_origem_dos_trabalhadores?ano=AAAA.");
+  }
 }
 
 document.getElementById("anoSel").addEventListener("change", e => carregaDistribuicaoAnoEncontro(e.target.value));
 window.addEventListener("DOMContentLoaded", async () => {
-  // Carrega ambos ao entrar: donut do ano selecionado e barras gerais
-  const anoIni = document.getElementById("anoSel").value;
-  await carregaDistribuicaoAnoEncontro(anoIni);
-  await carregaTrabalhosPorAno();
+  if(!window.Chart){
+    showMsg('msgDist', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    showMsg('msgBar', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    showMsg('msgEnctr', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    return;
+  }
+  const anoIni = document.getElementById("anoSel")?.value;
+  await carregaDistribuicaoAnoEncontro(anoIni);   // donut
+  await carregaTrabalhosPorAno();                 // barras (dedup)
+  await carregaEncontreirosPorAno();              // barras (registros)
 });
 </script>
 </body>
