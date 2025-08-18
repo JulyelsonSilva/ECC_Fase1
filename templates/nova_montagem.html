@@ -4,319 +4,205 @@
   <meta charset="utf-8">
   <title>Nova Montagem</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
-    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --ok:#065f46; --warn:#92400e; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px 48px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; flex-wrap:wrap; }
-    h1 { margin:0; font-size:22px; }
-    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; cursor:pointer; }
-    .btn.primary { background: var(--brand); border-color: var(--brand); color:#fff; }
-    .btn.danger  { border-color: var(--danger); color: var(--danger); }
-    .muted { color:var(--muted); }
+    :root{
+      --bg:#f6f7fb;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --card:#ffffff;
+      --border:#e5e7eb;
+      --brand:#2563eb;
+      --brand-600:#1e40af;
+      --brand-50:#eff6ff;
+      --accent:#f59e0b;
 
-    .cols { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; align-items:start; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    label{ display:block; font-size:12px; font-weight:600; color:#334155; margin:6px 0 4px; }
-    input{ padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; width:100%; }
+      /* cartões das equipes (estado) */
+      --ok-bg:#d1fae5;   /* verde claro */
+      --ok-bd:#a7f3d0;
+      --warn-bg:#fef3c7; /* amarelo claro */
+      --warn-bd:#fde68a;
 
-    /* Grade de equipes */
-    .eq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
-    .eq-tag{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;text-decoration:none;color:#0f172a}
-    .eq-tag small{color:#64748b}
-    .eq-ok {background:#ecfdf5;border-color:#16a34a}
-    .eq-warn{background:#fffbeb;border-color:#f59e0b}
+      /* fallback para cartões pintados via style.background */
+      --ok:#dcfce7;        /* verde claro */
+      --warn:#fef9c3;      /* amarelo claro */
+      --neutral:#ffffff;   /* branco */
+    }
 
-    /* Chips coordenadores existentes */
-    .chip {display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:999px;background:#fff;margin:4px 6px 0 0}
-    .chip b{font-weight:600}
-    .chip .mini{font-size:12px;color:#475569}
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
 
-    /* Modal Alterar (status + justificativa) */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:9999}
-    .modal-card{background:#fff;width:min(520px,92vw);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
-    .modal-header{font-weight:600;font-size:18px;margin-bottom:12px}
-    .modal-row{margin:10px 0}
-    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-    select, textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-    .status { margin-top:6px; font-size:13px; }
-    .ok { color:var(--ok); } .warn-t { color:var(--warn); } .err { color:var(--danger); }
-    .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; margin-right:6px; }
-    .help { font-size:12px; color:#475569; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
+        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+        var(--bg);
+    }
+
+    .wrap{ max-width:1100px; margin:24px auto; padding:0 16px 64px; }
+
+    header{
+      display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap;
+      padding:12px 0 8px;
+    }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{
+      width:42px; height:42px; border-radius:50%;
+      display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color:white; font-size:22px; box-shadow: 0 8px 24px rgba(37,99,235,.25);
+    }
+
+    .header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+    h1{ margin:0; font-size:22px; }
+    .muted{ color:var(--muted); }
+
+    .btn{ appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
+    .btn.primary{ background: var(--brand); color:#fff; border-color: var(--brand); }
+    .btn.danger{ border-color:#b91c1c; color:#b91c1c; }
+    .btn.warn{ border-color:#f59e0b; }
+
+    .grid{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+    .card.team-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
+    .card.team-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
+
+    label{ display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px; }
+    input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+
+    .row{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .status{ margin-top:8px; font-size:13px; }
+    .ok{ color:#065f46; }
+    .warn-t{ color:#92400e; }
+    .err{ color:#b91c1c; }
+
+    .disabled{ opacity:.6; pointer-events:none; }
+    .counter, .kpi{ font-size:13px; color:#334155; }
+    .inline{ display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .justify{ display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+
+    .pill{ display:inline-block; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#fff; }
+    .kpi-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
+    .kpi-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
+
+    .team-card{ transition: background-color .2s ease, border-color .2s ease; }
+    .team-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .team-foot{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
+        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
+        --ok-bg:#064e3b; --ok-bd:#065f46; --warn-bg:#78350f; --warn-bd:#854d0e;
+      }
+      .logo{ box-shadow:none; }
+      .card{ box-shadow:none; }
+      body{
+        background:
+          radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
+          var(--bg);
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
-    <div class="header">
-      <div>
-        <h1>Nova Montagem</h1>
-        <div class="muted">Selecione o ano e monte as equipes.</div>
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🧩</div>
+        <div>
+          <h1>Nova Montagem</h1>
+          <p class="muted">Defina dirigentes, coordenador geral e coordenadores de equipe. Acompanhe o andamento das equipes.</p>
+        </div>
       </div>
-      <div class="row">
+      <div class="inline">
+        <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-        <a class="btn" href="{{ url_for('montagem') }}">↩ Voltar ao Painel</a>
+      </div>
+    </header>
+
+    <p class="muted">Informe o ano e adicione os 5 <b>Dirigentes</b>. Depois de concluir, defina o <b>Coordenador Geral</b>. Em seguida, escolha os <b>Coordenadores de Equipe</b> (pode selecionar pelo histórico) e, quando quiser, monte cada equipe.</p>
+
+    <!-- Passo 1: Ano -->
+    <div class="card" id="ano-card">
+      <label for="ano">Ano</label>
+      <div class="row">
+        <div><input id="ano" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}"></div>
+        <div style="display:flex; gap:8px; align-items:end;">
+          <button class="btn primary" id="btn-continuar">Continuar</button>
+          <span class="muted" id="ano-msg"></span>
+        </div>
       </div>
     </div>
 
-    <!-- Seleção de ano -->
-    <div class="card" style="margin-bottom:12px;">
-      <form class="row" action="{{ url_for('nova_montagem') }}" method="get">
-        <label for="ano" style="margin:0; font-weight:600;">Ano</label>
-        <input id="ano" name="ano" type="number" min="1990" max="2100" value="{{ ano_preselecionado or '' }}" required style="width:140px">
-        <button class="btn primary" type="submit">Carregar</button>
-        {% if ano_preselecionado %}
-          <span class="pill">Ano atual: <b>{{ ano_preselecionado }}</b></span>
-        {% endif %}
-      </form>
+    <!-- Indicador Dirigentes -->
+    <p class="kpi" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
+
+    <!-- Passo 2: 5 caixas Dirigentes -->
+    <div class="grid" id="dirigentes-grid" style="display:none;"></div>
+
+    <!-- Coordenador Geral -->
+    <div class="card disabled" id="cg-card" style="margin-top:12px; display:none;">
+      <h3 style="margin:0 0 8px;">Casal Coordenador Geral</h3>
+      <div class="row">
+        <div>
+          <label for="cg_ele">Nome (Ele)</label>
+          <input id="cg_ele" placeholder="Nome (Ele)" disabled>
+        </div>
+        <div>
+          <label for="cg_ela">Nome (Ela)</label>
+          <input id="cg_ela" placeholder="Nome (Ela)" disabled>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <label for="cg_tel">Telefones</label>
+          <input id="cg_tel" placeholder="Preenchido pela busca (editável)" disabled>
+        </div>
+        <div>
+          <label for="cg_end">Endereço</label>
+          <input id="cg_end" placeholder="Preenchido pela busca (editável)" disabled>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="btn" id="cg_buscar" disabled>Buscar</button>
+        <button class="btn primary" id="cg_add" disabled data-mode="add">Adicionar</button>
+      </div>
+      <div class="status" id="cg_status"></div>
+      <p class="muted" style="margin-top:8px; font-size:12px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
     </div>
 
-    {% if ano_preselecionado %}
-    <div class="cols">
-      <!-- ESQUERDA: grade de status das equipes -->
-      <div class="card">
-        <h3 style="margin:0 0 8px;">Equipes — status</h3>
-        <p class="help" style="margin:0 0 10px;">Verde: equipe completa · Amarelo: em andamento.</p>
-        <div id="eqGrid" class="eq-grid"></div>
-
-        <!-- Coordenadores de Equipe (existentes) em chips à frente do card -->
-        <hr style="margin:14px 0; border:none; border-top:1px solid var(--border);">
-        <h4 style="margin:0 0 6px;">Coordenadores de Equipe (abertos)</h4>
-        <div id="chipsCoord"></div>
-        <p class="help" style="margin:6px 0 0">Use <b>Alterar</b> para marcar Recusou/Desistiu (com justificativa).</p>
-      </div>
-
-      <!-- DIREITA: CG e Dirigentes -->
-      <div class="card">
-        <h3 style="margin:0 0 8px;">Coordenador Geral & Dirigentes</h3>
-
-        <!-- CG -->
-        <div class="card" style="padding:12px; margin-bottom:12px;">
-          <div class="row" style="justify-content:space-between;">
-            <strong>Casal Coordenador Geral</strong>
-            {% if initial_data.cg and (initial_data.cg.nome_ele or initial_data.cg.nome_ela) %}
-              <span class="pill">Atual: {{ initial_data.cg.nome_ele or '' }}{% if initial_data.cg.nome_ela %} e {{ initial_data.cg.nome_ela }}{% endif %}</span>
-            {% else %}
-              <span class="pill">Status: Aberto</span>
-            {% endif %}
-          </div>
-
-          {% if initial_data.cg and (initial_data.cg.nome_ele or initial_data.cg.nome_ela) %}
-            <!-- Já existe CG -> mostrar só Alterar -->
-            <div class="row" style="margin-top:10px;">
-              <button class="btn danger" id="cg_alterar">Alterar</button>
-              <div id="cg_status" class="status"></div>
-            </div>
-          {% else %}
-            <!-- Não existe -> formulário de inclusão -->
-            <div class="row" style="margin-top:8px;">
-              <div style="flex:1; min-width:180px;">
-                <label for="cg_ele">Nome (Ele)</label>
-                <input id="cg_ele" placeholder="Ex.: João" value="">
-              </div>
-              <div style="flex:1; min-width:180px;">
-                <label for="cg_ela">Nome (Ela)</label>
-                <input id="cg_ela" placeholder="Ex.: Maria" value="">
-              </div>
-            </div>
-            <div class="row" style="margin-top:8px;">
-              <div style="flex:1; min-width:180px;">
-                <label for="cg_tel">Telefones</label>
-                <input id="cg_tel" placeholder="Preenchido pela busca" value="">
-              </div>
-              <div style="flex:1; min-width:180px;">
-                <label for="cg_end">Endereço</label>
-                <input id="cg_end" placeholder="Preenchido pela busca" value="">
-              </div>
-            </div>
-            <div class="row" style="margin-top:10px;">
-              <button class="btn" id="cg_buscar">Buscar</button>
-              <button class="btn primary" id="cg_add">Adicionar</button>
-              <div id="cg_status" class="status"></div>
-            </div>
-          {% endif %}
-        </div>
-
-        <!-- Dirigentes -->
-        <div id="dirGrid" class="card" style="padding:12px;"></div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-
-  {% if ano_preselecionado %}
-  <!-- Modal Alterar (status + justificativa) -->
-  <div id="altModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-header">Alterar status</div>
-      <form id="altForm">
-        <input type="hidden" id="alt_equipe">
-        <div class="modal-row">
-          <label for="alt_status"><strong>Status</strong></label>
-          <select id="alt_status" required>
-            <option value="" disabled selected>Selecione</option>
-            <option value="Desistiu">Desistiu</option>
-            <option value="Recusou">Recusou</option>
-          </select>
-        </div>
-        <div class="modal-row">
-          <label for="alt_obs"><strong>Justificativa</strong></label>
-          <textarea id="alt_obs" rows="4" placeholder="Descreva o motivo" required></textarea>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn" id="altCancel">Cancelar</button>
-          <button type="submit" class="btn primary">Salvar</button>
-        </div>
-      </form>
+    <!-- Coordenadores de Equipe -->
+    <div class="card disabled" id="coord-equipes-card" style="margin-top:12px; display:none;">
+      <h3 style="margin:0 0 8px;">Coordenadores de Equipe</h3>
+      <p class="muted" style="margin:0 0 8px; font-size:13px;">Use <b>Escolher no histórico</b> para abrir a Visão de Equipes e selecionar um casal. Após inserido (ou se já existir), surgirá o botão <b>Montar Equipe</b>. As caixas mudam de cor conforme os integrantes já montados (mín./máx.).</p>
+      <div class="grid" id="coord-equipes-grid"></div>
     </div>
   </div>
 
   <script>
-    const ANO = {{ ano_preselecionado|int }};
-    const TEAM_MAP    = {{ team_map|tojson }};
-    const TEAM_LIMITS = {{ (team_limits or {})|tojson }};
-    const INITIAL     = {{ initial_data|tojson }};
+    // ---------- CONSTANTES DO BACKEND/JINJA ----------
+    const initialData = {{ (initial_data or {}) | tojson }};
+    const anoPre = {{ ano_preselecionado | tojson }};
+    const VISAO_EQ_URL = "{{ url_for('visao_equipes') }}";
+    const VISAO_EQ_SELECT = "{{ url_for('visao_equipes_select') }}";
+    const EQUIPE_MONT_URL = "/equipe-montagem";
 
-    // Garante limites de Sala localmente (não muda as outras)
-    if (!TEAM_LIMITS.Sala) TEAM_LIMITS.Sala = {min:3, max:5};
+    // Parâmetros retorno visao_equipes (se vieram pela URL)
+    (function ensureReturnParams(){
+      const qs = new URLSearchParams(location.search);
+      window.ret_target = qs.get('target') || qs.get('ret_target') || '';
+      window.ret_ele    = qs.get('selecionar_ele') || qs.get('ele') || qs.get('nome_ele') || '';
+      window.ret_ela    = qs.get('selecionar_ela') || qs.get('ela') || qs.get('nome_ela') || '';
+    })();
 
-    // ====== Grade de status ======
-    const TEAMS = Object.entries(TEAM_MAP).map(([key, v]) => ({ key, filtro: v.filtro, rotulo: v.rotulo }));
-
-    function decorate(teamFiltro, n){
-      const lim = TEAM_LIMITS[teamFiltro] || {min:0, max:8};
-      const done = Number(n) >= Number(lim.max);
-      return { cls: done ? 'eq-ok' : 'eq-warn', label: `${n}/${lim.max}` };
-    }
-
-    function renderBox(team, n){
-      const {cls, label} = decorate(team.filtro, n);
-      const href = `{{ url_for('equipe_montagem') }}?ano=${ANO}&equipe=${encodeURIComponent(team.filtro)}`;
-      const a = document.createElement('a');
-      a.className = `eq-tag ${cls}`;
-      a.href = href;
-      const subtitle = (team.filtro === 'Sala') ? 'Conta Canto, Som/Projeção e Boa Vontade' : '&nbsp;';
-      const title = (team.filtro === 'Sala') ? 'Sala (sem Recepção)' : team.rotulo;
-      a.innerHTML = `
-        <div>
-          <div><strong>${title}</strong></div>
-          <small>${subtitle}</small>
-        </div>
-        <div><strong>${label}</strong></div>
-      `;
-      return a;
-    }
-
-    async function loadCounts(){
-      const grid = document.getElementById('eqGrid');
-      grid.innerHTML = '<div class="muted">Carregando…</div>';
-      try{
-        const res = await fetch(`{{ url_for('api_equipe_counts') }}?ano=${ANO}`);
-        const data = await res.json();
-        if (!data.ok) throw new Error('Falha ao carregar contagens');
-        const counts = data.counts || {};
-        grid.innerHTML = '';
-        TEAMS.forEach(team => {
-          const n = counts[team.filtro] ?? 0;
-          grid.appendChild(renderBox(team, n));
-        });
-      }catch(e){
-        console.error(e);
-        grid.innerHTML = '<div class="muted">Não foi possível carregar as contagens.</div>';
-      }
-    }
-
-    // ====== Coordenadores de Equipe existentes (chips) ======
-    function renderCoordChips(){
-      const box = document.getElementById('chipsCoord');
-      box.innerHTML = '';
-      const coord = INITIAL?.coord_teams || {};
-      const entries = Object.entries(coord);
-      if (!entries.length){
-        box.innerHTML = '<span class="muted">Nenhum coordenador em aberto encontrado.</span>';
-        return;
-      }
-      entries.forEach(([key, info])=>{
-        const rotulo = TEAM_MAP[key]?.rotulo || key;
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.innerHTML = `
-          <span class="mini">${rotulo}:</span>
-          <b>${(info.nome_ele||'')}${info.nome_ela? ' e ' + info.nome_ela : ''}</b>
-          <button class="btn danger" data-equipe="${rotulo}">Alterar</button>
-        `;
-        chip.querySelector('button').addEventListener('click', (e)=>{
-          const equipe = e.currentTarget.getAttribute('data-equipe');
-          openAltModal(equipe);
-        });
-        box.appendChild(chip);
-      });
-    }
-
-    // ====== CG (buscar/adicionar/alterar) ======
-    const $cgStatus = document.getElementById('cg_status');
-    const CG_EXISTS = !!(INITIAL?.cg && (INITIAL.cg.nome_ele || INITIAL.cg.nome_ela));
-
-    if (!CG_EXISTS){
-      const $cgEle = document.getElementById('cg_ele');
-      const $cgEla = document.getElementById('cg_ela');
-      const $cgTel = document.getElementById('cg_tel');
-      const $cgEnd = document.getElementById('cg_end');
-
-      document.getElementById('cg_buscar').addEventListener('click', async (e)=>{
-        e.preventDefault();
-        $cgStatus.textContent='';
-        const nome_ele = ($cgEle.value||'').trim();
-        const nome_ela = ($cgEla.value||'').trim();
-        if (!nome_ele || !nome_ela){
-          $cgStatus.textContent='Informe Nome (Ele) e Nome (Ela).'; $cgStatus.className='status warn-t'; return;
-        }
-        try{
-          const r = await fetch('{{ url_for("api_buscar_cg") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ nome_ele, nome_ela })
-          });
-          const j = await r.json();
-          if (!j.ok){ $cgStatus.textContent = j.msg || 'Não encontrado.'; $cgStatus.className='status err'; return; }
-          $cgTel.value = j.telefones || '';
-          $cgEnd.value = j.endereco || '';
-          $cgStatus.textContent = 'Dados carregados.'; $cgStatus.className='status ok';
-        }catch{ $cgStatus.textContent='Erro ao buscar.'; $cgStatus.className='status err'; }
-      });
-
-      document.getElementById('cg_add').addEventListener('click', async (e)=>{
-        e.preventDefault();
-        $cgStatus.textContent='';
-        const nome_ele = ($cgEle.value||'').trim();
-        const nome_ela = ($cgEla.value||'').trim();
-        const telefones = ($cgTel.value||'').trim();
-        const endereco  = ($cgEnd.value||'').trim();
-        if (!nome_ele || !nome_ela){
-          $cgStatus.textContent='Informe Nome (Ele) e Nome (Ela).'; $cgStatus.className='status warn-t'; return;
-        }
-        try{
-          const r = await fetch('{{ url_for("api_adicionar_cg") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ ano: ANO, nome_ele, nome_ela, telefones, endereco })
-          });
-          const j = await r.json();
-          if (!j.ok){ $cgStatus.textContent = j.msg || 'Falha ao adicionar.'; $cgStatus.className='status err'; return; }
-          $cgStatus.textContent = 'CG adicionado com sucesso.'; $cgStatus.className='status ok';
-          loadCounts();
-          location.search = '?ano=' + ANO; // recarrega para exibir como "Alterar"
-        }catch{ $cgStatus.textContent='Erro ao adicionar.'; $cgStatus.className='status err'; }
-      });
-    } else {
-      // Já existe CG → botão Alterar
-      document.getElementById('cg_alterar').addEventListener('click', (e)=>{
-        e.preventDefault();
-        openAltModal('Casal Coordenador Geral');
-      });
-    }
-
-    // ====== Dirigentes (cartões) ======
-    const DIRS = [
+    // ---------- MAPAS (espelham backend) ----------
+    const DIRIGENTES = [
       "Equipe Dirigente - MONTAGEM",
       "Equipe Dirigente -FICHAS",
       "Equipe Dirigente - FINANÇAS",
@@ -324,177 +210,453 @@
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
-    function renderDirigentes(){
-      const wrap = document.getElementById('dirGrid');
-      wrap.innerHTML = '<h4 style="margin:0 0 8px;">Equipes Dirigentes</h4>';
-      const grid = document.createElement('div');
-      grid.style.display = 'grid';
-      grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px,1fr))';
-      grid.style.gap = '10px';
+    const TEAM_MAP = {
+      sala:             { rotulo:"Equipe de Sala - Coordenador/Apresentador", filtro:"Sala" },
+      circulos:         { rotulo:"Equipe de Círculos", filtro:"Circulos" },
+      acolhida:         { rotulo:"Equipe Acolhida", filtro:"Acolhida" },
+      cafe:             { rotulo:"Equipe Café e Minimercado", filtro:"Café e Minimercado" },
+      ordem_limpeza:    { rotulo:"Equipe Ordem e Limpeza", filtro:"Ordem e Limpeza" },
+      liturgia_vigilia: { rotulo:"Equipe Liturgia e Vigilia", filtro:"Liturgia e Vigilia" },
+      secretaria:       { rotulo:"Equipe Secretaria", filtro:"Secretaria" },
+      compras:          { rotulo:"Equipe Compras", filtro:"Compras" },
+      cozinha:          { rotulo:"Equipe Cozinha", filtro:"Cozinha" },
+      visitacao:        { rotulo:"Equipe Visitação", filtro:"Visitação" },
+    };
 
-      const pref = INITIAL?.dirigentes || {};
-      DIRS.forEach(eq => {
-        const p = pref[eq] || null;
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.style.padding='12px';
-        card.innerHTML = `
-          <div class="row" style="justify-content:space-between;">
-            <strong>${eq}</strong>
-            ${p ? `<span class="pill">Atual: ${(p.nome_ele||'')}${p.nome_ela? ' e ' + p.nome_ela : ''}</span>` : `<span class="pill">Status: Aberto</span>`}
+    // ---------- LIMITES POR EQUIPE (somente visuais para cartões) ----------
+    // (Apenas adicionamos/ajustamos Sala: min=3, max=5)
+    const TEAM_LIMITS = {
+      "Circulos": {min:5, max:5},
+      "Café e Minimercado": {min:3, max:7},
+      "Compras": {min:0, max:1},
+      "Acolhida": {min:4, max:6},
+      "Ordem e Limpeza": {min:3, max:7},
+      "Liturgia e Vigilia": {min:2, max:6},
+      "Secretaria": {min:3, max:5},
+      "Cozinha": {min:7, max:9},
+      "Visitação": {min:6, max:10},
+      "Sala": {min:3, max:5}   // 👈 ajuste solicitado
+    };
+
+    // ---------- ELEMENTOS ----------
+    const anoInput = document.getElementById('ano');
+    const btnContinuar = document.getElementById('btn-continuar');
+    const anoMsg = document.getElementById('ano-msg');
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiDone = document.getElementById('kpi-done');
+
+    const dirGrid = document.getElementById('dirigentes-grid');
+
+    const cgCard = document.getElementById('cg-card');
+    const cgEle = document.getElementById('cg_ele');
+    const cgEla = document.getElementById('cg_ela');
+    const cgTel = document.getElementById('cg_tel');
+    const cgEnd = document.getElementById('cg_end');
+    const cgBuscar = document.getElementById('cg_buscar');
+    const cgAdd = document.getElementById('cg_add');
+    const cgStatus = document.getElementById('cg_status');
+
+    const coordCard = document.getElementById('coord-equipes-card');
+    const coordGrid = document.getElementById('coord-equipes-grid');
+
+    // ---------- ESTADO ----------
+    let anoSelecionado = null;
+    let totalAdicionados = 0;
+    let countsByTeam = {}; // de /api/equipe-counts
+
+    // ---------- HELPERS ----------
+    function idFromLabel(label){ return label.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
+
+    async function postJSON(url, body) {
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
+      return await r.json();
+    }
+
+    async function getJSON(url) {
+      const r = await fetch(url);
+      return await r.json();
+    }
+
+    async function fetchCounts(ano){
+      try{
+        const r = await fetch(`/api/equipe-counts?ano=${encodeURIComponent(ano)}`);
+        if (!r.ok) return {};
+        const j = await r.json();
+        if (j && j.ok && j.counts) return j.counts;
+      }catch(_){}
+      return {};
+    }
+
+    function teamBgColor(filtro, n){
+      const lim = TEAM_LIMITS[filtro] || {};
+      const min = typeof lim.min === 'number' ? lim.min : 0;
+      const max = typeof lim.max === 'number' ? lim.max : 8;
+      if (n >= max) return 'var(--ok)';    // verde
+      if (n >= min) return 'var(--warn)';  // amarelo
+      return 'var(--neutral)';             // neutro
+    }
+
+    function countLabel(filtro, n){
+      const lim = TEAM_LIMITS[filtro] || {};
+      const max = typeof lim.max === 'number' ? lim.max : 8;
+      return `${n}/${max}`;
+    }
+
+    function waitForEl(selector, timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        const t0 = performance.now();
+        (function check() {
+          const el = document.querySelector(selector);
+          if (el) return resolve(el);
+          if (performance.now() - t0 > timeout) return reject(new Error('timeout waiting for ' + selector));
+          requestAnimationFrame(check);
+        })();
+      });
+    }
+
+    // ---------- UI: Dirigentes ----------
+    function makeInputRow(idSafe, preset) {
+      return `
+        <div class="row">
+          <div>
+            <label for="${idSafe}_ele">Nome (Ele)</label>
+            <input id="${idSafe}_ele" placeholder="Nome (Ele)" ${preset?'disabled':''}>
           </div>
-        `;
+          <div>
+            <label for="${idSafe}_ela">Nome (Ela)</label>
+            <input id="${idSafe}_ela" placeholder="Nome (Ela)" ${preset?'disabled':''}>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div>
+            <label for="${idSafe}_telefones">Telefones</label>
+            <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" ${preset?'disabled':''}>
+          </div>
+          <div>
+            <label for="${idSafe}_endereco">Endereço</label>
+            <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" ${preset?'disabled':''}>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${idSafe}_buscar" ${preset?'disabled':''}>Buscar</button>
+          <button class="btn primary" id="${idSafe}_add" data-mode="add"${preset?' disabled':''}>Adicionar</button>
+        </div>
+        <div class="status" id="${idSafe}_status"></div>
+      `;
+    }
 
-        if (p){
-          // já existe -> só Alterar
-          const r = document.createElement('div');
-          r.className='row';
-          r.style.marginTop='10px';
-          r.innerHTML = `<button class="btn danger" data-equipe="${eq}">Alterar</button><div class="status"></div>`;
-          r.querySelector('button').addEventListener('click', (e)=>{
-            const equipe = e.currentTarget.getAttribute('data-equipe');
-            openAltModal(equipe);
-          });
-          card.appendChild(r);
-        } else {
-          // formulário incluir
-          const id = eq.replace(/\s+/g,'_').replace(/[^\w\-]/g,'');
-          const form = document.createElement('div');
-          form.innerHTML = `
-            <div class="row" style="margin-top:8px;">
-              <div style="flex:1; min-width:150px;">
-                <label for="${id}_ele">Nome (Ele)</label>
-                <input id="${id}_ele" placeholder="Ex.: João">
-              </div>
-              <div style="flex:1; min-width:150px;">
-                <label for="${id}_ela">Nome (Ela)</label>
-                <input id="${id}_ela" placeholder="Ex.: Maria">
-              </div>
-            </div>
-            <div class="row" style="margin-top:8px;">
-              <div style="flex:1; min-width:150px;">
-                <label for="${id}_tel">Telefones</label>
-                <input id="${id}_tel" placeholder="Preenchido pela busca">
-              </div>
-              <div style="flex:1; min-width:150px;">
-                <label for="${id}_end">Endereço</label>
-                <input id="${id}_end" placeholder="Preenchido pela busca">
-              </div>
-            </div>
-            <div class="row" style="margin-top:10px;">
-              <button class="btn" id="${id}_buscar">Buscar</button>
-              <button class="btn primary" id="${id}_add">Adicionar</button>
-              <div id="${id}_status" class="status"></div>
-            </div>
-          `;
-          card.appendChild(form);
+    function renderDirigenteBox(equipe, preset) {
+      const idSafe = idFromLabel(equipe);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<h3 style="margin:0 0 8px;">${equipe}</h3>${makeInputRow(idSafe, preset)}`;
+      dirGrid.appendChild(card);
+    }
 
-          const $ele = form.querySelector(`#${id}_ele`);
-          const $ela = form.querySelector(`#${id}_ela`);
-          const $tel = form.querySelector(`#${id}_tel`);
-          const $end = form.querySelector(`#${id}_end`);
-          const $st  = form.querySelector(`#${id}_status`);
+    function buildDirigentes(){
+      dirGrid.innerHTML = '';
+      DIRIGENTES.forEach(label=>{
+        const preset = (initialData.dirigentes && initialData.dirigentes[label]) ? initialData.dirigentes[label] : null;
+        renderDirigenteBox(label, preset);
+      });
+      kpiTotal.style.display = '';
+      totalAdicionados = (initialData.dirigentes_count || 0);
+      kpiDone.textContent = String(totalAdicionados);
+    }
 
-          form.querySelector(`#${id}_buscar`).addEventListener('click', async (e)=>{
-            e.preventDefault();
-            $st.textContent='';
-            const nome_ele = ($ele.value||'').trim();
-            const nome_ela = ($ela.value||'').trim();
-            if (!nome_ele || !nome_ela){ $st.textContent='Informe Nome (Ele) e Nome (Ela).'; $st.className='status warn-t'; return; }
-            try{
-              const r = await fetch('{{ url_for("api_buscar_casal") }}', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ nome_ele, nome_ela })
-              });
-              const j = await r.json();
-              if (!j.ok){ $st.textContent = j.msg || 'Não encontrado.'; $st.className='status err'; return; }
-              $tel.value = j.telefones || '';
-              $end.value = j.endereco || '';
-              $st.textContent = `Dados carregados (${j.origem}).`; $st.className='status ok';
-            }catch{ $st.textContent='Erro ao buscar.'; $st.className='status err'; }
-          });
+    // ---------- Coordenador Geral ----------
+    function renderCGPresetIfAny() {
+      if (initialData && initialData.cg) {
+        const p = initialData.cg;
+        cgEle.value = p.nome_ele || '';
+        cgEla.value = p.nome_ela || '';
+        cgTel.value = p.telefones || '';
+        cgEnd.value = p.endereco || '';
+        cgStatus.textContent = '“Casal Coordenador Geral” já cadastrado para este ano.';
+        cgStatus.className = 'status ok';
+        // somente visual: travado quando já existe
+        cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
+        cgBuscar.disabled = true; cgAdd.disabled = true;
+        showTeamCoords();
+      }
+    }
+    function maybeEnableCG(){
+      if (!initialData || !initialData.cg) {
+        cgCard.classList.remove('disabled');
+        cgEle.disabled = false; cgEla.disabled = false;
+        cgBuscar.disabled = false; cgAdd.disabled = false;
+      }
+    }
 
-          form.querySelector(`#${id}_add`).addEventListener('click', async (e)=>{
-            e.preventDefault();
-            $st.textContent='';
-            const nome_ele = ($ele.value||'').trim();
-            const nome_ela = ($ela.value||'').trim();
-            const telefones = ($tel.value||'').trim();
-            const endereco  = ($end.value||'').trim();
-            if (!nome_ele || !nome_ela){ $st.textContent='Informe Nome (Ele) e Nome (Ela).'; $st.className='status warn-t'; return; }
-            try{
-              const r = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ ano: ANO, equipe: eq, nome_ele, nome_ela, telefones, endereco })
-              });
-              const j = await r.json();
-              if (!j.ok){ $st.textContent = j.msg || 'Falha ao adicionar.'; $st.className='status err'; return; }
-              $st.textContent = 'Dirigente adicionado com sucesso.'; $st.className='status ok';
-              loadCounts();
-              location.search = '?ano=' + ANO; // recarrega para transformar em "Alterar"
-            }catch{ $st.textContent='Erro ao adicionar.'; $st.className='status err'; }
-          });
-        }
+    // ---------- Equipes ----------
+    function renderTeamCoordBox(key){
+      const info = TEAM_MAP[key];
+      const idSafe = 'tc_'+key;
+      const preset = (initialData.coord_teams && initialData.coord_teams[key]) ? initialData.coord_teams[key] : null;
+      const filtro = info.filtro;
 
-        grid.appendChild(card);
+      const currentCount = countsByTeam[filtro] || 0;
+      const bg = teamBgColor(filtro, currentCount);
+      const labelCount = countLabel(filtro, Math.min(currentCount, (TEAM_LIMITS[filtro]?.max ?? 8)));
+
+      const card = document.createElement('div');
+      card.className = 'card team-card';
+      card.id = `${idSafe}_card`;
+      card.style.background = bg;
+
+      card.innerHTML = `
+        <div class="team-head">
+          <h3 style="margin:0;">${info.rotulo}</h3>
+          <div class="inline">
+            <span class="pill" id="${idSafe}_kpi">${labelCount}</span>
+            <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
+            <a class="btn primary" id="${idSafe}_montar" href="#" style="display:none;">Montar Equipe</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="${idSafe}_ele">Nome (Ele)</label>
+            <input id="${idSafe}_ele" placeholder="Nome (Ele)" ${preset?'disabled':''} value="${preset?.ele||''}">
+          </div>
+          <div>
+            <label for="${idSafe}_ela">Nome (Ela)</label>
+            <input id="${idSafe}_ela" placeholder="Nome (Ela)" ${preset?'disabled':''} value="${preset?.ela||''}">
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div>
+            <label for="${idSafe}_telefones">Telefones</label>
+            <input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)" ${preset?'disabled':''} value="${preset?.telefones||''}">
+          </div>
+          <div>
+            <label for="${idSafe}_endereco">Endereço</label>
+            <input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)" ${preset?'disabled':''} value="${preset?.endereco||''}">
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${idSafe}_buscar" ${preset?'disabled':''}>Buscar</button>
+          <button class="btn primary" id="${idSafe}_add" data-mode="add"${preset?' disabled':''}>Adicionar</button>
+        </div>
+        <div class="status" id="${idSafe}_status"></div>
+      `;
+      coordGrid.appendChild(card);
+
+      const montarBtn = document.getElementById(`${idSafe}_montar`);
+      if (preset) montarBtn.style.display = 'inline-block';
+
+      // Escolher no histórico (rota intermediária para retornar com target/ano)
+      const chooseBtn = document.getElementById(`${idSafe}_choose`);
+      chooseBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if (!anoSelecionado) { alert('Informe o ano primeiro.'); return; }
+        const url = `${VISAO_EQ_URL}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
+        window.location.href = url;
       });
 
-      wrap.appendChild(grid);
-    }
-
-    // ====== Modal Alterar ======
-    const $altModal  = document.getElementById('altModal');
-    const $altForm   = document.getElementById('altForm');
-    const $altEquipe = document.getElementById('alt_equipe');
-    const $altStatus = document.getElementById('alt_status');
-    const $altObs    = document.getElementById('alt_obs');
-    const $altCancel = document.getElementById('altCancel');
-
-    function openAltModal(equipe){
-      $altEquipe.value = equipe;
-      $altStatus.value = '';
-      $altObs.value = '';
-      $altModal.style.display = 'flex';
-      $altModal.setAttribute('aria-hidden','false');
-    }
-    function closeAltModal(){
-      $altModal.style.display = 'none';
-      $altModal.setAttribute('aria-hidden','true');
-    }
-    $altCancel.addEventListener('click', (e)=>{ e.preventDefault(); closeAltModal(); });
-    $altModal.addEventListener('click', (e)=>{ if (e.target === $altModal) closeAltModal(); });
-
-    $altForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const equipe = $altEquipe.value;
-      const novo_status = $altStatus.value;
-      const observacao  = $altObs.value.trim();
-      if (!(equipe && (novo_status==='Recusou' || novo_status==='Desistiu') && observacao)) return;
-
-      try{
-        const resp = await fetch('{{ url_for("api_marcar_status_dirigente") }}', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ ano: ANO, equipe, novo_status, observacao })
-        });
-        const data = await resp.json();
-        if (!resp.ok || !data.ok) {
-          alert(data.msg || 'Falha ao alterar status.');
-          return;
+      // Montar: link dinâmico
+      function setMontarHref(){
+        if (anoSelecionado) {
+          montarBtn.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
         }
-        closeAltModal();
-        loadCounts();
-        location.search = '?ano=' + ANO; // recarrega para atualizar chips/cards
-      }catch(err){
-        alert('Erro de rede ao salvar.');
+      }
+      setMontarHref();
+
+      // Handlers mínimos (mantêm seu backend)
+      const $ele = document.getElementById(`${idSafe}_ele`);
+      const $ela = document.getElementById(`${idSafe}_ela`);
+      const $buscar = document.getElementById(`${idSafe}_buscar`);
+      const $status = document.getElementById(`${idSafe}_status`);
+      $buscar.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        $status.textContent = '';
+        const nome_ele = ($ele.value||'').trim();
+        const nome_ela = ($ela.value||'').trim();
+        if (!nome_ele || !nome_ela) { $status.textContent='Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn-t'; return; }
+        try{
+          const resp = await fetch('{{ url_for("api_check_casal_equipe") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: anoSelecionado, equipe_final: info.filtro, nome_ele, nome_ela })
+          });
+          const data = await resp.json();
+          if (!data.ok) { $status.textContent = data.msg || 'Falha ao validar.'; $status.className='status err'; return; }
+          document.getElementById(`${idSafe}_telefones`).value = data.telefones || '';
+          document.getElementById(`${idSafe}_endereco`).value  = data.endereco  || '';
+          $status.textContent = data.trabalhou_antes ? 'Casal já trabalhou nessa equipe (confirme ao adicionar).' : 'Dados carregados.';
+          $status.className = data.trabalhou_antes ? 'status warn-t' : 'status ok';
+        }catch{
+          $status.textContent = 'Erro na validação/busca.'; $status.className='status err';
+        }
+      });
+    }
+
+    function showTeamCoords(){
+      coordGrid.innerHTML = '';
+      coordCard.style.display = '';
+      coordCard.classList.remove('disabled');
+      Object.keys(TEAM_MAP).forEach(k => renderTeamCoordBox(k));
+      if (anoSelecionado) updateTeamKPIs();
+    }
+
+    // ---------- KPIs por equipe ----------
+    async function updateTeamKPIs(){
+      try{
+        const data = await getJSON(`/api/team-kpis?ano=${encodeURIComponent(anoSelecionado)}`);
+        if (!data.ok) return;
+        const counts = data.counts || {};
+        Object.keys(TEAM_MAP).forEach(key => {
+          const info = TEAM_MAP[key];
+          const filtro = info.filtro;
+          const lim = TEAM_LIMITS[filtro] || {min:0, max:8};
+          let count = counts[filtro] || 0;
+
+          // 👇 Ajuste visual para Sala: usa max 5 (sem Recepção Palestrantes)
+          if (filtro === 'Sala') {
+            const salaLim = TEAM_LIMITS.Sala || {max:5};
+            count = Math.min(count, salaLim.max);
+          }
+
+          const kpi = document.getElementById(`tc_${key}_kpi`);
+          const card = document.getElementById(`tc_${key}_card`);
+          if (!kpi || !card) return;
+
+          kpi.textContent = `${count}/${lim.max}`;
+          kpi.classList.remove('kpi-warn','kpi-ok');
+          card.classList.remove('team-warn','team-ok');
+
+          if (count >= lim.max){
+            kpi.classList.add('kpi-ok');
+            card.classList.add('team-ok');
+          } else if (count >= lim.min){
+            kpi.classList.add('kpi-warn');
+            card.classList.add('team-warn');
+          }
+        });
+      }catch{ /* silencioso */ }
+    }
+
+    // Atualiza contadores e pinta cartões (fallback por background)
+    async function refreshCountsAndPaint(){
+      if (!anoSelecionado) return;
+      countsByTeam = await fetchCounts(anoSelecionado);
+      Object.keys(TEAM_MAP).forEach(k=>{
+        const filtro = TEAM_MAP[k].filtro;
+        const idSafe = 'tc_'+k;
+        let n = countsByTeam[filtro] || 0;
+
+        // 👇 Ajuste visual para Sala: cap no máximo 5
+        if (filtro === 'Sala') {
+          const lim = TEAM_LIMITS.Sala || {max:5};
+          n = Math.min(n, lim.max);
+        }
+
+        const bg = teamBgColor(filtro, n);
+        const card = document.getElementById(`${idSafe}_card`);
+        if (card) card.style.background = bg;
+
+        const kpiEl = document.getElementById(`${idSafe}_kpi`);
+        if (kpiEl) kpiEl.textContent = countLabel(filtro, n);
+      });
+    }
+
+    // ---------- Fluxo do Ano ----------
+    btnContinuar.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const val = (anoInput.value || '').trim();
+      if (!/^\d{4}$/.test(val)) {
+        anoMsg.textContent = 'Informe um ano válido (YYYY).';
+        return;
+      }
+      anoSelecionado = val;
+      anoMsg.textContent = '';
+
+      // Dirigentes
+      document.getElementById('dirigentes-grid').style.display = '';
+      buildDirigentes();
+
+      // CG
+      cgCard.style.display = '';
+      renderCGPresetIfAny();
+      maybeEnableCG();
+
+      // Contadores + cartões
+      await refreshCountsAndPaint();
+      showTeamCoords();
+
+      // Se veio retorno da Visão de Equipes, aplica
+      if (window.ret_target && window.ret_ele && window.ret_ela) {
+        try {
+          await waitForEl(`#${CSS.escape(window.ret_target)}_ele`, 5000);
+          applySelectedCoupleToTeam(window.ret_target, window.ret_ele, window.ret_ela);
+        } catch (err) { /* no-op */ }
       }
     });
 
-    // ====== Boot ======
-    loadCounts();
-    renderCoordChips();
-    renderDirigentes();
+    // CG buscar/adicionar (mantém seu backend)
+    cgBuscar.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      cgStatus.textContent = '';
+      const nome_ele = (cgEle.value||'').trim();
+      const nome_ela = (cgEla.value||'').trim();
+      if (!nome_ele || !nome_ela) { cgStatus.textContent='Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className='status warn-t'; return; }
+      try{
+        const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', {
+          ano: anoSelecionado, equipe_final: 'Casal Coordenador Geral', nome_ele, nome_ela
+        });
+        if (!data.ok) { cgStatus.textContent = data.msg || 'Falha ao validar.'; cgStatus.className='status err'; return; }
+        cgTel.value = data.telefones || '';
+        cgEnd.value = data.endereco || '';
+        cgStatus.textContent = data.trabalhou_antes ? 'Casal já trabalhou no ECC.' : 'Dados carregados.';
+        cgStatus.className = 'status ok';
+      }catch{ cgStatus.textContent='Erro ao buscar.'; cgStatus.className='status err'; }
+    });
+
+    cgAdd.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      cgStatus.textContent = '';
+      const nome_ele = (cgEle.value||'').trim();
+      const nome_ela = (cgEla.value||'').trim();
+      const telefones = (cgTel.value||'').trim();
+      const endereco  = (cgEnd.value||'').trim();
+      if (!anoSelecionado) { cgStatus.textContent='Informe o ano antes.'; cgStatus.className='status warn-t'; return; }
+      if (!nome_ele || !nome_ela) { cgStatus.textContent='Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className='status warn-t'; return; }
+      try{
+        const data = await postJSON('{{ url_for("api_add_cg") }}', {
+          ano: anoSelecionado, nome_ele, nome_ela, telefones, endereco
+        });
+        if (data.ok) {
+          cgStatus.textContent='Casal Coordenador Geral adicionado com sucesso.'; cgStatus.className='status ok';
+          cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
+          cgBuscar.disabled = true; cgAdd.disabled = true;
+          showTeamCoords();
+          await refreshCountsAndPaint();
+        } else {
+          cgStatus.textContent = data.msg || 'Falha ao adicionar.'; cgStatus.className='status err';
+        }
+      }catch{ cgStatus.textContent='Erro ao adicionar.'; cgStatus.className='status err'; }
+    });
+
+    // Aplicar seleção da Visão de Equipes (preenche e dispara buscar)
+    function applySelectedCoupleToTeam(targetId, ele, ela) {
+      const $ele = document.getElementById(`${targetId}_ele`);
+      const $ela = document.getElementById(`${targetId}_ela`);
+      const $buscar = document.getElementById(`${targetId}_buscar`);
+      if ($ele) $ele.value = ele || '';
+      if ($ela) $ela.value = ela || '';
+      if ($buscar) $buscar.click();
+      const field = document.getElementById(`${targetId}_ele`);
+      if (field) field.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+
+    // Autofluxo se ano veio por URL
+    window.addEventListener('DOMContentLoaded', () => {
+      const qs = new URLSearchParams(location.search);
+      const haveAno = anoPre || qs.get('ano') || qs.get('ano_montagem');
+      if (haveAno) {
+        if (!anoInput.value) anoInput.value = haveAno;
+        btnContinuar.click();
+      }
+    });
   </script>
-  {% endif %}
 </body>
 </html>
