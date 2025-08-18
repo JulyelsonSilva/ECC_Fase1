@@ -1469,13 +1469,14 @@ def equipe_montagem():
                       FROM encontristas e
                      WHERE e.ano = %s
                        AND NOT EXISTS (
-                             SELECT 1
-                               FROM encontreiros w
-                              WHERE w.ano = %s
-                                AND w.nome_ele = e.nome_usual_ele
-                                AND w.nome_ela = e.nome_usual_ela
-                                AND (w.status IS NULL OR UPPER(TRIM(w.status)) NOT IN ('RECUSOU','DESISTIU'))
-                           )
+                           SELECT 1
+                             FROM encontreiros w
+                           WHERE w.ano = %s
+                             AND w.nome_ele = e.nome_usual_ele
+                             AND w.nome_ela = e.nome_usual_ela
+                           -- sem filtro de status: apareceu no ano => não sugerir
+                    )
+
                      ORDER BY e.nome_usual_ele, e.nome_usual_ela
                 """, (ano - 1, ano))
                 for r in cur.fetchall():
