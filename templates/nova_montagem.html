@@ -6,21 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
-      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b;
-      --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff;
+      --bg:#f6f7fb;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --card:#ffffff;
+      --border:#e5e7eb;
+      --brand:#2563eb;
+      --brand-600:#1e40af;
+      --brand-50:#eff6ff;
       --accent:#f59e0b;
 
-      /* Cartões de equipe (KPI visual) */
-      --ok-bg:#d1fae5;      /* verde claro (ok) */
+      --ok-bg:#d1fae5;      /* verde claro */
       --ok-bd:#a7f3d0;
-      --warn-bg:#fef3c7;    /* amarelo claro (mínimo atingido) */
+      --warn-bg:#fef3c7;    /* amarelo claro */
       --warn-bd:#fde68a;
 
-      /* fallback neutro */
-      --neutral:#ffffff;
+      --ok:#dcfce7;        /* verde claro (cards alternativos) */
+      --warn:#fef9c3;      /* amarelo claro (cards alternativos) */
+      --neutral:#ffffff;   /* branco */
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
@@ -32,13 +36,8 @@
         radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
         var(--bg);
     }
-
     .wrap{max-width:1100px; margin:24px auto; padding:0 16px 64px;}
-
-    header{
-      display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap;
-      padding:12px 0 8px;
-    }
+    header{display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap; padding:12px 0 8px;}
     .brand{display:flex; align-items:center; gap:12px;}
     .logo{
       width:42px; height:42px; border-radius:50%;
@@ -46,29 +45,53 @@
       background: linear-gradient(135deg, var(--brand), var(--brand-600));
       color:white; font-size:22px; box-shadow: 0 8px 24px rgba(37,99,235,.25);
     }
+    .header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
+    h1{margin:0; font-size:22px;}
     .muted{color:var(--muted);}
     .btn{appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit;}
     .btn.primary{ background: var(--brand); color:#fff; border-color: var(--brand); }
     .btn.danger{ border-color:#b91c1c; color:#b91c1c; }
     .btn.warn{ border-color:#f59e0b; }
-
     .grid{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: 0 8px 20px rgba(15,23,42,.05); }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+    .card.team-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
+    .card.team-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
+
     label{ display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px;}
     input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
     .status{ margin-top:8px; font-size:13px; }
     .ok{ color:#065f46; }
-    .warn{ color:#92400e; }
+    .warn-t{ color:#92400e; }
     .err{ color:#b91c1c; }
-    .disabled{ opacity:.7; pointer-events:none; }
-
+    .disabled{ opacity:.6; pointer-events:none; }
+    .counter{ font-size:13px; color:#334155; }
     .inline{ display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .pill{ display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; }
+    .justify{ display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+    .pill{ display:inline-block; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#fff; }
+    .kpi{ font-weight:600; }
+    .kpi-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
+    .kpi-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
 
-    /* cartões de coordenadores de equipe */
     .team-card{transition: background-color .2s ease, border-color .2s ease;}
     .team-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+    .team-foot{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px;}
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
+        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
+        --ok-bg:#064e3b; --ok-bd:#065f46; --warn-bg:#78350f; --warn-bd:#854d0e;
+      }
+      .logo{ box-shadow:none; }
+      .card{ box-shadow:none; }
+      body{
+        background:
+          radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
+          var(--bg);
+      }
+    }
   </style>
 </head>
 <body>
@@ -87,45 +110,43 @@
       </div>
     </header>
 
-    <p class="muted">Informe o ano e adicione os 5 <b>Dirigentes</b>. Depois de concluir, defina o <b>Coordenador Geral</b>. Em seguida, escolha os <b>Coordenadores de Equipe</b> (pode selecionar pelo histórico) e, quando quiser, monte cada equipe.</p>
+    <p class="muted">Informe o ano e adicione os 5 <b>Dirigentes</b>. Depois de concluir, defina o <b>Coordenador Geral</b>. Em seguida, escolha os <b>Coordenadores de Equipe</b> e, quando quiser, monte cada equipe.</p>
 
     <!-- Passo 1: Ano -->
     <div class="card" id="ano-card">
-      <div class="row" style="grid-template-columns: 200px 1fr;">
+      <div class="row">
         <div>
           <label for="ano">Ano</label>
           <input id="ano" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}">
+          <div id="ano-msg" class="status"></div>
         </div>
         <div style="display:flex; align-items:flex-end;">
-          <button class="btn primary" id="btn-continuar">Continuar</button>
+          <button id="btn-continuar" class="btn primary">Continuar</button>
         </div>
       </div>
-      <div class="status" id="ano-msg"></div>
     </div>
 
-    <!-- Indicador simples dos dirigentes (kpi) -->
-    <p class="muted" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
+    <!-- Indicador -->
+    <p class="kpi" id="kpi-total" style="display:none; margin: 6px 0 12px;">Dirigentes adicionados: <b id="kpi-done">0</b>/5</p>
 
     <!-- Passo 2: 5 caixas Dirigentes -->
     <div class="grid" id="dirigentes-grid" style="display:none;"></div>
 
     <!-- Coordenador Geral -->
-    <div class="card disabled" id="cg-card" style="margin-top:12px; display:none;">
-      <h3 style="margin:0 0 8px;">Casal Coordenador Geral</h3>
+    <div class="card" id="cg-card" style="display:none; margin-top:12px;">
+      <h3 style="margin:0 0 8px;">Coordenador Geral</h3>
       <div class="row">
         <div><label for="cg_ele">Nome (Ele)</label><input id="cg_ele" placeholder="Nome (Ele)" disabled></div>
         <div><label for="cg_ela">Nome (Ela)</label><input id="cg_ela" placeholder="Nome (Ela)" disabled></div>
       </div>
       <div class="row" style="margin-top:8px;">
-        <div><label for="cg_tel">Telefones</label><input id="cg_tel" placeholder="Preenchido pela busca (editável)" disabled></div>
-        <div><label for="cg_end">Endereço</label><input id="cg_end" placeholder="Preenchido pela busca (editável)" disabled></div>
+        <div><label for="cg_tel">Telefones</label><input id="cg_tel" placeholder="" disabled></div>
+        <div><label for="cg_end">Endereço</label><input id="cg_end" placeholder="" disabled></div>
       </div>
       <div class="row" style="margin-top:8px;">
         <button class="btn" id="cg_buscar" disabled>Buscar</button>
-        <!-- Para adicionar CG, reaproveitamos api_add_dirigente com equipe = 'Casal Coordenador Geral' -->
         <button class="btn primary" id="cg_add" disabled data-mode="add">Adicionar</button>
       </div>
-      <!-- Caixa de justificativa p/ alterar status do CG -->
       <div class="status" id="cg_status"></div>
       <p class="muted" style="margin-top:8px; font-size:12px;">Regra: o casal precisa <strong>já ter trabalhado</strong> no ECC e <strong>nunca ter sido</strong> “Casal Coordenador Geral”.</p>
     </div>
@@ -145,62 +166,58 @@
     const VISAO_EQ_URL = "{{ url_for('visao_equipes') }}";
     const EQUIPE_MONT_URL = "/equipe-montagem";
 
-    // Parâmetros de retorno vindos por querystring (quando volta da Visão de Equipes)
-    (function hydrateReturnParamsFromQS(){
-      const qs = new URLSearchParams(location.search);
-      window.ret_target = qs.get('target') || qs.get('ret_target') || '';
-      window.ret_ele    = qs.get('selecionar_ele') || qs.get('ele') || qs.get('nome_ele') || '';
-      window.ret_ela    = qs.get('selecionar_ela') || qs.get('ela') || qs.get('nome_ela') || '';
-    })();
+    // Parâmetros de retorno da visao_equipes (Jinja)
+    const ret_target = {{ (request.args.get('target') or '') | tojson }};
+    const ret_ele    = {{ (request.args.get('selecionar_ele') or request.args.get('ele') or '') | tojson }};
+    const ret_ela    = {{ (request.args.get('selecionar_ela') or request.args.get('ela') or '') | tojson }};
 
-    // ---------- LISTAS ----------
-    // Dirigentes: cinco caixas
+    // ---------- MAPAS ----------
     const DIRIGENTES = [
       "Equipe Dirigente - MONTAGEM",
-      "Equipe Dirigente -FICHAS",     // mantém grafia do banco
+      "Equipe Dirigente -FICHAS",
       "Equipe Dirigente - FINANÇAS",
       "Equipe Dirigente - PALESTRA",
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
-    // Mapa das equipes (coordenadores)
+    // Equipes (mesmos rótulos/filtros do backend)
     const TEAM_MAP = {
       sala:      { rotulo:"Equipe de Sala - Coordenador/Apresentador", filtro:"Sala" },
       circulos:  { rotulo:"Equipe de Círculos", filtro:"Circulos" },
       cafe:      { rotulo:"Equipe Café e Minimercado", filtro:"Café e Minimercado" },
-      compras:   { rotulo:"Equipe Compras", filtro:"Compras" },
-      acolhida:  { rotulo:"Equipe Acolhida", filtro:"Acolhida" },
-      ordem:     { rotulo:"Equipe Ordem e Limpeza", filtro:"Ordem e Limpeza" },
-      liturgia:  { rotulo:"Equipe Liturgia e Vigilia", filtro:"Liturgia e Vigilia" },
-      secretaria:{ rotulo:"Equipe Secretaria", filtro:"Secretaria" },
+      compras:   { rotulo:"Equipe de Compras", filtro:"Compras" },
+      acolhida:  { rotulo:"Equipe de Acolhida", filtro:"Acolhida" },
+      ordem:     { rotulo:"Equipe de Ordem e Limpeza", filtro:"Ordem e Limpeza" },
+      liturgia:  { rotulo:"Equipe de Liturgia e Vigília", filtro:"Liturgia e Vigilia" },
+      secretaria:{ rotulo:"Equipe de Secretaria", filtro:"Secretaria" },
       cozinha:   { rotulo:"Equipe Cozinha", filtro:"Cozinha" },
       visitacao: { rotulo:"Equipe Visitação", filtro:"Visitação" },
     };
 
-    // Limites por equipe (apenas para exibição/pintura)
-    // ATENÇÃO: Sala com min=3, max=5 (visual) – contador também é "capado" em 5.
+    // Limites por equipe (usados apenas para pintar/contar no front)
     const TEAM_LIMITS = {
-      "Sala": {min:3, max:5},
-      "Circulos": {min:5, max:5},
-      "Café e Minimercado": {min:3, max:7},
-      "Compras": {min:0, max:1},
-      "Acolhida": {min:4, max:6},
-      "Ordem e Limpeza": {min:3, max:7},
-      "Liturgia e Vigilia": {min:2, max:6},
-      "Secretaria": {min:3, max:5},
-      "Cozinha": {min:7, max:9},
-      "Visitação": {min:6, max:10},
+      // >>> SALA: AJUSTE (inserido)
+      "Sala": { min: 3, max: 5 },
+      // <<< SALA: AJUSTE
+      "Circulos": { min:5, max:5 },
+      "Café e Minimercado": { min:3, max:7 },
+      "Compras": { min:0, max:1 },
+      "Acolhida": { min:4, max:6 },
+      "Ordem e Limpeza": { min:3, max:7 },
+      "Liturgia e Vigilia": { min:2, max:6 },
+      "Secretaria": { min:3, max:5 },
+      "Cozinha": { min:7, max:9 },
+      "Visitação": { min:6, max:10 },
     };
 
     // ---------- ELEMENTOS ----------
     const anoInput = document.getElementById('ano');
     const btnContinuar = document.getElementById('btn-continuar');
     const anoMsg = document.getElementById('ano-msg');
-
     const kpiWrap = document.getElementById('kpi-total');
     const kpiDone = document.getElementById('kpi-done');
 
-    const gridDirig = document.getElementById('dirigentes-grid');
+    const dirGrid = document.getElementById('dirigentes-grid');
 
     const cgCard = document.getElementById('cg-card');
     const cgEle = document.getElementById('cg_ele');
@@ -217,547 +234,86 @@
     // ---------- ESTADO ----------
     let anoSelecionado = null;
     let totalAdicionados = 0;
-    let countsByTeam = {};
+    let countsByTeam = {}; // preenchido por /api/equipe-counts
 
     // ---------- HELPERS ----------
     function idFromLabel(label){ return label.replace(/[^a-z0-9]+/gi,'_').toLowerCase(); }
-
     async function postJSON(url, body) {
       const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
       return await r.json();
     }
-
     async function getJSON(url) {
       const r = await fetch(url);
       return await r.json();
     }
-
-    function waitForEl(selector, timeout = 5000) {
-      return new Promise((resolve, reject) => {
-        const t0 = performance.now();
-        (function check(){
-          const el = document.querySelector(selector);
-          if (el) return resolve(el);
-          if (performance.now()-t0 > timeout) return reject(new Error('timeout waiting for '+selector));
-          requestAnimationFrame(check);
-        })();
-      });
-    }
-
     async function fetchCounts(ano){
-      // tenta /api/team-kpis primeiro; se não houver, tenta /api/equipe-counts
       try{
-        const a = await getJSON(`/api/team-kpis?ano=${encodeURIComponent(ano)}`);
-        if (a && a.ok && a.counts) return a.counts;
-      }catch{}
-      try{
-        const b = await getJSON(`/api/equipe-counts?ano=${encodeURIComponent(ano)}`);
-        if (b && (b.ok || b.counts)) return b.counts || b;
-      }catch{}
+        const r = await fetch(`/api/equipe-counts?ano=${encodeURIComponent(ano)}`);
+        if (!r.ok) return {};
+        const j = await r.json();
+        if (j && j.ok && j.counts) return j.counts;
+      }catch(_){}
       return {};
     }
 
-    function adjustedCount(filtro, n){
-      // Para Sala, limita visualmente no máximo especificado (exclui Recepção Palestrantes do "efeito visual")
+    function teamBgColor(filtro, n){
       const lim = TEAM_LIMITS[filtro] || {};
-      if (filtro === 'Sala') {
-        const max = typeof lim.max === 'number' ? lim.max : 5;
-        return Math.min(n||0, max);
-      }
-      return n||0;
-    }
-
-    function teamBgColor(filtro, nRaw){
-      const lim = TEAM_LIMITS[filtro] || {};
-      const n = adjustedCount(filtro, nRaw);
       const min = typeof lim.min === 'number' ? lim.min : 0;
       const max = typeof lim.max === 'number' ? lim.max : 8;
-      if (n >= max) return 'var(--ok-bg)';     // verde claro (atingiu máximo)
-      if (n >= min) return 'var(--warn-bg)';   // amarelo claro (atingiu mínimo)
-      return 'var(--neutral)';                 // neutro
+      if (n >= max) return 'var(--ok)';       // verde claro
+      if (n >= min) return 'var(--warn)';     // amarelo claro
+      return 'var(--neutral)';                // neutro
     }
-
-    function countLabel(filtro, nRaw){
+    function countLabel(filtro, n){
       const lim = TEAM_LIMITS[filtro] || {};
       const max = typeof lim.max === 'number' ? lim.max : 8;
-      const n = adjustedCount(filtro, nRaw);
       return `${n}/${max}`;
     }
 
-    // ---------- UI: Dirigentes ----------
-    function makeDirigenteBoxHTML(idSafe){
+    // ---------- UI: Dirigentes (somente rendering básico; lógica original mantida no backend) ----------
+    function makeInputRow(idSafe, preset) {
       return `
-        <div class="card" id="${idSafe}_card">
-          <h3 style="margin:0 0 8px;" id="${idSafe}_title"></h3>
-          <div class="row">
-            <div><label for="${idSafe}_ele">Nome (Ele)</label><input id="${idSafe}_ele" placeholder="Nome (Ele)"></div>
-            <div><label for="${idSafe}_ela">Nome (Ela)</label><input id="${idSafe}_ela" placeholder="Nome (Ela)"></div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <div><label for="${idSafe}_telefones">Telefones</label><input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)"></div>
-            <div><label for="${idSafe}_endereco">Endereço</label><input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)"></div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <button class="btn" id="${idSafe}_buscar">Buscar</button>
-            <button class="btn primary" id="${idSafe}_add" data-mode="add">Adicionar</button>
-          </div>
-          <div class="status" id="${idSafe}_status"></div>
+        <div class="row">
+          <div><label for="${idSafe}_ele">Nome (Ele)</label><input id="${idSafe}_ele" placeholder="Nome (Ele)"></div>
+          <div><label for="${idSafe}_ela">Nome (Ela)</label><input id="${idSafe}_ela" placeholder="Nome (Ela)"></div>
         </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="${idSafe}_telefones">Telefones</label><input id="${idSafe}_telefones"></div>
+          <div><label for="${idSafe}_endereco">Endereço</label><input id="${idSafe}_endereco"></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${idSafe}_buscar">Buscar</button>
+          <button class="btn primary" id="${idSafe}_add" data-mode="add">Adicionar</button>
+        </div>
+        <div class="status" id="${idSafe}_status"></div>
       `;
     }
-
-    function attachDirigenteHandlers(idSafe, equipeLabel){
-      const $ele = document.getElementById(`${idSafe}_ele`);
-      const $ela = document.getElementById(`${idSafe}_ela`);
-      const $tels = document.getElementById(`${idSafe}_telefones`);
-      const $end = document.getElementById(`${idSafe}_endereco`);
-      const $buscar = document.getElementById(`${idSafe}_buscar`);
-      const $add = document.getElementById(`${idSafe}_add`);
-      const $status = document.getElementById(`${idSafe}_status`);
-
-      async function buscar(){
-        $status.textContent = '';
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        if (!nome_ele || !nome_ela) { $status.textContent='Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn'; return; }
-        try{
-          const data = await postJSON('{{ url_for("api_buscar_dirigente") }}', {
-            ano: anoSelecionado,
-            equipe: equipeLabel,
-            nome_ele, nome_ela
-          });
-          if (data.ok){
-            $tels.value = data.telefones || '';
-            $end.value  = data.endereco || '';
-            $status.textContent = data.msg || 'Dados carregados.';
-            $status.className = 'status ok';
-          } else {
-            $status.textContent = data.msg || 'Falha ao buscar.';
-            $status.className = 'status err';
-          }
-        }catch{
-          $status.textContent = 'Erro ao buscar.';
-          $status.className = 'status err';
-        }
-      }
-
-      async function adicionar(){
-        $status.textContent = '';
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        const telefones = ($tels.value||'').trim();
-        const endereco  = ($end.value||'').trim();
-        if (!anoSelecionado) { $status.textContent='Informe o ano antes.'; $status.className='status warn'; return; }
-        if (!nome_ele || !nome_ela) { $status.textContent='Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn'; return; }
-        try{
-          const data = await postJSON('{{ url_for("api_add_dirigente") }}', {
-            ano: anoSelecionado,
-            equipe: equipeLabel,
-            nome_ele, nome_ela, telefones, endereco
-          });
-          if (data.ok){
-            $status.textContent = 'Inserido com sucesso.';
-            $status.className = 'status ok';
-            $ele.disabled = true; $ela.disabled = true; $tels.disabled = true; $end.disabled = true;
-            $buscar.disabled = true;
-            $add.textContent = 'Alterar';
-            $add.dataset.mode = 'alterar';
-            totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
-          } else {
-            $status.textContent = data.msg || 'Falha ao inserir.';
-            $status.className = 'status err';
-          }
-        }catch{
-          $status.textContent = 'Erro ao inserir.';
-          $status.className = 'status err';
-        }
-      }
-
-      $buscar.addEventListener('click', (e)=>{ e.preventDefault(); buscar(); });
-      $add.addEventListener('click', (e)=>{
-        e.preventDefault();
-        if ($add.dataset.mode === 'alterar'){
-          // Aqui ficaria a UI de justificativa (se desejar reativar). Por ora, mantemos como visual.
-          $status.textContent = 'Use a tela de manutenção para alterar o status.';
-          $status.className = 'status warn';
-        } else {
-          adicionar();
-        }
-      });
-
-      return {buscar, adicionar};
-    }
-
-    function renderDirigenteBox(equipeLabel, preset){
-      const idSafe = idFromLabel(equipeLabel);
-      gridDirig.insertAdjacentHTML('beforeend', makeDirigenteBoxHTML(idSafe));
-      document.getElementById(`${idSafe}_title`).textContent = equipeLabel;
-
-      attachDirigenteHandlers(idSafe, equipeLabel);
-
+    function renderDirigenteBox(equipe, preset) {
+      const idSafe = idFromLabel(equipe);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<h3 style="margin:0 0 8px;">${equipe}</h3>${makeInputRow(idSafe, preset)}`;
+      dirGrid.appendChild(card);
       if (preset && (preset.nome_ele || preset.nome_ela)) {
-        const ids = ['ele','ela','telefones','endereco','buscar','add'];
-        ids.forEach(s=>{
+        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
           const el = document.getElementById(`${idSafe}_${s}`);
-          if (el){
-            if (s==='ele') el.value = preset.nome_ele || '';
-            if (s==='ela') el.value = preset.nome_ela || '';
-            if (s==='telefones') el.value = preset.telefones || '';
-            if (s==='endereco') el.value = preset.endereco || '';
-            el.disabled = true;
-            if (s==='add'){ el.disabled = false; el.textContent='Alterar'; el.dataset.mode='alterar'; }
-          }
+          if (el) { if (preset[s]) el.value = preset[s]; el.disabled = true; if (s==='add') el.textContent = 'Alterar'; }
         });
         totalAdicionados += 1; kpiDone.textContent = String(totalAdicionados);
       }
     }
 
-    function renderDirigentes(){
-      gridDirig.innerHTML = '';
-      DIRIGENTES.forEach(label=>{
-        const preset = (initialData.dirigentes && initialData.dirigentes[label]) ? initialData.dirigentes[label] : null;
-        renderDirigenteBox(label, preset);
-      });
-      kpiWrap.style.display = '';
-    }
-
-    // ---------- UI: Coordenador Geral ----------
-    function renderCGPresetIfAny(){
-      const preset = initialData.cg || null;
-      if (preset && (preset.nome_ele || preset.nome_ela)) {
-        cgEle.value = preset.nome_ele || '';
-        cgEla.value = preset.nome_ela || '';
-        cgTel.value = preset.telefones || '';
-        cgEnd.value = preset.endereco || '';
-        cgStatus.textContent = '“Casal Coordenador Geral” já cadastrado para este ano.';
-        cgStatus.className = 'status ok';
-        cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
-        cgBuscar.disabled = true;
-        cgAdd.textContent = 'Alterar';
-        cgAdd.dataset.mode = 'alterar';
-        cgAdd.disabled = false;
-      } else {
-        cgEle.disabled = false; cgEla.disabled = false; cgTel.disabled = false; cgEnd.disabled = false;
-        cgBuscar.disabled = false; cgAdd.disabled = false;
-        cgAdd.textContent = 'Adicionar';
-        cgAdd.dataset.mode = 'add';
-      }
-    }
-
-    // ---------- UI: Coordenadores de Equipe ----------
-    function makeTeamCoordHTML(idSafe, info, labelCount, bg){
-      return `
-        <div class="card team-card" id="${idSafe}_card" style="background:${bg};">
-          <div class="team-head">
-            <h3 style="margin:0;">${info.rotulo}</h3>
-            <div class="inline">
-              <span class="pill" id="${idSafe}_kpi">${labelCount}</span>
-              <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
-              <a class="btn primary" id="${idSafe}_montar" href="#" style="display:none;">Montar Equipe</a>
-            </div>
-          </div>
-          <div class="row">
-            <div><label for="${idSafe}_ele">Nome (Ele)</label><input id="${idSafe}_ele" placeholder="Nome (Ele)"></div>
-            <div><label for="${idSafe}_ela">Nome (Ela)</label><input id="${idSafe}_ela" placeholder="Nome (Ela)"></div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <div><label for="${idSafe}_telefones">Telefones</label><input id="${idSafe}_telefones" placeholder="Preenchido pela busca (editável)"></div>
-            <div><label for="${idSafe}_endereco">Endereço</label><input id="${idSafe}_endereco" placeholder="Preenchido pela busca (editável)"></div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <button class="btn" id="${idSafe}_buscar">Buscar</button>
-            <button class="btn primary" id="${idSafe}_add" data-mode="add">Adicionar</button>
-          </div>
-          <div class="status" id="${idSafe}_status"></div>
-        </div>
-      `;
-    }
-
-    function attachTeamCoordHandlers(idSafe, info, montarBtn){
-      const $ele = document.getElementById(`${idSafe}_ele`);
-      const $ela = document.getElementById(`${idSafe}_ela`);
-      const $tels = document.getElementById(`${idSafe}_telefones`);
-      const $end = document.getElementById(`${idSafe}_endereco`);
-      const $buscar = document.getElementById(`${idSafe}_buscar`);
-      const $add = document.getElementById(`${idSafe}_add`);
-      const $status = document.getElementById(`${idSafe}_status`);
-
-      async function buscar(){
-        $status.textContent = '';
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        if (!nome_ele || !nome_ela) { $status.textContent='Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn'; return; }
-        try{
-          const data = await postJSON('{{ url_for("api_buscar_dirigente") }}', {
-            ano: anoSelecionado,
-            equipe: info.rotulo, // backend identifica coordenador de equipe por rótulo
-            nome_ele, nome_ela
-          });
-          if (data.ok){
-            $tels.value = data.telefones || '';
-            $end.value  = data.endereco || '';
-            $status.textContent = data.msg || 'Dados carregados.';
-            $status.className = 'status ok';
-          } else {
-            $status.textContent = data.msg || 'Falha ao buscar.';
-            $status.className = 'status err';
-          }
-        }catch{
-          $status.textContent = 'Erro ao buscar.';
-          $status.className = 'status err';
-        }
-      }
-
-      async function adicionar(){
-        $status.textContent = '';
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        const telefones = ($tels.value||'').trim();
-        const endereco  = ($end.value||'').trim();
-        if (!anoSelecionado) { $status.textContent='Informe o ano antes.'; $status.className='status warn'; return; }
-        if (!nome_ele || !nome_ela) { $status.textContent='Preencha Nome (Ele) e Nome (Ela).'; $status.className='status warn'; return; }
-        try{
-          const data = await postJSON('{{ url_for("api_add_dirigente") }}', {
-            ano: anoSelecionado,
-            equipe: info.rotulo,
-            nome_ele, nome_ela, telefones, endereco
-          });
-          if (data.ok){
-            $status.textContent = 'Coordenador inserido.';
-            $status.className = 'status ok';
-            $ele.disabled = true; $ela.disabled = true; $tels.disabled = true; $end.disabled = true;
-            $buscar.disabled = true;
-            $add.textContent = 'Alterar';
-            $add.dataset.mode = 'alterar';
-            if (montarBtn) montarBtn.style.display = 'inline-block';
-            // atualiza pintura/contagem
-            if (anoSelecionado) refreshCountsAndPaint();
-          } else {
-            $status.textContent = data.msg || 'Falha ao inserir.';
-            $status.className = 'status err';
-          }
-        }catch{
-          $status.textContent = 'Erro ao inserir.';
-          $status.className = 'status err';
-        }
-      }
-
-      $buscar.addEventListener('click', (e)=>{ e.preventDefault(); buscar(); });
-      $add.addEventListener('click', (e)=>{
-        e.preventDefault();
-        if ($add.dataset.mode === 'alterar'){
-          $status.textContent = 'Use a tela de manutenção para alterar o status.';
-          $status.className = 'status warn';
-        } else {
-          adicionar();
-        }
-      });
-    }
-
-    function renderTeamCoordBox(key){
+    // ---------- UI: Coordenadores por equipe ----------
+    function renderTeamCoordBox(key) {
       const info = TEAM_MAP[key];
       const idSafe = 'tc_'+key;
-
-      const nRaw = countsByTeam[info.filtro] || 0;
-      const bg = teamBgColor(info.filtro, nRaw);
-      const labelCount = countLabel(info.filtro, nRaw);
-
-      coordGrid.insertAdjacentHTML('beforeend', makeTeamCoordHTML(idSafe, info, labelCount, bg));
-
-      const montarBtn = document.getElementById(`${idSafe}_montar`);
-      function setMontarHref(){
-        if (!anoSelecionado) return;
-        if (montarBtn) montarBtn.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
-      }
-      setMontarHref();
-
-      attachTeamCoordHandlers(idSafe, info, montarBtn);
-
-      // Se já existe coordenador salvo (preset), preencher e habilitar "Montar Equipe"
       const preset = (initialData.coord_teams && initialData.coord_teams[key]) ? initialData.coord_teams[key] : null;
-      if (preset) {
-        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
-          const el = document.getElementById(`${idSafe}_${s}`);
-          if (!el) return;
-          if (s==='ele') el.value = preset.nome_ele || '';
-          if (s==='ela') el.value = preset.nome_ela || '';
-          if (s==='telefones') el.value = preset.telefones || '';
-          if (s==='endereco') el.value = preset.endereco || '';
-          el.disabled = true;
-          if (s==='add') { el.disabled=false; el.textContent='Alterar'; el.dataset.mode='alterar'; }
-        });
-        if (montarBtn) montarBtn.style.display = 'inline-block';
-      }
 
-      // Botão escolher no histórico
-      const chooseBtn = document.getElementById(`${idSafe}_choose`);
-      chooseBtn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        if (!anoSelecionado) { alert('Informe o ano primeiro.'); return; }
-        const url = `${VISAO_EQ_URL}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
-        window.location.href = url;
-      });
-    }
-
-    function showTeamCoords(){
-      coordGrid.innerHTML = '';
-      Object.keys(TEAM_MAP).forEach(k => renderTeamCoordBox(k));
-      coordCard.style.display = '';
-      coordCard.classList.remove('disabled');
-    }
-
-    // ---------- Fluxo principal ----------
-    function renderCG(){
-      cgCard.style.display = '';
-      cgCard.classList.remove('disabled');
-      renderCGPresetIfAny();
-
-      // Buscar CG
-      cgBuscar.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        cgStatus.textContent = '';
-        const nome_ele = (cgEle.value||'').trim();
-        const nome_ela = (cgEla.value||'').trim();
-        if (!nome_ele || !nome_ela) { cgStatus.textContent='Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className='status warn'; return; }
-        try{
-          const data = await postJSON('{{ url_for("api_buscar_cg") }}', {
-            ano: anoSelecionado, nome_ele, nome_ela
-          });
-          if (data.ok){
-            cgTel.value = data.telefones || '';
-            cgEnd.value = data.endereco || '';
-            cgStatus.textContent = data.msg || 'Dados carregados.';
-            cgStatus.className = 'status ok';
-          } else {
-            cgStatus.textContent = data.msg || 'Falha ao buscar.';
-            cgStatus.className = 'status err';
-          }
-        }catch{
-          cgStatus.textContent = 'Erro ao buscar.';
-          cgStatus.className = 'status err';
-        }
-      });
-
-      // Adicionar CG (usa api_add_dirigente com equipe = 'Casal Coordenador Geral')
-      cgAdd.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        if (cgAdd.dataset.mode === 'alterar'){
-          cgStatus.textContent = 'Use a tela de manutenção para alterar o status.';
-          cgStatus.className = 'status warn';
-          return;
-        }
-        cgStatus.textContent = '';
-        const nome_ele = (cgEle.value||'').trim();
-        const nome_ela = (cgEla.value||'').trim();
-        const telefones = (cgTel.value||'').trim();
-        const endereco  = (cgEnd.value||'').trim();
-        if (!anoSelecionado) { cgStatus.textContent='Informe o ano antes.'; cgStatus.className='status warn'; return; }
-        if (!nome_ele || !nome_ela) { cgStatus.textContent='Preencha Nome (Ele) e Nome (Ela).'; cgStatus.className='status warn'; return; }
-        try{
-          const data = await postJSON('{{ url_for("api_add_dirigente") }}', {
-            ano: anoSelecionado,
-            equipe: 'Casal Coordenador Geral',
-            nome_ele, nome_ela, telefones, endereco
-          });
-          if (data.ok){
-            cgStatus.textContent = 'Casal Coordenador Geral adicionado com sucesso.';
-            cgStatus.className = 'status ok';
-            cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
-            cgBuscar.disabled = true; cgAdd.textContent = 'Alterar'; cgAdd.dataset.mode='alterar';
-            showTeamCoords();
-            await refreshCountsAndPaint();
-          } else {
-            cgStatus.textContent = data.msg || 'Falha ao adicionar.';
-            cgStatus.className = 'status err';
-          }
-        }catch{
-          cgStatus.textContent = 'Erro ao adicionar.';
-          cgStatus.className = 'status err';
-        }
-      });
-    }
-
-    async function refreshCountsAndPaint(){
-      if (!anoSelecionado) return;
-      countsByTeam = await fetchCounts(anoSelecionado);
-      Object.keys(TEAM_MAP).forEach(k=>{
-        const filtro = TEAM_MAP[k].filtro;
-        const idSafe = 'tc_'+k;
-        const nRaw = countsByTeam[filtro] || 0;
-        const bg = teamBgColor(filtro, nRaw);
-        const card = document.getElementById(`${idSafe}_card`);
-        const kpiEl = document.getElementById(`${idSafe}_kpi`);
-        if (card) card.style.background = bg;
-        if (kpiEl) kpiEl.textContent = countLabel(filtro, nRaw);
-      });
-    }
-
-    function applySelectedCoupleToTeam(targetId, ele, ela){
-      const $ele = document.getElementById(`${targetId}_ele`);
-      const $ela = document.getElementById(`${targetId}_ela`);
-      const $buscar = document.getElementById(`${targetId}_buscar`);
-      const $montar = document.getElementById(`${targetId}_montar`);
-
-      if ($ele) $ele.value = ele || '';
-      if ($ela) $ela.value = ela || '';
-
-      if ($buscar) $buscar.click();
-
-      if ($montar && anoSelecionado){
-        const key = targetId.replace(/^tc_/,'');
-        const info = TEAM_MAP[key];
-        if (info) $montar.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
-      }
-      const field = document.getElementById(`${targetId}_ele`);
-      if (field) field.scrollIntoView({behavior:'smooth', block:'center'});
-    }
-
-    // ---------- Eventos ----------
-    btnContinuar.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      const val = (anoInput.value||'').trim();
-      if (!/^\d{4}$/.test(val)){
-        anoMsg.textContent = 'Informe um ano válido (YYYY).';
-        anoMsg.className = 'status err';
-        return;
-      }
-      anoMsg.textContent = '';
-      anoSelecionado = val;
-
-      // Render Dirigentes
-      totalAdicionados = 0; kpiDone.textContent = '0';
-      document.getElementById('dirigentes-grid').style.display = '';
-      renderDirigentes();
-
-      // CG
-      renderCG();
-
-      // Contagens + pintura
-      await refreshCountsAndPaint();
-
-      // Coordenadores de equipe
-      showTeamCoords();
-
-      // Se voltamos da visão de equipes com um casal selecionado
-      if (window.ret_target && window.ret_ele && window.ret_ela){
-        try{
-          await waitForEl(`#${CSS.escape(window.ret_target)}_ele`, 5000);
-          applySelectedCoupleToTeam(window.ret_target, window.ret_ele, window.ret_ela);
-        }catch(e){
-          console.warn('Não foi possível focar na caixa alvo retornada:', e);
-        }
-      }
-    });
-
-    // Auto continuar se veio ano na URL
-    window.addEventListener('DOMContentLoaded', async ()=>{
-      const qs = new URLSearchParams(location.search);
-      const haveAno = anoPre || qs.get('ano') || qs.get('ano_montagem');
-      if (haveAno){
-        if (!anoInput.value) anoInput.value = haveAno;
-        btnContinuar.click();
-      }
-    });
-  </script>
-</body>
-</html>
+      const card = document.createElement('div');
+      card.className = 'card team-card';
+      card.id = `${idSafe}_card`;
+      card.innerHTML = `
+        <div class="team-head">
+          <h3 style="margin:0;">${info.rotulo}</h3>
+          <div class="inline">
+            <span class="pill kpi" id="${idSafe}_kpi">—</spa_
