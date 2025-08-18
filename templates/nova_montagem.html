@@ -15,21 +15,34 @@
     .btn.primary { background: var(--brand); border-color: var(--brand); color:#fff; }
     .btn.danger  { border-color: var(--danger); color: var(--danger); }
     .muted { color:var(--muted); }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    input { padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+
     .cols { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; align-items:start; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    label{ display:block; font-size:12px; font-weight:600; color:#334155; margin:6px 0 4px; }
+    input{ padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; width:100%; }
+
+    /* Grade de equipes */
     .eq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
     .eq-tag{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;text-decoration:none;color:#0f172a}
     .eq-tag small{color:#64748b}
     .eq-ok {background:#ecfdf5;border-color:#16a34a}
     .eq-warn{background:#fffbeb;border-color:#f59e0b}
-    .grid-dir { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px; }
-    label { display:block; font-size:12px; font-weight:600; color:#334155; margin:6px 0 4px; }
+
+    /* Chips coordenadores existentes */
+    .chip {display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:999px;background:#fff;margin:4px 6px 0 0}
+    .chip b{font-weight:600}
+    .chip .mini{font-size:12px;color:#475569}
+
+    /* Modal Alterar (status + justificativa) */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:9999}
+    .modal-card{background:#fff;width:min(520px,92vw);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    .modal-header{font-weight:600;font-size:18px;margin-bottom:12px}
+    .modal-row{margin:10px 0}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+    select, textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .status { margin-top:6px; font-size:13px; }
-    .ok { color:var(--ok); }
-    .warn-t { color:var(--warn); }
-    .err { color:var(--danger); }
+    .ok { color:var(--ok); } .warn-t { color:var(--warn); } .err { color:var(--danger); }
     .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; margin-right:6px; }
     .help { font-size:12px; color:#475569; }
   </style>
@@ -47,11 +60,11 @@
       </div>
     </div>
 
-    <!-- Seleção de Ano -->
+    <!-- Seleção de ano -->
     <div class="card" style="margin-bottom:12px;">
       <form class="row" action="{{ url_for('nova_montagem') }}" method="get">
         <label for="ano" style="margin:0; font-weight:600;">Ano</label>
-        <input id="ano" name="ano" type="number" min="1990" max="2100" value="{{ ano_preselecionado or '' }}" required>
+        <input id="ano" name="ano" type="number" min="1990" max="2100" value="{{ ano_preselecionado or '' }}" required style="width:140px">
         <button class="btn primary" type="submit">Carregar</button>
         {% if ano_preselecionado %}
           <span class="pill">Ano atual: <b>{{ ano_preselecionado }}</b></span>
@@ -61,76 +74,115 @@
 
     {% if ano_preselecionado %}
     <div class="cols">
-      <!-- Coluna esquerda: Status das equipes + atalhos -->
+      <!-- ESQUERDA: grade de status das equipes -->
       <div class="card">
         <h3 style="margin:0 0 8px;">Equipes — status</h3>
         <p class="help" style="margin:0 0 10px;">Verde: equipe completa · Amarelo: em andamento.</p>
         <div id="eqGrid" class="eq-grid"></div>
+
+        <!-- Coordenadores de Equipe (existentes) em chips à frente do card -->
+        <hr style="margin:14px 0; border:none; border-top:1px solid var(--border);">
+        <h4 style="margin:0 0 6px;">Coordenadores de Equipe (abertos)</h4>
+        <div id="chipsCoord"></div>
+        <p class="help" style="margin:6px 0 0">Use <b>Alterar</b> para marcar Recusou/Desistiu (com justificativa).</p>
       </div>
 
-      <!-- Coluna direita: Dirigentes e CG -->
+      <!-- DIREITA: CG e Dirigentes -->
       <div class="card">
-        <h3 style="margin:0 0 8px;">Dirigentes & Coordenador Geral</h3>
-        <p class="help" style="margin:0 0 12px;">
-          Preencha nome do casal e use <b>Buscar</b> (traz telefones/endereço). Em seguida, <b>Adicionar</b>.
-        </p>
+        <h3 style="margin:0 0 8px;">Coordenador Geral & Dirigentes</h3>
 
-        <!-- Coordenador Geral -->
+        <!-- CG -->
         <div class="card" style="padding:12px; margin-bottom:12px;">
           <div class="row" style="justify-content:space-between;">
             <strong>Casal Coordenador Geral</strong>
-            <span class="pill">Status: Aberto</span>
+            {% if initial_data.cg and (initial_data.cg.nome_ele or initial_data.cg.nome_ela) %}
+              <span class="pill">Atual: {{ initial_data.cg.nome_ele or '' }}{% if initial_data.cg.nome_ela %} e {{ initial_data.cg.nome_ela }}{% endif %}</span>
+            {% else %}
+              <span class="pill">Status: Aberto</span>
+            {% endif %}
           </div>
-          <div class="row" style="margin-top:8px;">
-            <div style="flex:1; min-width:180px;">
-              <label for="cg_ele">Nome (Ele)</label>
-              <input id="cg_ele" placeholder="Ex.: João" value="{{ (initial_data.cg.nome_ele if initial_data.cg) or '' }}">
+
+          {% if initial_data.cg and (initial_data.cg.nome_ele or initial_data.cg.nome_ela) %}
+            <!-- Já existe CG -> mostrar só Alterar -->
+            <div class="row" style="margin-top:10px;">
+              <button class="btn danger" id="cg_alterar">Alterar</button>
+              <div id="cg_status" class="status"></div>
             </div>
-            <div style="flex:1; min-width:180px;">
-              <label for="cg_ela">Nome (Ela)</label>
-              <input id="cg_ela" placeholder="Ex.: Maria" value="{{ (initial_data.cg.nome_ela if initial_data.cg) or '' }}">
+          {% else %}
+            <!-- Não existe -> formulário de inclusão -->
+            <div class="row" style="margin-top:8px;">
+              <div style="flex:1; min-width:180px;">
+                <label for="cg_ele">Nome (Ele)</label>
+                <input id="cg_ele" placeholder="Ex.: João" value="">
+              </div>
+              <div style="flex:1; min-width:180px;">
+                <label for="cg_ela">Nome (Ela)</label>
+                <input id="cg_ela" placeholder="Ex.: Maria" value="">
+              </div>
             </div>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <div style="flex:1; min-width:180px;">
-              <label for="cg_tel">Telefones</label>
-              <input id="cg_tel" placeholder="Preenchido pela busca" value="{{ (initial_data.cg.telefones if initial_data.cg) or '' }}">
+            <div class="row" style="margin-top:8px;">
+              <div style="flex:1; min-width:180px;">
+                <label for="cg_tel">Telefones</label>
+                <input id="cg_tel" placeholder="Preenchido pela busca" value="">
+              </div>
+              <div style="flex:1; min-width:180px;">
+                <label for="cg_end">Endereço</label>
+                <input id="cg_end" placeholder="Preenchido pela busca" value="">
+              </div>
             </div>
-            <div style="flex:1; min-width:180px;">
-              <label for="cg_end">Endereço</label>
-              <input id="cg_end" placeholder="Preenchido pela busca" value="{{ (initial_data.cg.endereco if initial_data.cg) or '' }}">
+            <div class="row" style="margin-top:10px;">
+              <button class="btn" id="cg_buscar">Buscar</button>
+              <button class="btn primary" id="cg_add">Adicionar</button>
+              <div id="cg_status" class="status"></div>
             </div>
-          </div>
-          <div class="row" style="margin-top:10px;">
-            <button class="btn" id="cg_buscar">Buscar</button>
-            <button class="btn primary" id="cg_add">Adicionar</button>
-            <div id="cg_status" class="status"></div>
-          </div>
+          {% endif %}
         </div>
 
         <!-- Dirigentes -->
-        <div class="grid-dir" id="dirGrid">
-          {# Serão renderizados via JS a partir de uma lista fixa + initial_data.dirigentes #}
-        </div>
+        <div id="dirGrid" class="card" style="padding:12px;"></div>
       </div>
     </div>
     {% endif %}
   </div>
 
   {% if ano_preselecionado %}
+  <!-- Modal Alterar (status + justificativa) -->
+  <div id="altModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">Alterar status</div>
+      <form id="altForm">
+        <input type="hidden" id="alt_equipe">
+        <div class="modal-row">
+          <label for="alt_status"><strong>Status</strong></label>
+          <select id="alt_status" required>
+            <option value="" disabled selected>Selecione</option>
+            <option value="Desistiu">Desistiu</option>
+            <option value="Recusou">Recusou</option>
+          </select>
+        </div>
+        <div class="modal-row">
+          <label for="alt_obs"><strong>Justificativa</strong></label>
+          <textarea id="alt_obs" rows="4" placeholder="Descreva o motivo" required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="altCancel">Cancelar</button>
+          <button type="submit" class="btn primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const ANO = {{ ano_preselecionado|int }};
     const TEAM_MAP    = {{ team_map|tojson }};
     const TEAM_LIMITS = {{ (team_limits or {})|tojson }};
     const INITIAL     = {{ initial_data|tojson }};
 
-    // Override seguro para Sala (se por algum motivo não vier do back)
+    // Garante limites de Sala localmente (não muda as outras)
     if (!TEAM_LIMITS.Sala) TEAM_LIMITS.Sala = {min:3, max:5};
 
-    // === Equipes (grade de status) ===
-    const TEAMS = Object.entries(TEAM_MAP).map(([key, v]) => ({
-      key, filtro: v.filtro, rotulo: v.rotulo
-    }));
+    // ====== Grade de status ======
+    const TEAMS = Object.entries(TEAM_MAP).map(([key, v]) => ({ key, filtro: v.filtro, rotulo: v.rotulo }));
 
     function decorate(teamFiltro, n){
       const lim = TEAM_LIMITS[teamFiltro] || {min:0, max:8};
@@ -175,58 +227,95 @@
       }
     }
 
-    // === Coordenador Geral (CG) ===
-    const $cgEle = document.getElementById('cg_ele');
-    const $cgEla = document.getElementById('cg_ela');
-    const $cgTel = document.getElementById('cg_tel');
-    const $cgEnd = document.getElementById('cg_end');
+    // ====== Coordenadores de Equipe existentes (chips) ======
+    function renderCoordChips(){
+      const box = document.getElementById('chipsCoord');
+      box.innerHTML = '';
+      const coord = INITIAL?.coord_teams || {};
+      const entries = Object.entries(coord);
+      if (!entries.length){
+        box.innerHTML = '<span class="muted">Nenhum coordenador em aberto encontrado.</span>';
+        return;
+      }
+      entries.forEach(([key, info])=>{
+        const rotulo = TEAM_MAP[key]?.rotulo || key;
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = `
+          <span class="mini">${rotulo}:</span>
+          <b>${(info.nome_ele||'')}${info.nome_ela? ' e ' + info.nome_ela : ''}</b>
+          <button class="btn danger" data-equipe="${rotulo}">Alterar</button>
+        `;
+        chip.querySelector('button').addEventListener('click', (e)=>{
+          const equipe = e.currentTarget.getAttribute('data-equipe');
+          openAltModal(equipe);
+        });
+        box.appendChild(chip);
+      });
+    }
+
+    // ====== CG (buscar/adicionar/alterar) ======
     const $cgStatus = document.getElementById('cg_status');
+    const CG_EXISTS = !!(INITIAL?.cg && (INITIAL.cg.nome_ele || INITIAL.cg.nome_ela));
 
-    document.getElementById('cg_buscar').addEventListener('click', async (e)=>{
-      e.preventDefault();
-      $cgStatus.textContent='';
-      const nome_ele = ($cgEle.value||'').trim();
-      const nome_ela = ($cgEla.value||'').trim();
-      if (!nome_ele || !nome_ela){
-        $cgStatus.textContent = 'Informe Nome (Ele) e Nome (Ela).'; $cgStatus.className='status warn-t'; return;
-      }
-      try{
-        const r = await fetch('{{ url_for("api_buscar_cg") }}', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome_ele, nome_ela })
-        });
-        const j = await r.json();
-        if (!j.ok){ $cgStatus.textContent = j.msg || 'Não encontrado.'; $cgStatus.className='status err'; return; }
-        $cgTel.value = j.telefones || '';
-        $cgEnd.value = j.endereco || '';
-        $cgStatus.textContent = 'Dados carregados.'; $cgStatus.className='status ok';
-      }catch{ $cgStatus.textContent='Erro ao buscar.'; $cgStatus.className='status err'; }
-    });
+    if (!CG_EXISTS){
+      const $cgEle = document.getElementById('cg_ele');
+      const $cgEla = document.getElementById('cg_ela');
+      const $cgTel = document.getElementById('cg_tel');
+      const $cgEnd = document.getElementById('cg_end');
 
-    document.getElementById('cg_add').addEventListener('click', async (e)=>{
-      e.preventDefault();
-      $cgStatus.textContent='';
-      const nome_ele = ($cgEle.value||'').trim();
-      const nome_ela = ($cgEla.value||'').trim();
-      const telefones = ($cgTel.value||'').trim();
-      const endereco  = ($cgEnd.value||'').trim();
-      if (!nome_ele || !nome_ela){
-        $cgStatus.textContent = 'Informe Nome (Ele) e Nome (Ela).'; $cgStatus.className='status warn-t'; return;
-      }
-      try{
-        const r = await fetch('{{ url_for("api_adicionar_cg") }}', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ ano: ANO, nome_ele, nome_ela, telefones, endereco })
-        });
-        const j = await r.json();
-        if (!j.ok){ $cgStatus.textContent = j.msg || 'Falha ao adicionar.'; $cgStatus.className='status err'; return; }
-        $cgStatus.textContent = 'CG adicionado com sucesso.'; $cgStatus.className='status ok';
-        loadCounts();
-      }catch{ $cgStatus.textContent='Erro ao adicionar.'; $cgStatus.className='status err'; }
-    });
+      document.getElementById('cg_buscar').addEventListener('click', async (e)=>{
+        e.preventDefault();
+        $cgStatus.textContent='';
+        const nome_ele = ($cgEle.value||'').trim();
+        const nome_ela = ($cgEla.value||'').trim();
+        if (!nome_ele || !nome_ela){
+          $cgStatus.textContent='Informe Nome (Ele) e Nome (Ela).'; $cgStatus.className='status warn-t'; return;
+        }
+        try{
+          const r = await fetch('{{ url_for("api_buscar_cg") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ nome_ele, nome_ela })
+          });
+          const j = await r.json();
+          if (!j.ok){ $cgStatus.textContent = j.msg || 'Não encontrado.'; $cgStatus.className='status err'; return; }
+          $cgTel.value = j.telefones || '';
+          $cgEnd.value = j.endereco || '';
+          $cgStatus.textContent = 'Dados carregados.'; $cgStatus.className='status ok';
+        }catch{ $cgStatus.textContent='Erro ao buscar.'; $cgStatus.className='status err'; }
+      });
 
-    // === Dirigentes ===
-    // Lista canônica (precisa bater com o backend)
+      document.getElementById('cg_add').addEventListener('click', async (e)=>{
+        e.preventDefault();
+        $cgStatus.textContent='';
+        const nome_ele = ($cgEle.value||'').trim();
+        const nome_ela = ($cgEla.value||'').trim();
+        const telefones = ($cgTel.value||'').trim();
+        const endereco  = ($cgEnd.value||'').trim();
+        if (!nome_ele || !nome_ela){
+          $cgStatus.textContent='Informe Nome (Ele) e Nome (Ela).'; $cgStatus.className='status warn-t'; return;
+        }
+        try{
+          const r = await fetch('{{ url_for("api_adicionar_cg") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ano: ANO, nome_ele, nome_ela, telefones, endereco })
+          });
+          const j = await r.json();
+          if (!j.ok){ $cgStatus.textContent = j.msg || 'Falha ao adicionar.'; $cgStatus.className='status err'; return; }
+          $cgStatus.textContent = 'CG adicionado com sucesso.'; $cgStatus.className='status ok';
+          loadCounts();
+          location.search = '?ano=' + ANO; // recarrega para exibir como "Alterar"
+        }catch{ $cgStatus.textContent='Erro ao adicionar.'; $cgStatus.className='status err'; }
+      });
+    } else {
+      // Já existe CG → botão Alterar
+      document.getElementById('cg_alterar').addEventListener('click', (e)=>{
+        e.preventDefault();
+        openAltModal('Casal Coordenador Geral');
+      });
+    }
+
+    // ====== Dirigentes (cartões) ======
     const DIRS = [
       "Equipe Dirigente - MONTAGEM",
       "Equipe Dirigente -FICHAS",
@@ -235,109 +324,175 @@
       "Equipe Dirigente - PÓS ENCONTRO",
     ];
 
-    function dirigenteCard(equipe, pref){
-      const box = document.createElement('div');
-      box.className = 'card';
-      box.style.padding='12px';
-
-      const id = equipe.replace(/\s+/g,'_').replace(/[^\w\-]/g,'');
-
-      box.innerHTML = `
-        <div class="row" style="justify-content:space-between;">
-          <strong>${equipe}</strong>
-          <span class="pill">Coordenador</span>
-        </div>
-        <div class="row" style="margin-top:8px;">
-          <div style="flex:1; min-width:160px;">
-            <label for="${id}_ele">Nome (Ele)</label>
-            <input id="${id}_ele" placeholder="Ex.: João" value="${pref?.nome_ele||''}">
-          </div>
-          <div style="flex:1; min-width:160px;">
-            <label for="${id}_ela">Nome (Ela)</label>
-            <input id="${id}_ela" placeholder="Ex.: Maria" value="${pref?.nome_ela||''}">
-          </div>
-        </div>
-        <div class="row" style="margin-top:8px;">
-          <div style="flex:1; min-width:160px;">
-            <label for="${id}_tel">Telefones</label>
-            <input id="${id}_tel" placeholder="Preenchido pela busca" value="${pref?.telefones||''}">
-          </div>
-          <div style="flex:1; min-width:160px;">
-            <label for="${id}_end">Endereço</label>
-            <input id="${id}_end" placeholder="Preenchido pela busca" value="${pref?.endereco||''}">
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px;">
-          <button class="btn" id="${id}_buscar">Buscar</button>
-          <button class="btn primary" id="${id}_add">Adicionar</button>
-          <div id="${id}_status" class="status"></div>
-        </div>
-      `;
-
-      // Handlers
-      const $ele = box.querySelector(`#${id}_ele`);
-      const $ela = box.querySelector(`#${id}_ela`);
-      const $tel = box.querySelector(`#${id}_tel`);
-      const $end = box.querySelector(`#${id}_end`);
-      const $st  = box.querySelector(`#${id}_status`);
-
-      box.querySelector(`#${id}_buscar`).addEventListener('click', async (e)=>{
-        e.preventDefault();
-        $st.textContent='';
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        if (!nome_ele || !nome_ela){
-          $st.textContent='Informe Nome (Ele) e Nome (Ela).'; $st.className='status warn-t'; return;
-        }
-        try{
-          const r = await fetch('{{ url_for("api_buscar_casal") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ nome_ele, nome_ela })
-          });
-          const j = await r.json();
-          if (!j.ok){ $st.textContent = j.msg || 'Não encontrado.'; $st.className='status err'; return; }
-          $tel.value = j.telefones || '';
-          $end.value = j.endereco || '';
-          $st.textContent = `Dados carregados (${j.origem}).`; $st.className='status ok';
-        }catch{ $st.textContent='Erro ao buscar.'; $st.className='status err'; }
-      });
-
-      box.querySelector(`#${id}_add`).addEventListener('click', async (e)=>{
-        e.preventDefault();
-        $st.textContent='';
-        const nome_ele = ($ele.value||'').trim();
-        const nome_ela = ($ela.value||'').trim();
-        const telefones = ($tel.value||'').trim();
-        const endereco  = ($end.value||'').trim();
-        if (!nome_ele || !nome_ela){
-          $st.textContent='Informe Nome (Ele) e Nome (Ela).'; $st.className='status warn-t'; return;
-        }
-        try{
-          const r = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ ano: ANO, equipe, nome_ele, nome_ela, telefones, endereco })
-          });
-          const j = await r.json();
-          if (!j.ok){ $st.textContent = j.msg || 'Falha ao adicionar.'; $st.className='status err'; return; }
-          $st.textContent = 'Dirigente adicionado com sucesso.'; $st.className='status ok';
-          loadCounts();
-        }catch{ $st.textContent='Erro ao adicionar.'; $st.className='status err'; }
-      });
-
-      return box;
-    }
-
     function renderDirigentes(){
-      const grid = document.getElementById('dirGrid');
-      grid.innerHTML = '';
-      const prefMap = INITIAL?.dirigentes || {};
+      const wrap = document.getElementById('dirGrid');
+      wrap.innerHTML = '<h4 style="margin:0 0 8px;">Equipes Dirigentes</h4>';
+      const grid = document.createElement('div');
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px,1fr))';
+      grid.style.gap = '10px';
+
+      const pref = INITIAL?.dirigentes || {};
       DIRS.forEach(eq => {
-        grid.appendChild(dirigenteCard(eq, prefMap[eq]));
+        const p = pref[eq] || null;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.padding='12px';
+        card.innerHTML = `
+          <div class="row" style="justify-content:space-between;">
+            <strong>${eq}</strong>
+            ${p ? `<span class="pill">Atual: ${(p.nome_ele||'')}${p.nome_ela? ' e ' + p.nome_ela : ''}</span>` : `<span class="pill">Status: Aberto</span>`}
+          </div>
+        `;
+
+        if (p){
+          // já existe -> só Alterar
+          const r = document.createElement('div');
+          r.className='row';
+          r.style.marginTop='10px';
+          r.innerHTML = `<button class="btn danger" data-equipe="${eq}">Alterar</button><div class="status"></div>`;
+          r.querySelector('button').addEventListener('click', (e)=>{
+            const equipe = e.currentTarget.getAttribute('data-equipe');
+            openAltModal(equipe);
+          });
+          card.appendChild(r);
+        } else {
+          // formulário incluir
+          const id = eq.replace(/\s+/g,'_').replace(/[^\w\-]/g,'');
+          const form = document.createElement('div');
+          form.innerHTML = `
+            <div class="row" style="margin-top:8px;">
+              <div style="flex:1; min-width:150px;">
+                <label for="${id}_ele">Nome (Ele)</label>
+                <input id="${id}_ele" placeholder="Ex.: João">
+              </div>
+              <div style="flex:1; min-width:150px;">
+                <label for="${id}_ela">Nome (Ela)</label>
+                <input id="${id}_ela" placeholder="Ex.: Maria">
+              </div>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <div style="flex:1; min-width:150px;">
+                <label for="${id}_tel">Telefones</label>
+                <input id="${id}_tel" placeholder="Preenchido pela busca">
+              </div>
+              <div style="flex:1; min-width:150px;">
+                <label for="${id}_end">Endereço</label>
+                <input id="${id}_end" placeholder="Preenchido pela busca">
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px;">
+              <button class="btn" id="${id}_buscar">Buscar</button>
+              <button class="btn primary" id="${id}_add">Adicionar</button>
+              <div id="${id}_status" class="status"></div>
+            </div>
+          `;
+          card.appendChild(form);
+
+          const $ele = form.querySelector(`#${id}_ele`);
+          const $ela = form.querySelector(`#${id}_ela`);
+          const $tel = form.querySelector(`#${id}_tel`);
+          const $end = form.querySelector(`#${id}_end`);
+          const $st  = form.querySelector(`#${id}_status`);
+
+          form.querySelector(`#${id}_buscar`).addEventListener('click', async (e)=>{
+            e.preventDefault();
+            $st.textContent='';
+            const nome_ele = ($ele.value||'').trim();
+            const nome_ela = ($ela.value||'').trim();
+            if (!nome_ele || !nome_ela){ $st.textContent='Informe Nome (Ele) e Nome (Ela).'; $st.className='status warn-t'; return; }
+            try{
+              const r = await fetch('{{ url_for("api_buscar_casal") }}', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ nome_ele, nome_ela })
+              });
+              const j = await r.json();
+              if (!j.ok){ $st.textContent = j.msg || 'Não encontrado.'; $st.className='status err'; return; }
+              $tel.value = j.telefones || '';
+              $end.value = j.endereco || '';
+              $st.textContent = `Dados carregados (${j.origem}).`; $st.className='status ok';
+            }catch{ $st.textContent='Erro ao buscar.'; $st.className='status err'; }
+          });
+
+          form.querySelector(`#${id}_add`).addEventListener('click', async (e)=>{
+            e.preventDefault();
+            $st.textContent='';
+            const nome_ele = ($ele.value||'').trim();
+            const nome_ela = ($ela.value||'').trim();
+            const telefones = ($tel.value||'').trim();
+            const endereco  = ($end.value||'').trim();
+            if (!nome_ele || !nome_ela){ $st.textContent='Informe Nome (Ele) e Nome (Ela).'; $st.className='status warn-t'; return; }
+            try{
+              const r = await fetch('{{ url_for("api_adicionar_dirigente") }}', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ ano: ANO, equipe: eq, nome_ele, nome_ela, telefones, endereco })
+              });
+              const j = await r.json();
+              if (!j.ok){ $st.textContent = j.msg || 'Falha ao adicionar.'; $st.className='status err'; return; }
+              $st.textContent = 'Dirigente adicionado com sucesso.'; $st.className='status ok';
+              loadCounts();
+              location.search = '?ano=' + ANO; // recarrega para transformar em "Alterar"
+            }catch{ $st.textContent='Erro ao adicionar.'; $st.className='status err'; }
+          });
+        }
+
+        grid.appendChild(card);
       });
+
+      wrap.appendChild(grid);
     }
 
-    // Boot
+    // ====== Modal Alterar ======
+    const $altModal  = document.getElementById('altModal');
+    const $altForm   = document.getElementById('altForm');
+    const $altEquipe = document.getElementById('alt_equipe');
+    const $altStatus = document.getElementById('alt_status');
+    const $altObs    = document.getElementById('alt_obs');
+    const $altCancel = document.getElementById('altCancel');
+
+    function openAltModal(equipe){
+      $altEquipe.value = equipe;
+      $altStatus.value = '';
+      $altObs.value = '';
+      $altModal.style.display = 'flex';
+      $altModal.setAttribute('aria-hidden','false');
+    }
+    function closeAltModal(){
+      $altModal.style.display = 'none';
+      $altModal.setAttribute('aria-hidden','true');
+    }
+    $altCancel.addEventListener('click', (e)=>{ e.preventDefault(); closeAltModal(); });
+    $altModal.addEventListener('click', (e)=>{ if (e.target === $altModal) closeAltModal(); });
+
+    $altForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const equipe = $altEquipe.value;
+      const novo_status = $altStatus.value;
+      const observacao  = $altObs.value.trim();
+      if (!(equipe && (novo_status==='Recusou' || novo_status==='Desistiu') && observacao)) return;
+
+      try{
+        const resp = await fetch('{{ url_for("api_marcar_status_dirigente") }}', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ano: ANO, equipe, novo_status, observacao })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          alert(data.msg || 'Falha ao alterar status.');
+          return;
+        }
+        closeAltModal();
+        loadCounts();
+        location.search = '?ano=' + ANO; // recarrega para atualizar chips/cards
+      }catch(err){
+        alert('Erro de rede ao salvar.');
+      }
+    });
+
+    // ====== Boot ======
     loadCounts();
+    renderCoordChips();
     renderDirigentes();
   </script>
   {% endif %}
