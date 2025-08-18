@@ -1683,6 +1683,7 @@ def api_add_membro_equipe():
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        # bloqueios (iguais aos seus)
         cur.execute("""
             SELECT 1 FROM encontreiros
              WHERE nome_ele = %s AND nome_ela = %s
@@ -1714,8 +1715,9 @@ def api_add_membro_equipe():
                 (%s,  %s,     %s,       %s,       %s,         %s,       'Não',      'Aberto')
         """, (int(ano), equipe_final, nome_ele, nome_ela, telefones, endereco))
         conn.commit()
+        new_id = cur2.lastrowid
         cur2.close()
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "id": new_id})   # <<<<<< devolve o id
     finally:
         try:
             cur.close()
