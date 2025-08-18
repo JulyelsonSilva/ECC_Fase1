@@ -24,7 +24,7 @@
     .slot { border:1px dashed var(--border); border-radius:12px; padding:12px; }
     .slot h3 { margin:0 0 8px; font-size:16px; }
     label { display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px; }
-    input { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    input, textarea, select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
     .status { margin-top:8px; font-size:13px; }
     .ok { color:var(--ok); }
@@ -32,13 +32,8 @@
     .err { color:var(--danger); }
     .small { font-size:12px; color:#475569; }
     .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; margin-right:6px; }
-    /* Modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:9999}
-    .modal-card{background:#fff;width:min(520px,92vw);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
-    .modal-header{font-weight:600;font-size:18px;margin-bottom:12px}
-    .modal-row{margin:10px 0}
-    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-    select, textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .justify-box { margin-top:10px; padding:10px; border:1px solid var(--border); border-radius:10px; background:#fff; display:none; }
+    .justify-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
   </style>
 </head>
 <body>
@@ -94,32 +89,6 @@
     </div>
   </div>
 
-  <!-- Modal de Alteração (Desistiu / Recusou + Justificativa + Cancelar) -->
-  <div id="altModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-header">Alterar status do casal</div>
-      <form id="altForm">
-        <input type="hidden" id="alt_id">
-        <div class="modal-row">
-          <label for="alt_status"><strong>Status</strong></label>
-          <select id="alt_status" required>
-            <option value="" disabled selected>Selecione</option>
-            <option value="Desistiu">Desistiu</option>
-            <option value="Recusou">Recusou</option>
-          </select>
-        </div>
-        <div class="modal-row">
-          <label for="alt_obs"><strong>Justificativa</strong></label>
-          <textarea id="alt_obs" rows="4" placeholder="Descreva o motivo" required></textarea>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn" id="altCancel">Cancelar</button>
-          <button type="submit" class="btn primary">Salvar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <script>
   const ANO = {{ ano | int }};
   const SLOTS = {{ (sala_slots or []) | tojson }};
@@ -166,6 +135,9 @@
         if (el) { el.disabled = false; if (['ele','ela','tel','end'].includes(s)) el.value = ''; }
       });
       const btn = document.getElementById(`add_${i}`); if (btn) { btn.textContent = 'Adicionar'; btn.dataset.mode = 'add'; }
+      const jw = document.getElementById(`justify_wrap_${i}`); if (jw) jw.style.display = 'none';
+      const jt = document.getElementById(`justify_${i}`); if (jt) jt.value = '';
+      const js = document.getElementById(`statussel_${i}`); if (js) js.value = '';
     }
   }
 
@@ -190,9 +162,31 @@
     const btnAdd    = h('button', {class:'btn primary', id:`add_${i}`, 'data-mode':'add'}, 'Adicionar');
     actions.append(btnBuscar, btnAdd);
 
+    /* Bloco inline de alteração (sem modal) */
+    const justify = h('div', {class:'justify-box', id:`justify_wrap_${i}`}, `
+      <div class="row">
+        <div>
+          <label for="statussel_${i}"><strong>Status</strong></label>
+          <select id="statussel_${i}">
+            <option value="">Selecione</option>
+            <option value="Desistiu">Desistiu</option>
+            <option value="Recusou">Recusou</option>
+          </select>
+        </div>
+        <div>
+          <label for="justify_${i}"><strong>Justificativa</strong></label>
+          <textarea id="justify_${i}" rows="3" placeholder="Descreva a justificativa..."></textarea>
+        </div>
+      </div>
+      <div class="justify-actions">
+        <button class="btn" id="cancel_alter_${i}">Cancelar</button>
+        <button class="btn warn" id="confirm_alter_${i}">Salvar</button>
+      </div>
+    `);
+
     const status = h('div', {class:'status', id:`status_${i}`});
 
-    slot.append(title, row1, row2, actions, status);
+    slot.append(title, row1, row2, actions, justify, status);
     slotsWrap.appendChild(slot);
 
     // Prefill Recepção com Dirigente - PALESTRA se não houver existente
@@ -275,7 +269,7 @@
           const data = await resp.json();
           if (data.ok) {
             status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok';
-            lockSlot(i, true, data.id || null); // guarda o ID retornado
+            lockSlot(i, true, data.id || null); // se backend retornar id; se não, segue com reload no alterar
           } else if (data.needs_confirm) {
             const ok = window.confirm(data.msg || 'Confirmar?');
             if (ok) {
@@ -300,11 +294,43 @@
           status.textContent = 'Erro ao adicionar.'; status.className = 'status err';
         }
       } else {
-        // modo alterar -> abre modal
+        // modo alterar -> abre bloco inline
         const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
         if (!memberId) { status.textContent = 'Sem ID do integrante. Recarregue a página.'; status.className = 'status err'; return; }
-        openAltModal(memberId);
+        document.getElementById(`justify_wrap_${i}`).style.display = 'block';
       }
+    });
+
+    // Confirmar alteração (inline)
+    document.getElementById(`confirm_alter_${i}`).addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
+      const novo_status = document.getElementById(`statussel_${i}`).value;
+      const obs = document.getElementById(`justify_${i}`).value.trim();
+      if (!memberId) { status.textContent = 'Sem ID do integrante. Recarregue a página.'; status.className = 'status err'; return; }
+      if (!(novo_status==='Recusou' || novo_status==='Desistiu')) { status.textContent = 'Selecione o status.'; status.className = 'status warn-t'; return; }
+      if (!obs) { status.textContent = 'Justificativa é obrigatória.'; status.className = 'status err'; return; }
+      try {
+        const resp = await fetch('{{ url_for("api_marcar_status_membro") }}', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: parseInt(memberId,10), novo_status, observacao: obs })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          // Recarrega para refletir remoção e (na parte 2) não sugerir de novo
+          location.reload();
+        } else {
+          status.textContent = data.msg || 'Falha ao alterar status.'; status.className = 'status err';
+        }
+      } catch { status.textContent = 'Erro ao alterar status.'; status.className = 'status err'; }
+    });
+
+    // Cancelar alteração (inline)
+    document.getElementById(`cancel_alter_${i}`).addEventListener('click', (e)=>{
+      e.preventDefault();
+      document.getElementById(`justify_wrap_${i}`).style.display = 'none';
+      const jt = document.getElementById(`justify_${i}`); if (jt) jt.value = '';
+      const js = document.getElementById(`statussel_${i}`); if (js) js.value = '';
     });
   }
 
@@ -357,53 +383,6 @@
       }
     });
   }
-
-  // --- Modal Alterar (Recusou/Desistiu + justificativa) ---
-  const $altModal  = document.getElementById('altModal');
-  const $altForm   = document.getElementById('altForm');
-  const $altId     = document.getElementById('alt_id');
-  const $altStatus = document.getElementById('alt_status');
-  const $altObs    = document.getElementById('alt_obs');
-  const $altCancel = document.getElementById('altCancel');
-
-  function openAltModal(id){
-    $altId.value = id;
-    $altStatus.value = '';
-    $altObs.value = '';
-    $altModal.style.display = 'flex';
-    $altModal.setAttribute('aria-hidden','false');
-  }
-  function closeAltModal(){
-    $altModal.style.display = 'none';
-    $altModal.setAttribute('aria-hidden','true');
-  }
-  $altCancel.addEventListener('click', (e)=>{ e.preventDefault(); closeAltModal(); });
-  $altModal.addEventListener('click', (e)=>{ if (e.target === $altModal) closeAltModal(); });
-
-  $altForm.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const id = parseInt($altId.value, 10);
-    const novo_status = $altStatus.value;
-    const observacao  = $altObs.value.trim();
-    if (!(id && (novo_status==='Recusou' || novo_status==='Desistiu') && observacao)) return;
-
-    try{
-      const resp = await fetch('{{ url_for("api_marcar_status_membro") }}', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ id, novo_status, observacao })
-      });
-      const data = await resp.json();
-      if (!resp.ok || !data.ok) {
-        alert(data.msg || 'Falha ao alterar status.');
-        return;
-      }
-      closeAltModal();
-      location.reload(); // some da lista de abertos
-    }catch(err){
-      alert('Erro de rede ao salvar.');
-    }
-  });
 
   // Inicialização
   renderAll();
