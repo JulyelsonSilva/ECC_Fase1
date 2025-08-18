@@ -58,6 +58,7 @@ TEAM_MAP = {
 }
 
 TEAM_LIMITS = {
+    "Sala": {"min": 4, "max": 6},
     "Circulos": {"min": 5, "max": 5},
     "Café e Minimercado": {"min": 3, "max": 7},
     "Compras": {"min": 0, "max": 1},
