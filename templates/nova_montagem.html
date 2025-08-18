@@ -316,4 +316,179 @@
         <div class="team-head">
           <h3 style="margin:0;">${info.rotulo}</h3>
           <div class="inline">
-            <span class="pill kpi" id="${idSafe}_kpi">—</spa_
+            <span class="pill kpi" id="${idSafe}_kpi">—</span>
+            <button class="btn" id="${idSafe}_choose">Escolher no histórico</button>
+            <a class="btn primary" id="${idSafe}_montar" href="#" style="display:none;">Montar Equipe</a>
+          </div>
+        </div>
+        <div class="row">
+          <div><label for="${idSafe}_ele">Nome (Ele)</label><input id="${idSafe}_ele" placeholder="Nome (Ele)"></div>
+          <div><label for="${idSafe}_ela">Nome (Ela)</label><input id="${idSafe}_ela" placeholder="Nome (Ela)"></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="${idSafe}_telefones">Telefones</label><input id="${idSafe}_telefones"></div>
+          <div><label for="${idSafe}_endereco">Endereço</label><input id="${idSafe}_endereco"></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" id="${idSafe}_buscar">Buscar</button>
+          <button class="btn primary" id="${idSafe}_add" data-mode="add">Adicionar</button>
+        </div>
+        <div class="status" id="${idSafe}_status"></div>
+      `;
+      coordGrid.appendChild(card);
+
+      // Escolher no histórico
+      const chooseBtn = document.getElementById(`${idSafe}_choose`);
+      chooseBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if (!anoSelecionado) { alert('Informe o ano primeiro.'); return; }
+        const url = `${VISAO_EQ_URL}?equipe=${encodeURIComponent(info.filtro)}&target=${encodeURIComponent(idSafe)}&ano_montagem=${encodeURIComponent(anoSelecionado)}`;
+        window.location.href = url;
+      });
+
+      // Link Montar (se houver coordenador)
+      const montarBtn = document.getElementById(`${idSafe}_montar`);
+      function setMontarHref(){
+        if (!anoSelecionado) return;
+        montarBtn.href = `${EQUIPE_MONT_URL}?ano=${encodeURIComponent(anoSelecionado)}&equipe=${encodeURIComponent(info.filtro)}`;
+      }
+      setMontarHref();
+
+      // Se já existe coordenador salvo, preenche e mostra "Montar"
+      if (preset) {
+        ['ele','ela','telefones','endereco','buscar','add'].forEach(s=>{
+          const el = document.getElementById(`${idSafe}_${s}`);
+          if (el) { if (preset[s]) el.value = preset[s]; el.disabled = true; if (s==='add') el.textContent = 'Alterar'; }
+        });
+        montarBtn.style.display = 'inline-block';
+      }
+    }
+
+    function showTeamCoords() {
+      coordGrid.innerHTML = '';
+      Object.keys(TEAM_MAP).forEach(k => renderTeamCoordBox(k));
+      coordCard.style.display = '';
+      coordCard.classList.remove('disabled');
+    }
+
+    function renderCGPresetIfAny() {
+      if (initialData.cg && (initialData.cg.nome_ele || initialData.cg.nome_ela)) {
+        cgEle.value = initialData.cg.nome_ele || '';
+        cgEla.value = initialData.cg.nome_ela || '';
+        cgTel.value = initialData.cg.telefones || '';
+        cgEnd.value = initialData.cg.endereco || '';
+        cgStatus.textContent = '“Casal Coordenador Geral” já cadastrado para este ano.';
+        cgStatus.className = 'status ok';
+        cgEle.disabled = true; cgEla.disabled = true; cgTel.disabled = true; cgEnd.disabled = true;
+        cgBuscar.disabled = true; cgAdd.disabled = true;
+        showTeamCoords();
+      }
+    }
+
+    // --- KPIs por equipe (chama /api/team-kpis?ano=YYYY) ---
+    async function updateTeamKPIs(){
+      try{
+        const data = await getJSON(`/api/team-kpis?ano=${encodeURIComponent(anoSelecionado)}`);
+        if (!data.ok) return;
+
+        const counts = data.counts || {};
+
+        Object.keys(TEAM_MAP).forEach(key => {
+          const info = TEAM_MAP[key];
+          const filtro = info.filtro;                 // ex.: 'Sala', 'Circulos', ...
+
+          const limCfg = TEAM_LIMITS[filtro] || {};
+          const min = typeof limCfg.min === 'number' ? limCfg.min : 0;
+          const max = typeof limCfg.max === 'number' ? limCfg.max : 8;
+
+          // contagem bruta vinda do backend
+          const raw = counts[filtro] || 0;
+
+          // >>> SALA: AJUSTE — exibição capada (0..5) e coloração usando esse valor
+          const displayCount = (filtro === 'Sala') ? Math.min(raw, max) : raw;
+          // <<< SALA: AJUSTE
+
+          const idSafe = 'tc_' + key;
+          const kpi = document.getElementById(`${idSafe}_kpi`);
+          const card = document.getElementById(`${idSafe}_card`);
+          if (!kpi || !card) return;
+
+          kpi.textContent = `${displayCount}/${max}`;
+          kpi.classList.remove('kpi-warn','kpi-ok');
+          card.classList.remove('team-warn','team-ok');
+
+          if (displayCount >= max){
+            kpi.classList.add('kpi-ok');
+            card.classList.add('team-ok');
+          } else if (displayCount >= min){
+            kpi.classList.add('kpi-warn');
+            card.classList.add('team-warn');
+          }
+        });
+      }catch{
+        /* silencioso */
+      }
+    }
+
+    // ---------- Eventos ----------
+    btnContinuar.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const val = (anoInput.value || '').trim();
+      if (!/^\d{4}$/.test(val)) {
+        anoMsg.textContent = 'Informe um ano válido (YYYY).';
+        anoMsg.className = 'status err';
+        return;
+      }
+      anoMsg.textContent = '';
+      anoSelecionado = val;
+
+      // Render dirigentes
+      dirGrid.innerHTML = '';
+      DIRIGENTES.forEach(lbl => renderDirigenteBox(lbl, (initialData.dirigentes && initialData.dirigentes[lbl]) || null));
+      document.getElementById('dirigentes-grid').style.display = '';
+      kpiWrap.style.display = '';
+      totalAdicionados = (initialData.dirigentes ? Object.values(initialData.dirigentes).filter(x => x && (x.nome_ele || x.nome_ela)).length : 0) || 0;
+      kpiDone.textContent = String(totalAdicionados);
+
+      // CG
+      cgCard.style.display = '';
+      renderCGPresetIfAny();
+
+      // Coordenadores
+      showTeamCoords();
+
+      // KPIs / Pintura
+      await updateTeamKPIs();
+
+      // Seleção retornada da visão de equipes?
+      if (ret_target && ret_ele && ret_ela) {
+        const $ele = document.getElementById(`${ret_target}_ele`);
+        const $ela = document.getElementById(`${ret_target}_ela`);
+        if ($ele) $ele.value = ret_ele;
+        if ($ela) $ela.value = ret_ela;
+        const $buscar = document.getElementById(`${ret_target}_buscar`);
+        if ($buscar) $buscar.click();
+        const $montar = document.getElementById(`${ret_target}_montar`);
+        if ($montar) $montar.style.display = 'inline-block';
+        const field = document.getElementById(`${ret_target}_ele`);
+        if (field) field.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+    });
+
+    // Auto-continuar se ano veio na URL ou pré-selecionado
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (anoPre) {
+        anoInput.value = anoPre;
+      }
+      const qs = new URLSearchParams(location.search);
+      const anoQS = qs.get('ano') || qs.get('ano_montagem') || '';
+      if (anoQS && !anoInput.value) {
+        anoInput.value = anoQS;
+      }
+      if (anoInput.value) {
+        btnContinuar.click();
+      }
+    });
+  </script>
+</body>
+</html>
