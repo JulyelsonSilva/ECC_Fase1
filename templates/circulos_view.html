@@ -20,6 +20,7 @@
     .wrap{max-width:900px; margin:0 auto; padding:24px 16px 64px;}
     a.btn{height:40px; border:1px solid var(--border); border-radius:10px; padding:0 14px;
       display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff}
+    .muted{color:var(--muted)}
     .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,.05)}
     .header{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px}
     .title{margin:0; font-size:20px}
@@ -31,10 +32,15 @@
     .row .label{color:var(--muted); font-size:12px}
     .chip{display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; margin:2px 6px 2px 0}
     .swatch{width:18px; height:18px; border-radius:6px; border:1px solid var(--border); display:inline-block; vertical-align:middle; margin-right:6px}
-    .muted{color:var(--muted)}
     .block{white-space:pre-wrap}
-    .circle-box{border:1px solid var(--border); border-radius:14px; padding:12px; background:#fff}
+    .circle-box{border:1px solid var(--border); border-radius:14px; padding:16px; background:#fff}
     .circle-box[data-color]{background: rgba(var(--c), .12); border-color: rgba(var(--c), .35)}
+    @media (prefers-color-scheme: dark){
+      :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a; }
+      .card,.circle-box{box-shadow:none}
+      a.btn{background:transparent}
+      .badge{background:transparent}
+    }
   </style>
 </head>
 <body>
@@ -51,19 +57,23 @@
       <div class="sub">Ano: <strong>{{ r.ano }}</strong></div>
 
       <div class="grid" style="margin-top:12px">
+        <!-- Cor -->
         <div class="row">
           <div class="label">Cor do círculo</div>
           <div>
-            {% set cor = r.cor_circulo or '' %}
-            {% if cor %}
-              <span class="swatch" style="background: {{ cor }}"></span>
-              <span>{{ cor }}</span>
+            {% if rgb_triplet %}
+              <span class="swatch" style="background: rgba(var(--c),1)"></span>
+              <span>{{ r.cor_circulo }}</span>
+            {% elif r.cor_circulo %}
+              <span class="swatch" style="background: #fff"></span>
+              <span>{{ r.cor_circulo }}</span>
             {% else %}
               <span class="muted">—</span>
             {% endif %}
           </div>
         </div>
 
+        <!-- Coordenadores atuais -->
         <div class="row">
           <div class="label">Coordenadores (atuais)</div>
           <div>
@@ -77,6 +87,7 @@
           </div>
         </div>
 
+        <!-- Coordenadores originais -->
         <div class="row">
           <div class="label">Coordenadores (originais)</div>
           <div>
@@ -85,35 +96,33 @@
           </div>
         </div>
 
-        <div class="row">
+        <!-- Integrantes -->
+        <div class="row" style="grid-column: 1 / -1">
           <div class="label">Integrantes (IDs)</div>
           <div>
-            {% set raw = (r.integrantes or '') %}
-            {% set list = raw|replace(';', ',')|split(',') %}
-            {% set any = False %}
-            {% for it in list %}
-              {% set t = it|trim %}
-              {% if t %}
-                {% set any = True %}
-                <span class="chip">#{{ t }}</span>
-              {% endif %}
-            {% endfor %}
-            {% if not any %}
+            {% if integrantes_list and integrantes_list|length > 0 %}
+              {% for it in integrantes_list %}
+                <span class="chip">#{{ it }}</span>
+              {% endfor %}
+            {% else %}
               <span class="muted">—</span>
             {% endif %}
           </div>
         </div>
 
+        <!-- Situação -->
         <div class="row">
           <div class="label">Situação</div>
           <div>{{ r.situacao or '—' }}</div>
         </div>
 
+        <!-- Observação -->
         <div class="row" style="grid-column: 1 / -1">
           <div class="label">Observação</div>
           <div class="block">{{ r.observacao or '—' }}</div>
         </div>
 
+        <!-- Criado em -->
         <div class="row">
           <div class="label">Criado em</div>
           <div class="muted">{{ r.created_at }}</div>
