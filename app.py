@@ -2986,14 +2986,15 @@ def circulos_list():
 # ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
 def circulos_view(cid):
+    # Helpers de cor (nomes comuns PT/EN ou #hex -> "R,G,B")
     def _hex_to_rgb(h):
         h = (h or '').strip().lstrip('#')
         if len(h) == 3:
-            h = ''.join([c*2 for c in h])
+            h = ''.join([c * 2 for c in h])
         if len(h) != 6:
             return None
         try:
-            return tuple(int(h[i:i+2], 16) for i in (0,2,4))
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
         except ValueError:
             return None
 
@@ -3018,25 +3019,42 @@ def circulos_view(cid):
         if not rgb: return None
         return f"{rgb[0]},{rgb[1]},{rgb[2]}"
 
+    # --- Busca o círculo ---
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM circulos WHERE id=%s", (cid,))
-    r = cur.fetchone()
-    cur.close(); conn.close()
+    try:
+        cur.execute("SELECT * FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+    finally:
+        try:
+            cur.close(); conn.close()
+        except Exception:
+            pass
 
     if not r:
         return "Registro não encontrado.", 404
 
-    # prepara a lista de IDs dos integrantes (sem usar filtro split no Jinja)
-    raw = (r.get('integrantes') or '')
-    raw = raw.replace(';', ',')
-    integrantes_list = [x.strip() for x in raw.split(',') if x and x.strip()]
-
+    # --- Cor pastel para o card ---
     rgb_triplet = _to_triplet(r.get('cor_circulo'))
-    return render_template('circulos_view.html',
-                           r=r,
-                           rgb_triplet=rgb_triplet,
-                           integrantes_list=integrantes_list)
+
+    # --- Listas de integrantes (IDs) ---
+    raw_atual = (r.get('integrantes_atual') or '').replace(';', ',')
+    raw_orig  = (r.get('integrantes_original') or '').replace(';', ',')
+
+    integrantes_atual_list = [x.strip() for x in raw_atual.split(',') if x and x.strip()]
+    integrantes_orig_list  = [x.strip() for x in raw_orig.split(',') if x and x.strip()]
+
+    # Lista principal: prefere a "atual"; se vazia, cai para a "original"
+    integrantes_list = integrantes_atual_list if integrantes_atual_list else integrantes_orig_list
+
+    return render_template(
+        'circulos_view.html',
+        r=r,
+        rgb_triplet=rgb_triplet,
+        integrantes_list=integrantes_list,
+        integrantes_atual_list=integrantes_atual_list,
+        integrantes_orig_list=integrantes_orig_list
+    )
 
 # =========================
 # Main
