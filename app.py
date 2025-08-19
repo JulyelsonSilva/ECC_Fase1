@@ -3359,6 +3359,112 @@ def api_circulos_candidatos():
         try: cur.close(); conn.close()
         except Exception: pass
 
+from collections import defaultdict
+import re
+
+def _parse_ids_csv(raw: str):
+    if not raw:
+        return []
+    raw = raw.replace(";", ",")
+    out = []
+    for p in raw.split(","):
+        p = p.strip()
+        if p.isdigit():
+            out.append(int(p))
+    return out
+
+def _hex_to_rgb_triplet(s: str):
+    """Retorna 'r,g,b' ou None se não for #RRGGBB/#RGB válido."""
+    if not s:
+        return None
+    s = s.strip()
+    m = re.fullmatch(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})", s)
+    if not m:
+        return None
+    h = m.group(1)
+    if len(h) == 3:
+        r = int(h[0]*2, 16); g = int(h[1]*2, 16); b = int(h[2]*2, 16)
+    else:
+        r = int(h[0:2], 16); g = int(h[2:4], 16); b = int(h[4:6], 16)
+    return f"{r},{g},{b}"
+
+@app.route("/pesquisa-circulos")
+def pesquisa_circulos():
+    """
+    Resumo dos círculos, agrupado por ano.
+    Cada card mostra: nome do círculo, coordenadores (atuais ou 'Original'),
+    e lista dos integrantes (atuais).
+    Fundo do card usa a cor do círculo (se #hex) em tom claro.
+    """
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT id, ano, cor_circulo, nome_circulo,
+                   coord_orig_ele, coord_orig_ela,
+                   coord_atual_ele, coord_atual_ela,
+                   integrantes_atual, integrantes_original
+              FROM circulos
+             ORDER BY ano DESC, id ASC
+        """)
+        rows = cur.fetchall() or []
+
+        # Coleta todos os IDs para resolver nomes de uma vez
+        all_ids = set()
+        for r in rows:
+            all_ids.update(_parse_ids_csv(r.get("integrantes_atual") or ""))
+            all_ids.update(_parse_ids_csv(r.get("integrantes_original") or ""))
+
+        id2nome = {}
+        if all_ids:
+            placeholders = ",".join(["%s"] * len(all_ids))
+            cur.execute(f"""
+                SELECT id, nome_usual_ele, nome_usual_ela
+                  FROM encontristas
+                 WHERE id IN ({placeholders})
+            """, tuple(all_ids))
+            for e in cur.fetchall() or []:
+                id2nome[int(e["id"])] = f"{(e.get('nome_usual_ele') or '').strip()} & {(e.get('nome_usual_ela') or '').strip()}"
+
+        # Monta estrutura por ano
+        por_ano = defaultdict(list)
+        for r in rows:
+            ids_atual = _parse_ids_csv(r.get("integrantes_atual") or "")
+            nomes_atual = [id2nome.get(i, f"ID {i}") for i in ids_atual]
+
+            # Coordenador: usa atual se ambos presentes; senão, original (com marcador)
+            ca_ele = (r.get("coord_atual_ele") or "").strip()
+            ca_ela = (r.get("coord_atual_ela") or "").strip()
+            if ca_ele and ca_ela:
+                coord = f"{ca_ele} & {ca_ela}"
+                coord_hint = ""
+            else:
+                co_ele = (r.get("coord_orig_ele") or "").strip()
+                co_ela = (r.get("coord_orig_ela") or "").strip()
+                coord = f"{co_ele} & {co_ela}" if (co_ele or co_ela) else "—"
+                coord_hint = " (Original)"
+
+            triplet = _hex_to_rgb_triplet(r.get("cor_circulo") or "")
+
+            por_ano[r["ano"]].append({
+                "id": r["id"],
+                "nome": (r.get("nome_circulo") or "").strip() or "— Sem nome —",
+                "rgb": triplet,                 # "r,g,b" ou None
+                "cor_text": r.get("cor_circulo") or "",
+                "coord": coord,
+                "coord_hint": coord_hint,
+                "integrantes": nomes_atual
+            })
+
+        # ordena os círculos por nome dentro do ano
+        for ano in por_ano:
+            por_ano[ano].sort(key=lambda x: x["nome"].lower())
+
+        anos = sorted(por_ano.keys(), reverse=True)
+        return render_template("pesquisa_circulos.html", anos=anos, por_ano=por_ano)
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
 # =========================
 # Main
 # =========================
