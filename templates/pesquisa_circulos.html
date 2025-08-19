@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Pesquisa de Círculos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0, rgba(224,235,255,0) 60%),
+        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0, rgba(255,243,214,0) 60%),
+        var(--bg);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
+    h1{margin:0 0 8px; font-size:22px}
+    .year{margin-top:18px}
+    .year h2{font-size:18px; margin:0 0 8px; color:#334155}
+    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))}
+    .card{
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      text-decoration:none; color:inherit;
+      display:block;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+      box-shadow: 0 8px 20px rgba(15,23,42,.04);
+    }
+    .card:hover{ transform: translateY(-2px); box-shadow:0 12px 26px rgba(15,23,42,.08); border-color:#d2d7e0; background:#fcfdff }
+    .circle[data-color]{ background: rgba(var(--c), .12); border-color: rgba(var(--c), .35) }
+    .card h3{margin:0 0 6px; font-size:16px}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block; font-size:12px; border:1px solid rgba(0,0,0,.08); padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.6); margin:2px 6px 2px 0}
+    ul{margin:6px 0 0 18px; padding:0}
+    li{margin:2px 0}
+    @media (prefers-color-scheme: dark){
+      :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; }
+      .card{box-shadow:none}
+      .card:hover{background:#0f172a}
+      .year h2{color:#cbd5e1}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Pesquisa de Círculos</h1>
+
+    {% if not anos %}
+      <p class="muted">Nenhum círculo cadastrado.</p>
+    {% else %}
+      {% for ano in anos %}
+        <section class="year" aria-label="Ano {{ ano }}">
+          <h2>{{ ano }}</h2>
+          <div class="grid">
+            {% for c in por_ano[ano] %}
+              <a class="card circle"
+                 href="{{ url_for('circulos_view', cid=c.id) }}"
+                 {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
+                <h3>{{ c.nome }}</h3>
+                <div class="muted">
+                  {{ c.coord }}{{ c.coord_hint }}
+                </div>
+                {% if c.integrantes %}
+                  <ul>
+                    {% for nome in c.integrantes %}
+                      <li>{{ nome }}</li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <p class="muted" style="margin:6px 0 0">Sem integrantes.</p>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    {% endif %}
+  </div>
+</body>
+</html>
