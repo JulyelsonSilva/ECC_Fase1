@@ -2985,7 +2985,6 @@ def circulos_list():
 # ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
 def circulos_view(cid):
-    # Helpers de cor (mesmos do /circulos, simplificados aqui)
     def _hex_to_rgb(h):
         h = (h or '').strip().lstrip('#')
         if len(h) == 3:
@@ -3027,9 +3026,16 @@ def circulos_view(cid):
     if not r:
         return "Registro não encontrado.", 404
 
-    rgb_triplet = _to_triplet(r.get('cor_circulo'))
-    return render_template('circulos_view.html', r=r, rgb_triplet=rgb_triplet)
+    # prepara a lista de IDs dos integrantes (sem usar filtro split no Jinja)
+    raw = (r.get('integrantes') or '')
+    raw = raw.replace(';', ',')
+    integrantes_list = [x.strip() for x in raw.split(',') if x and x.strip()]
 
+    rgb_triplet = _to_triplet(r.get('cor_circulo'))
+    return render_template('circulos_view.html',
+                           r=r,
+                           rgb_triplet=rgb_triplet,
+                           integrantes_list=integrantes_list)
 
 # =========================
 # Main
