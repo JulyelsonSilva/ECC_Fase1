@@ -2982,14 +2982,53 @@ def circulos_list():
         anos_ordenados=anos_ordenados,
         agrupado=agrupado
     )
+# ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
 def circulos_view(cid):
-    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    # Helpers de cor (mesmos do /circulos, simplificados aqui)
+    def _hex_to_rgb(h):
+        h = (h or '').strip().lstrip('#')
+        if len(h) == 3:
+            h = ''.join([c*2 for c in h])
+        if len(h) != 6:
+            return None
+        try:
+            return tuple(int(h[i:i+2], 16) for i in (0,2,4))
+        except ValueError:
+            return None
+
+    def _name_to_hex_pt(c):
+        if not c: return None
+        c = c.strip().lower()
+        mapa = {
+            'azul':'#2563eb','vermelho':'#ef4444','verde':'#22c55e','amarelo':'#eab308',
+            'laranja':'#f59e0b','roxo':'#8b5cf6','rosa':'#ec4899','marrom':'#92400e',
+            'cinza':'#6b7280','preto':'#111827','branco':'#ffffff',
+            'blue':'#2563eb','red':'#ef4444','green':'#22c55e','yellow':'#eab308',
+            'orange':'#f59e0b','purple':'#8b5cf6','pink':'#ec4899','brown':'#92400e',
+            'gray':'#6b7280','grey':'#6b7280','black':'#111827','white':'#ffffff'
+        }
+        return mapa.get(c)
+
+    def _to_triplet(c):
+        if not c: return None
+        c = c.strip()
+        hx = _name_to_hex_pt(c) or (c if c.startswith('#') else None)
+        rgb = _hex_to_rgb(hx) if hx else None
+        if not rgb: return None
+        return f"{rgb[0]},{rgb[1]},{rgb[2]}"
+
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
     cur.execute("SELECT * FROM circulos WHERE id=%s", (cid,))
-    row = cur.fetchone()
+    r = cur.fetchone()
     cur.close(); conn.close()
-    if not row: return "Registro não encontrado", 404
-    return render_template('circulos_view.html', r=row)
+
+    if not r:
+        return "Registro não encontrado.", 404
+
+    rgb_triplet = _to_triplet(r.get('cor_circulo'))
+    return render_template('circulos_view.html', r=r, rgb_triplet=rgb_triplet)
 
 
 # =========================
