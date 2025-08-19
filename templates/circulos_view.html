@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Círculos • Detalhe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{ --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb }
+    body{margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--ink)}
+    .wrap{max-width:900px; margin:0 auto; padding:24px 16px}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px}
+    dt{font-weight:600; color:var(--muted)} dd{margin:0 0 12px}
+    a.btn{display:inline-block; padding:8px 12px; border:1px solid var(--border); border-radius:10px; text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="btn" href="{{ url_for('circulos_list') }}">← Voltar</a>
+    <h2>Detalhe do Círculo</h2>
+    <div class="card">
+      <dl>
+        <dt>Ano</dt><dd>{{ r.ano }}</dd>
+        <dt>Cor</dt><dd>{{ r.cor_circulo or '—' }}</dd>
+        <dt>Nome do Círculo</dt><dd>{{ r.nome_circulo or '—' }}</dd>
+        <dt>Coord. Original</dt><dd>{{ r.coord_orig_ele }} &amp; {{ r.coord_orig_ela }}</dd>
+        <dt>Coord. Atual</dt><dd>{{ r.coord_atual_ele or '—' }}{% if r.coord_atual_ele and r.coord_atual_ela %} &amp; {% endif %}{{ r.coord_atual_ela or '' }}</dd>
+        <dt>Integrantes</dt><dd>{{ r.integrantes or '—' }}</dd>
+        <dt>Situação</dt><dd>{{ r.situacao or '—' }}</dd>
+        <dt>Observação</dt><dd>{{ r.observacao or '—' }}</dd>
+      </dl>
+    </div>
+  </div>
+</body>
+</html>
