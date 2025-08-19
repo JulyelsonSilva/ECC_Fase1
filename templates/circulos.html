@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>Círculos • Consulta</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
@@ -13,8 +13,8 @@
     body{
       margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
       background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
+        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0, rgba(224,235,255,0) 60%),
+        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0, rgba(255,243,214,0) 60%),
         var(--bg);
     }
     .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
@@ -23,42 +23,42 @@
     .logo{width:54px; height:54px; border-radius:50%; display:grid; place-items:center; background: linear-gradient(135deg, var(--brand), var(--brand-600)); color:white; font-size:28px;}
     .titles h1{margin:0; font-size:22px}
     .titles p{margin:2px 0 0; color:var(--muted); font-size:13px}
+    a.btn{height:40px; border:1px solid var(--border); border-radius:10px; padding:0 14px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit}
+
     .hero{
       margin:18px 0 8px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px;
-      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      display:grid; gap:12px; grid-template-columns: 1fr auto; align-items:end;
       box-shadow: 0 8px 20px rgba(15,23,42,.05);
     }
     .hero .text h2{margin:0 0 6px; font-size:20px}
     .hero .text p{margin:0; color:var(--muted); font-size:14px}
-    .hero form{display:grid; grid-template-columns: 140px minmax(220px, 1fr) auto auto; gap:10px; align-items:end}
     label{font-size:12px; color:var(--muted)}
     select,input{height:40px; border:1px solid var(--border); border-radius:10px; padding:0 12px; background:#fff}
-    .btn{height:40px; border:none; border-radius:10px; padding:0 14px; cursor:pointer; font-weight:600}
-    .btn-primary{background:var(--brand); color:#fff}
-    .btn-outline{background:#fff; border:1px solid var(--border)}
-    .grid{display:grid; gap:14px; margin-top:18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow: 0 8px 20px rgba(15,23,42,.04)}
-    .stat .k{font-size:20px; font-weight:700}
-    .stat .t{color:var(--muted); font-size:12px}
+    .controls{display:flex; gap:10px; align-items:end; flex-wrap:wrap}
+    .btn-primary{background:var(--brand); color:#fff; border:none}
 
-    table{width:100%; border-collapse:collapse}
-    th,td{padding:10px 12px; border-bottom:1px solid var(--border); font-size:14px}
-    th{text-align:left; color:var(--muted)}
-    tr:hover{background:var(--brand-50)}
-    .pill{display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid var(--border); font-size:12px; color:var(--muted)}
-    .nowrap{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; display:inline-block}
+    .year-card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,.04); margin-top:16px}
+    .year-title{margin:0 0 10px; font-size:18px}
+    .grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));}
+
+    .circle{position:relative; border:1px solid var(--border); border-radius:14px; padding:12px; background:#fff; transition:transform .12s ease, box-shadow .12s ease}
+    .circle:hover{transform: translateY(-2px); box-shadow: 0 10px 22px rgba(15,23,42,.08)}
+    .circle[data-color]{ /* quando há cor, aplicamos fundo/borda suaves via CSS var */
+      background: rgba(var(--c), .12);
+      border-color: rgba(var(--c), .35);
+    }
+    .circle .name{font-weight:700; margin-bottom:6px; font-size:15px}
+    .muted{color:var(--muted)}
+    .badge{font-size:11px; border:1px solid var(--border); padding:2px 6px; border-radius:999px; margin-left:6px; color:#475569; background:#fff}
 
     footer{margin-top:32px; color:var(--muted); font-size:12px; text-align:center}
+
     @media (prefers-color-scheme: dark){
       :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a; }
-      .card,.hero{ box-shadow:none }
-      body{ background:
-        radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
-        radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
-        var(--bg); }
+      .hero,.year-card,.circle{ box-shadow:none }
+      .circle .badge{ background:transparent }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -67,129 +67,68 @@
         <div class="logo" aria-hidden="true">⭕</div>
         <div class="titles">
           <h1>Círculos</h1>
-          <p>Consulta e edição dos círculos: coordenadores e integrantes.</p>
+          <p>Consulta dos círculos por ano, em cartões.</p>
         </div>
       </div>
-      <a class="btn btn-outline" href="{{ url_for('index') }}">← Voltar</a>
+      <a class="btn" href="{{ url_for('index') }}">← Voltar</a>
     </header>
 
-    <section class="hero" role="region" aria-label="Filtros de Círculos">
+    <section class="hero" role="region" aria-label="Filtros">
       <div class="text">
-        <h2>Consulta</h2>
-        <p>Filtre por ano, pesquise por nomes, cor ou nome do círculo.</p>
+        <h2>Filtros</h2>
+        <p>Escolha um ano e/ou pesquise por nome do círculo ou coordenadores.</p>
       </div>
-      <form method="get">
+      <form method="get" class="controls">
         <div>
-          <label for="ano">Ano</label>
+          <label for="ano">Ano</label><br>
           <select id="ano" name="ano">
             <option value="">Todos</option>
-            {% for a in anos %}
+            {% for a in anos_combo %}
               <option value="{{a}}" {% if filtros.ano|string == a|string %}selected{% endif %}>{{a}}</option>
             {% endfor %}
           </select>
         </div>
         <div>
-          <label for="q">Busca</label>
-          <input id="q" name="q" type="text" value="{{filtros.q or ''}}" placeholder="Ex.: Maria, Azul, São José…">
+          <label for="q">Busca</label><br>
+          <input id="q" name="q" type="text" value="{{filtros.q or ''}}" placeholder="Ex.: Azul, São José, Maria…">
         </div>
-        <button class="btn btn-primary" type="submit">Aplicar</button>
-        <a class="btn btn-outline" href="{{ url_for('circulos_list') }}">Limpar</a>
+        <button class="btn-primary" type="submit">Aplicar</button>
+        <a class="btn" href="{{ url_for('circulos_list') }}">Limpar</a>
       </form>
     </section>
 
-    <section class="grid" aria-label="Indicadores">
-      <div class="card stat">
-        <div class="k">{{ paginacao.total }}</div>
-        <div class="t">Registros filtrados</div>
-      </div>
-      <div class="card stat">
-        <div class="k">{{ rows|length }}</div>
-        <div class="t">Exibidos nesta página</div>
-      </div>
-      <div class="card stat">
-        <div class="k">
-          {% if filtros.ano %}
-            {% set found = contagem_por_ano|selectattr('ano','equalto', filtros.ano|int)|list %}
-            {% if found and found[0].total %}{{ found[0].total }}{% else %}0{% endif %}
-          {% else %}—{% endif %}
+    {% for ano in anos_ordenados %}
+      <section class="year-card">
+        <h2 class="year-title">{{ ano }}</h2>
+        <div class="grid">
+          {% for r in agrupado[ano] %}
+            {% set tem_atual = (r.coord_atual_ele or '')|trim and (r.coord_atual_ela or '')|trim %}
+            <article class="circle" {% if r.rgb_triplet %} data-color="1" style="--c: {{ r.rgb_triplet }}"{% endif %}>
+              <div class="name">{{ r.nome_circulo or '— Sem nome —' }}</div>
+              <div class="muted">
+                {% if tem_atual %}
+                  {{ r.coord_atual_ele }} &amp; {{ r.coord_atual_ela }}
+                {% else %}
+                  {{ r.coord_orig_ele }} &amp; {{ r.coord_orig_ela }}
+                  <span class="badge">Original</span>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+          {% if agrupado[ano]|length == 0 %}
+            <div class="muted">Sem círculos cadastrados para este ano.</div>
+          {% endif %}
         </div>
-        <div class="t">No ano selecionado</div>
-      </div>
-      <div class="card">
-        <canvas id="chart" aria-label="Registros por ano"></canvas>
-      </div>
-    </section>
+      </section>
+    {% endfor %}
 
-    <section class="card" style="margin-top:14px">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-        <span class="t" style="color:var(--muted)">Ordenado por ano ↓, nome do círculo e coordenador original (ele)</span>
-      </div>
-
-      <div style="overflow:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Ano</th>
-              <th>Cor</th>
-              <th>Nome do Círculo</th>
-              <th>Coord. Original</th>
-              <th>Coord. Atual</th>
-              <th>Integrantes (IDs)</th>
-              <th>Situação</th>
-              <th>Obs.</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in rows %}
-              <tr>
-                <td class="nowrap">{{ r.ano }}</td>
-                <td class="nowrap"><span class="pill">{{ r.cor_circulo or '—' }}</span></td>
-                <td class="nowrap">{{ r.nome_circulo or '—' }}</td>
-                <td class="nowrap">{{ r.coord_orig_ele }} &amp; {{ r.coord_orig_ela }}</td>
-                <td class="nowrap">
-                  {{ r.coord_atual_ele or '—' }}{% if r.coord_atual_ele and r.coord_atual_ela %} &amp; {% endif %}{{ r.coord_atual_ela or '' }}
-                </td>
-                <td class="nowrap">{{ r.integrantes or '—' }}</td>
-                <td class="nowrap">{{ r.situacao or '—' }}</td>
-                <td class="nowrap">{{ r.observacao or '—' }}</td>
-                <td class="nowrap"><a href="{{ url_for('circulos_view', cid=r.id) }}">Ver</a></td>
-              </tr>
-            {% endfor %}
-            {% if rows|length == 0 %}
-              <tr><td colspan="9" style="text-align:center; color:var(--muted)">Nenhum registro encontrado.</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-
-      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px">
-        {% set p = paginacao.pagina %}
-        {% set tp = paginacao.total_paginas %}
-        {% if p > 1 %}
-          <a class="btn btn-outline" href="?ano={{ filtros.ano }}&q={{ filtros.q }}&pagina={{ p-1 }}">◀ Anterior</a>
-        {% endif %}
-        <span class="pill">Página {{ p }} de {{ tp }}</span>
-        {% if p < tp %}
-          <a class="btn btn-outline" href="?ano={{ filtros.ano }}&q={{ filtros.q }}&pagina={{ p+1 }}">Próxima ▶</a>
-        {% endif %}
-      </div>
-    </section>
+    {% if anos_ordenados|length == 0 %}
+      <p class="muted">Nenhum registro encontrado para os filtros aplicados.</p>
+    {% endif %}
 
     <footer>
       <p>“Que o amor de Cristo una e fortaleça nossas famílias.”</p>
     </footer>
   </div>
-
-  <script>
-    const data = {{ contagem_por_ano|tojson }};
-    const labels = data.map(d => d.ano).reverse();
-    const values = data.map(d => d.total).reverse();
-    new Chart(document.getElementById('chart'), {
-      type: 'bar',
-      data: { labels, datasets: [{ label: 'Registros por ano', data: values }] },
-      options: { responsive:true, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
-    });
-  </script>
 </body>
 </html>
