@@ -2876,6 +2876,91 @@ def admin_revisao_confirmar():
         ok=ok_count, skipped=skipped
     ))
 
+# ---------- CÍRCULOS (consulta) ----------
+@app.route('/circulos')
+def circulos_list():
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+
+    # Filtros
+    ano = (request.args.get('ano') or '').strip()
+    q   = (request.args.get('q') or '').strip()
+    pagina = max(1, int(request.args.get('pagina', 1)))
+    por_pagina = 50
+
+    # WHERE dinâmico
+    where = ["1=1"]
+    params = []
+    if ano:
+        where.append("c.ano = %s")
+        params.append(ano)
+    if q:
+        like = f"%{q}%"
+        where.append("""(
+              LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
+              LOWER(c.coord_orig_ela)  LIKE LOWER(%s) OR
+              LOWER(c.coord_atual_ele) LIKE LOWER(%s) OR
+              LOWER(c.coord_atual_ela) LIKE LOWER(%s) OR
+              LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
+              LOWER(c.cor_circulo)     LIKE LOWER(%s)
+        )""")
+        params += [like, like, like, like, like, like]
+
+    where_sql = " AND ".join(where)
+
+    # Total p/ paginação
+    cur.execute(f"SELECT COUNT(*) AS total FROM circulos c WHERE {where_sql}", params)
+    total = int((cur.fetchone() or {}).get('total') or 0)
+    total_paginas = max(1, (total + por_pagina - 1)//por_pagina)
+    pagina = min(pagina, total_paginas)
+    offset = (pagina - 1)*por_pagina
+
+    # Registros
+    cur.execute(f"""
+        SELECT
+          c.id, c.ano, c.cor_circulo, c.nome_circulo,
+          c.coord_orig_ele, c.coord_orig_ela,
+          c.coord_atual_ele, c.coord_atual_ela,
+          c.integrantes, c.situacao, c.observacao, c.created_at
+        FROM circulos c
+        WHERE {where_sql}
+        ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
+        LIMIT %s OFFSET %s
+    """, params + [por_pagina, offset])
+    rows = cur.fetchall() or []
+
+    # Combo de anos
+    cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
+    anos = [r['ano'] for r in (cur.fetchall() or [])]
+
+    # Contagem por ano (para cards/gráfico)
+    cur.execute("""
+        SELECT ano, COUNT(*) AS total
+        FROM circulos
+        GROUP BY ano
+        ORDER BY ano DESC
+    """)
+    contagem_por_ano = cur.fetchall() or []
+
+    cur.close(); conn.close()
+
+    return render_template(
+        'circulos.html',
+        rows=rows,
+        anos=anos,
+        contagem_por_ano=contagem_por_ano,
+        filtros={'ano': ano, 'q': q},
+        paginacao={'pagina': pagina, 'por_pagina': por_pagina, 'total': total, 'total_paginas': total_paginas}
+    )
+@app.route('/circulos/<int:cid>')
+def circulos_view(cid):
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM circulos WHERE id=%s", (cid,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    if not row: return "Registro não encontrado", 404
+    return render_template('circulos_view.html', r=row)
+
 
 # =========================
 # Main
