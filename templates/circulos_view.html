@@ -8,6 +8,7 @@
     :root{
       --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
       --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
+      --ok:#16a34a; --warn:#d97706; --err:#dc2626;
     }
     *{box-sizing:border-box}
     body{
@@ -18,8 +19,13 @@
         var(--bg);
     }
     .wrap{max-width:900px; margin:0 auto; padding:24px 16px 64px;}
-    a.btn{height:40px; border:1px solid var(--border); border-radius:10px; padding:0 14px;
-      display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff}
+    a.btn, button.btn{
+      height:36px; border:1px solid var(--border); border-radius:10px; padding:0 12px;
+      display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff;
+      cursor:pointer;
+    }
+    .btn-primary{background:var(--brand); color:#fff; border:none}
+    .btn-sm{height:28px; font-size:12px; padding:0 10px}
     .muted{color:var(--muted)}
     .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,.05)}
     .header{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px}
@@ -28,18 +34,34 @@
     .badge{font-size:11px; border:1px solid var(--border); padding:2px 6px; border-radius:999px; margin-left:6px; color:#475569; background:#fff}
     .grid{display:grid; gap:12px; grid-template-columns: 1fr 1fr}
     @media (max-width: 820px){ .grid{grid-template-columns: 1fr} }
-    .row{display:grid; grid-template-columns: 160px 1fr; gap:10px; align-items:center}
+    .row{display:grid; grid-template-columns: 170px 1fr auto; gap:10px; align-items:center}
+    .row.full{grid-column: 1 / -1}
     .row .label{color:var(--muted); font-size:12px}
     .chip{display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; margin:2px 6px 2px 0}
     .swatch{width:18px; height:18px; border-radius:6px; border:1px solid var(--border); display:inline-block; vertical-align:middle; margin-right:6px}
     .block{white-space:pre-wrap}
     .circle-box{border:1px solid var(--border); border-radius:14px; padding:16px; background:#fff}
     .circle-box[data-color]{background: rgba(var(--c), .12); border-color: rgba(var(--c), .35)}
+    input[type="text"], textarea{
+      height:36px; border:1px solid var(--border); border-radius:10px; padding:0 10px; width:100%;
+      font-family: inherit; font-size:14px; background:#fff;
+    }
+    textarea{min-height:84px; padding:8px 10px}
+    .hint{font-size:12px; color:var(--muted); margin-top:4px}
+    .note-ok{color:var(--ok); font-size:12px}
+    .note-warn{color:var(--warn); font-size:12px}
+    .note-err{color:var(--err); font-size:12px}
+    .list{display:flex; flex-wrap:wrap; gap:6px}
+    .small{font-size:12px}
+    .sep{height:1px; background:var(--border); margin:12px 0}
+    .inline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .stack{display:grid; gap:8px}
     @media (prefers-color-scheme: dark){
       :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a; }
       .card,.circle-box{box-shadow:none}
-      a.btn{background:transparent}
+      a.btn, button.btn{background:transparent}
       .badge{background:transparent}
+      input[type="text"], textarea{background:#0f172a; color:var(--ink)}
     }
   </style>
 </head>
@@ -52,110 +74,327 @@
 
     <div class="card circle-box" {% if rgb_triplet %} data-color="1" style="--c: {{ rgb_triplet }}"{% endif %}>
       <h1 class="title" style="margin-bottom:6px">
-        {{ r.nome_circulo or '— Sem nome —' }}
+        <span id="view_nome_circulo">{{ r.nome_circulo or '— Sem nome —' }}</span>
       </h1>
       <div class="sub">Ano: <strong>{{ r.ano }}</strong></div>
 
       <div class="grid" style="margin-top:12px">
-        <!-- Cor -->
+        <!-- Cor do círculo -->
         <div class="row">
           <div class="label">Cor do círculo</div>
           <div>
-            {% if rgb_triplet %}
-              <span class="swatch" style="background: rgba({{ rgb_triplet }}, 1)"></span>
-              <span>{{ r.cor_circulo }}</span>
-            {% elif r.cor_circulo %}
-              <span class="swatch" style="background: {{ r.cor_circulo }}"></span>
-              <span>{{ r.cor_circulo }}</span>
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
+            <div id="view_cor_circulo" class="inline">
+              {% if rgb_triplet %}
+                <span class="swatch" style="background: rgba({{ rgb_triplet }}, 1)"></span>
+              {% elif r.cor_circulo %}
+                <span class="swatch" style="background: {{ r.cor_circulo }}"></span>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+              <span id="view_cor_text">{{ r.cor_circulo or '' }}</span>
+            </div>
+            <div id="edit_cor_circulo" class="inline" style="display:none">
+              <input type="text" id="inp_cor_circulo" placeholder="#2563EB ou Azul" value="{{ r.cor_circulo or '' }}">
+              <button class="btn btn-sm btn-primary" onclick="saveField('cor_circulo')">Salvar</button>
+              <button class="btn btn-sm" onclick="cancelEdit('cor_circulo')">Cancelar</button>
+              <div class="hint">Aceita nome (Azul, Verde...) ou #hex.</div>
+            </div>
           </div>
+          <div><button class="btn btn-sm" onclick="startEdit('cor_circulo')">Editar</button></div>
         </div>
 
-        <!-- Coordenadores atuais -->
+        <!-- Nome do círculo -->
         <div class="row">
-          <div class="label">Coordenadores (atuais)</div>
+          <div class="label">Nome do círculo</div>
           <div>
-            {% set at_e = (r.coord_atual_ele or '')|trim %}
-            {% set at_a = (r.coord_atual_ela or '')|trim %}
-            {% if at_e and at_a %}
-              {{ at_e }} &amp; {{ at_a }}
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
+            <div id="view_nome_wrap">{{ r.nome_circulo or '—' }}</div>
+            <div id="edit_nome_circulo" class="inline" style="display:none">
+              <input type="text" id="inp_nome_circulo" value="{{ r.nome_circulo or '' }}">
+              <button class="btn btn-sm btn-primary" onclick="saveField('nome_circulo')">Salvar</button>
+              <button class="btn btn-sm" onclick="cancelEdit('nome_circulo')">Cancelar</button>
+            </div>
           </div>
+          <div><button class="btn btn-sm" onclick="startEdit('nome_circulo')">Editar</button></div>
         </div>
 
-        <!-- Coordenadores originais -->
+        <!-- Coordenadores (atuais) -->
         <div class="row">
-          <div class="label">Coordenadores (originais)</div>
+          <div class="label">Coord. atuais</div>
+          <div>
+            <div id="view_coord_atual">{{ (r.coord_atual_ele or '') ~ ( ' & ' if r.coord_atual_ele and r.coord_atual_ela else '' ) ~ (r.coord_atual_ela or '') or '—' }}</div>
+            <div id="edit_coord_atual" class="inline" style="display:none">
+              <input type="text" id="inp_coord_atual_ele" placeholder="Ele" value="{{ r.coord_atual_ele or '' }}" style="min-width:200px">
+              <input type="text" id="inp_coord_atual_ela" placeholder="Ela" value="{{ r.coord_atual_ela or '' }}" style="min-width:200px">
+              <button class="btn btn-sm btn-primary" onclick="saveCoordsAtuais()">Salvar</button>
+              <button class="btn btn-sm" onclick="cancelEdit('coord_atual')">Cancelar</button>
+            </div>
+          </div>
+          <div><button class="btn btn-sm" onclick="startEdit('coord_atual')">Editar</button></div>
+        </div>
+
+        <!-- Coordenadores (originais) — NÃO editável -->
+        <div class="row">
+          <div class="label">Coord. originais</div>
           <div>
             {{ r.coord_orig_ele }} &amp; {{ r.coord_orig_ela }}
+            {% set at_e = (r.coord_atual_ele or '')|trim %}
+            {% set at_a = (r.coord_atual_ela or '')|trim %}
             {% if not (at_e and at_a) %}<span class="badge">Original</span>{% endif %}
           </div>
+          <div class="muted small">—</div>
         </div>
 
-        <!-- Integrantes (principal: prefere "atual") -->
-        <div class="row" style="grid-column: 1 / -1">
-          <div class="label">Integrantes (IDs)</div>
+        <!-- Integrantes (preferência: atual) — visual -->
+        <div class="row full">
+          <div class="label">Integrantes (Atual)</div>
           <div>
-            {% if integrantes_list and integrantes_list|length > 0 %}
-              {% for it in integrantes_list %}
-                <span class="chip">#{{ it }}</span>
-              {% endfor %}
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
+            <div id="integrantes_atual_list" class="list"></div>
+            <div class="hint">Os nomes abaixo são resolvidos a partir dos IDs cadastrados.</div>
           </div>
+          <div><button class="btn btn-sm" onclick="toggleAddIntegrantes(true)">Editar</button></div>
         </div>
 
-        <!-- Integrantes detalhados -->
-        <div class="row" style="grid-column: 1 / -1">
-          <div class="label">Integrantes — Atual</div>
+        <!-- Editor de integrantes (Atual) -->
+        <div id="integrantes_editor" class="row full" style="display:none">
+          <div class="label">Adicionar casal</div>
           <div>
-            {% if integrantes_atual_list and integrantes_atual_list|length > 0 %}
-              {% for it in integrantes_atual_list %}
-                <span class="chip">#{{ it }}</span>
-              {% endfor %}
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
+            <div class="stack">
+              <div class="inline">
+                <input type="text" id="add_ele" placeholder="Ele">
+                <input type="text" id="add_ela" placeholder="Ela">
+                <button class="btn btn-sm btn-primary" onclick="buscarCasal()">Buscar</button>
+                <button class="btn btn-sm" onclick="toggleAddIntegrantes(false)">Fechar</button>
+              </div>
+              <div id="busca_result"></div>
+              <div class="hint">A busca valida que o <strong>ano do encontrista</strong> seja igual ao <strong>ano do círculo</strong> ({{ r.ano }}).</div>
+              <div><button class="btn btn-primary" onclick="concluirIntegrantes()">Concluir</button></div>
+            </div>
           </div>
+          <div class="muted small">—</div>
         </div>
 
-        <div class="row" style="grid-column: 1 / -1">
-          <div class="label">Integrantes — Original</div>
-          <div>
-            {% if integrantes_orig_list and integrantes_orig_list|length > 0 %}
-              {% for it in integrantes_orig_list %}
-                <span class="chip">#{{ it }}</span>
-              {% endfor %}
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
-          </div>
+        <!-- Integrantes (Original) — visual -->
+        <div class="row full">
+          <div class="label">Integrantes (Original)</div>
+          <div><div id="integrantes_original_list" class="list"></div></div>
+          <div class="muted small">—</div>
         </div>
 
         <!-- Situação -->
         <div class="row">
           <div class="label">Situação</div>
-          <div>{{ r.situacao or '—' }}</div>
+          <div>
+            <div id="view_situacao">{{ r.situacao or '—' }}</div>
+            <div id="edit_situacao" class="inline" style="display:none">
+              <input type="text" id="inp_situacao" value="{{ r.situacao or '' }}">
+              <button class="btn btn-sm btn-primary" onclick="saveField('situacao')">Salvar</button>
+              <button class="btn btn-sm" onclick="cancelEdit('situacao')">Cancelar</button>
+            </div>
+          </div>
+          <div><button class="btn btn-sm" onclick="startEdit('situacao')">Editar</button></div>
         </div>
 
         <!-- Observação -->
-        <div class="row" style="grid-column: 1 / -1">
+        <div class="row full">
           <div class="label">Observação</div>
-          <div class="block">{{ r.observacao or '—' }}</div>
+          <div>
+            <div id="view_observacao" class="block">{{ r.observacao or '—' }}</div>
+            <div id="edit_observacao" class="stack" style="display:none">
+              <textarea id="inp_observacao">{{ r.observacao or '' }}</textarea>
+              <div class="inline">
+                <button class="btn btn-sm btn-primary" onclick="saveField('observacao')">Salvar</button>
+                <button class="btn btn-sm" onclick="cancelEdit('observacao')">Cancelar</button>
+              </div>
+            </div>
+          </div>
+          <div><button class="btn btn-sm" onclick="startEdit('observacao')">Editar</button></div>
         </div>
 
         <!-- Criado em -->
         <div class="row">
           <div class="label">Criado em</div>
           <div class="muted">{{ r.created_at }}</div>
+          <div class="muted small">—</div>
         </div>
       </div>
     </div>
   </div>
+
+  <script>
+    const CIRC_ID = {{ r.id }};
+    const ANO = {{ r.ano }};
+    // --- Edit genérico ---
+    function startEdit(field){
+      if(field === 'coord_atual'){
+        document.getElementById('view_coord_atual').style.display='none';
+        document.getElementById('edit_coord_atual').style.display='flex';
+        return;
+      }
+      document.getElementById('view_'+field).style.display='none';
+      document.getElementById('edit_'+field).style.display='flex';
+    }
+    function cancelEdit(field){
+      if(field === 'coord_atual'){
+        document.getElementById('edit_coord_atual').style.display='none';
+        document.getElementById('view_coord_atual').style.display='';
+        return;
+      }
+      document.getElementById('edit_'+field).style.display='none';
+      document.getElementById('view_'+field).style.display='';
+    }
+    async function saveField(field){
+      let value = '';
+      if(field === 'cor_circulo') value = document.getElementById('inp_cor_circulo').value.trim();
+      if(field === 'nome_circulo') value = document.getElementById('inp_nome_circulo').value.trim();
+      if(field === 'situacao') value = document.getElementById('inp_situacao').value.trim();
+      if(field === 'observacao') value = document.getElementById('inp_observacao').value;
+
+      const resp = await fetch(`/api/circulos/${CIRC_ID}/update-field`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({field, value})
+      });
+      const js = await resp.json();
+      if(!js.ok){ alert(js.msg || 'Erro ao salvar.'); return; }
+
+      // Atualiza visual
+      if(field === 'cor_circulo'){
+        document.getElementById('view_cor_text').innerText = value || '';
+      }
+      if(field === 'nome_circulo'){
+        document.getElementById('view_nome_circulo').innerText = value || '— Sem nome —';
+        document.getElementById('view_nome_wrap').innerText = value || '—';
+      }
+      if(field === 'situacao'){
+        document.getElementById('view_situacao').innerText = value || '—';
+      }
+      if(field === 'observacao'){
+        document.getElementById('view_observacao').innerText = value || '—';
+      }
+      cancelEdit(field);
+    }
+    async function saveCoordsAtuais(){
+      const ele = document.getElementById('inp_coord_atual_ele').value.trim();
+      const ela = document.getElementById('inp_coord_atual_ela').value.trim();
+      // salva em dois campos
+      let ok1 = await fetch(`/api/circulos/${CIRC_ID}/update-field`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({field:'coord_atual_ele', value:ele})
+      }).then(r=>r.json());
+      if(!ok1.ok){ alert(ok1.msg||'Erro ao salvar (Ele).'); return; }
+      let ok2 = await fetch(`/api/circulos/${CIRC_ID}/update-field`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({field:'coord_atual_ela', value:ela})
+      }).then(r=>r.json());
+      if(!ok2.ok){ alert(ok2.msg||'Erro ao salvar (Ela).'); return; }
+      document.getElementById('view_coord_atual').innerText = (ele && ela) ? (ele+' & '+ela) : '—';
+      cancelEdit('coord_atual');
+    }
+
+    // --- Integrantes ---
+    function toggleAddIntegrantes(show){
+      document.getElementById('integrantes_editor').style.display = show ? '' : 'none';
+      if(show){
+        document.getElementById('add_ele').focus();
+      }
+    }
+    function renderIntegrantes(listEl, arr){
+      listEl.innerHTML = '';
+      if(!arr || arr.length===0){
+        const span = document.createElement('span');
+        span.className = 'muted';
+        span.innerText = '—';
+        listEl.appendChild(span);
+        return;
+      }
+      arr.forEach(item=>{
+        const wrap = document.createElement('span');
+        wrap.className = 'chip';
+        wrap.title = `ID ${item.id} • ${item.endereco || ''}`;
+        const tels = [item.telefone_ele||'', item.telefone_ela||''].filter(Boolean).join(' / ');
+        wrap.innerText = `${item.nome_ele} & ${item.nome_ela}${tels? ' — '+tels : ''}`;
+        listEl.appendChild(wrap);
+      });
+    }
+    async function loadIntegrantes(){
+      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes`).then(r=>r.json());
+      if(!js.ok){ return; }
+      renderIntegrantes(document.getElementById('integrantes_atual_list'), js.atual);
+      renderIntegrantes(document.getElementById('integrantes_original_list'), js.original);
+    }
+    async function buscarCasal(){
+      const ele = document.getElementById('add_ele').value.trim();
+      const ela = document.getElementById('add_ela').value.trim();
+      const box = document.getElementById('busca_result');
+      box.innerHTML = '';
+      if(!ele || !ela){
+        box.innerHTML = `<div class="note-err">Preencha os dois nomes (Ele e Ela).</div>`;
+        return;
+      }
+      const js = await fetch('/api/circulos/buscar-encontrista', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ano: ANO, ele, ela})
+      }).then(r=>r.json());
+      if(!js.ok && !js.multiplo){
+        box.innerHTML = `<div class="note-err">${js.msg||'Não encontrado.'}</div>`;
+        return;
+      }
+      if(js.multiplo){
+        // várias opções
+        const wrap = document.createElement('div');
+        wrap.className = 'stack';
+        js.opcoes.forEach(o=>{
+          const okAno = !!o.match_ano;
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.style.padding='10px';
+          card.innerHTML = `
+            <div><strong>${o.nome_ele} & ${o.nome_ela}</strong> — ano ${o.ano} ${okAno? ' <span class="note-ok">(ano confere)</span>' : ' <span class="note-err">(ano divergente)</span>'}</div>
+            <div class="small muted">${(o.telefone_ele||'')}${(o.telefone_ele&&o.telefone_ela)?' / ':''}${(o.telefone_ela||'')} • ${o.endereco||''}</div>
+            <div class="inline" style="margin-top:6px">
+              <button class="btn btn-sm btn-primary" ${okAno?'':'disabled'} onclick="confirmarIntegrante(${o.id})">Confirmar</button>
+            </div>
+          `;
+          wrap.appendChild(card);
+        });
+        box.appendChild(wrap);
+      }else{
+        const okAno = !!js.match_ano;
+        box.innerHTML = `
+          <div class="card" style="padding:10px">
+            <div><strong>${js.nome_ele} & ${js.nome_ela}</strong> — ano ${js.ano} ${okAno? ' <span class="note-ok">(ano confere)</span>' : ' <span class="note-err">(ano divergente)</span>'}</div>
+            <div class="small muted">${(js.telefone_ele||'')}${(js.telefone_ele&&js.telefone_ela)?' / ':''}${(js.telefone_ela||'')} • ${js.endereco||''}</div>
+            <div class="inline" style="margin-top:6px">
+              <button class="btn btn-sm btn-primary" ${okAno?'':'disabled'} onclick="confirmarIntegrante(${js.id})">Confirmar</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+    async function confirmarIntegrante(id){
+      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/append`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({encontrista_id: id})
+      }).then(r=>r.json());
+      if(!js.ok){ alert(js.msg||'Erro ao adicionar.'); return; }
+      // limpa área de busca e inputs, recarrega lista
+      document.getElementById('busca_result').innerHTML = `<div class="note-ok">Integrante adicionado.</div>`;
+      document.getElementById('add_ele').value = '';
+      document.getElementById('add_ela').value = '';
+      await loadIntegrantes();
+      document.getElementById('add_ele').focus();
+    }
+    async function concluirIntegrantes(){
+      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/concluir`, {
+        method:'POST'
+      }).then(r=>r.json());
+      if(!js.ok){ alert(js.msg||'Erro ao concluir.'); return; }
+      await loadIntegrantes();
+      toggleAddIntegrantes(false);
+      alert('Integrantes atual copiado para Integrantes original.');
+    }
+
+    // init
+    loadIntegrantes();
+  </script>
 </body>
 </html>
