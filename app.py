@@ -3305,6 +3305,59 @@ def api_circulos_update_field(cid):
         try: cur.close(); conn.close()
         except Exception: pass
 
+@app.get("/api/circulos/candidatos")
+def api_circulos_candidatos():
+    """
+    Lista candidatos (ENCONTRISTAS) do ano informado, removendo quem já
+    está em QUALQUER círculo daquele ano (em integrantes_atual OU original).
+    Querystring: ?ano=YYYY
+    """
+    ano = request.args.get("ano", type=int)
+    if not ano:
+        return jsonify({"ok": False, "msg": "ano requerido"}), 400
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        # 1) Coleta IDs já utilizados em círculos do ano
+        cur.execute("""
+            SELECT integrantes_atual, integrantes_original
+              FROM circulos
+             WHERE ano = %s
+        """, (ano,))
+        usados = set()
+        rows = cur.fetchall() or []
+        for r in rows:
+            for col in ("integrantes_atual", "integrantes_original"):
+                raw = (r.get(col) or "").replace(";", ",")
+                for part in raw.split(","):
+                    p = part.strip()
+                    if p.isdigit():
+                        usados.add(int(p))
+
+        # 2) Busca encontristas daquele ano (excluindo já usados)
+        cur.execute("""
+            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+              FROM encontristas
+             WHERE ano = %s
+             ORDER BY nome_usual_ele, nome_usual_ela
+        """, (ano,))
+        candidatos = []
+        for r in cur.fetchall() or []:
+            if int(r["id"]) in usados:
+                continue
+            candidatos.append({
+                "id": r["id"],
+                "nome_ele": r.get("nome_usual_ele") or "",
+                "nome_ela": r.get("nome_usual_ela") or "",
+                "telefone_ele": r.get("telefone_ele") or "",
+                "telefone_ela": r.get("telefone_ela") or "",
+                "endereco": r.get("endereco") or ""
+            })
+
+        return jsonify({"ok": True, "candidatos": candidatos})
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
 
 # =========================
 # Main
