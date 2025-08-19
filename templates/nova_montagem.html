@@ -617,22 +617,27 @@
     }
 
     // KPIs por equipe
-    async function updateTeamKPIs(){
-      try{
-        const data = await getJSON(`/api/team-kpis?ano=${encodeURIComponent(anoSelecionado)}`);
-        if (!data.ok) return;
-        const counts = data.counts || {};
-        Object.keys(TEAM_MAP).forEach(key => {
-          const info = TEAM_MAP[key];
-          const filtro = info.filtro;
-          const count = counts[filtro] || 0;
-          const kpi = document.getElementById(`tc_${key}_kpi`);
-          const card = document.getElementById(`tc_${key}_card`);
-          if (!kpi || !card) return;
-          teamApplyClasses(card, kpi, filtro, count);
-        });
-      }catch{}
-    }
+   async function updateTeamKPIs(){
+  try{
+    const r = await fetch(`/api/equipe-counts?ano=${encodeURIComponent(anoSelecionado)}`);
+    if (!r.ok) return;
+    const j = await r.json();
+    const counts = (j && j.ok && j.counts) ? j.counts : {};
+
+    Object.keys(TEAM_MAP).forEach(key => {
+      const info   = TEAM_MAP[key];
+      const filtro = info.filtro;                   // ex.: 'Sala', 'Circulos', etc.
+      const count  = counts[filtro] || 0;           // pega exatamente a mesma chave do backend
+
+      const kpi  = document.getElementById(`tc_${key}_kpi`);
+      const card = document.getElementById(`tc_${key}_card`);
+      if (!kpi || !card) return;
+
+      // aplica texto e classes (verde quando >= max, amarelo quando >= min)
+      teamApplyClasses(card, kpi, filtro, count);
+    });
+  }catch{/* silencioso */}
+}
 
     // ---------- Eventos ----------
     btnContinuar.addEventListener('click', async (e) => {
