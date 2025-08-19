@@ -2948,10 +2948,11 @@ def circulos_list():
     # Busca todos (sem paginação, pois agora é em cards por ano)
     cur.execute(f"""
         SELECT
-          c.id, c.ano, c.cor_circulo, c.nome_circulo,
-          c.coord_orig_ele, c.coord_orig_ela,
-          c.coord_atual_ele, c.coord_atual_ela,
-          c.integrantes, c.situacao, c.observacao, c.created_at
+           c.id, c.ano, c.cor_circulo, c.nome_circulo,
+           c.coord_orig_ele, c.coord_orig_ela,
+           c.coord_atual_ele, c.coord_atual_ela,
+           c.integrantes_original, c.integrantes_atual,
+           c.situacao, c.observacao, c.created_at
         FROM circulos c
         WHERE {where_sql}
         ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
