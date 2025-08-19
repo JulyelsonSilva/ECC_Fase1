@@ -42,7 +42,7 @@
     .block{white-space:pre-wrap}
     .circle-box{border:1px solid var(--border); border-radius:14px; padding:16px; background:#fff}
     .circle-box[data-color]{background: rgba(var(--c), .12); border-color: rgba(var(--c), .35)}
-    input[type="text"], textarea{
+    input[type="text"], textarea, select{
       height:36px; border:1px solid var(--border); border-radius:10px; padding:0 10px; width:100%;
       font-family: inherit; font-size:14px; background:#fff;
     }
@@ -61,7 +61,7 @@
       .card,.circle-box{box-shadow:none}
       a.btn, button.btn{background:transparent}
       .badge{background:transparent}
-      input[type="text"], textarea{background:#0f172a; color:var(--ink)}
+      input[type="text"], textarea, select{background:#0f172a; color:var(--ink)}
     }
   </style>
 </head>
@@ -117,16 +117,20 @@
           <div><button class="btn btn-sm" onclick="startEdit('nome_circulo')">Editar</button></div>
         </div>
 
-        <!-- Coordenadores (atuais) -->
+        <!-- Coordenadores (atuais) -> COMBO dos integrantes atuais -->
         <div class="row">
           <div class="label">Coord. atuais</div>
           <div>
-            <div id="view_coord_atual">{{ (r.coord_atual_ele or '') ~ ( ' & ' if r.coord_atual_ele and r.coord_atual_ela else '' ) ~ (r.coord_atual_ela or '') or '—' }}</div>
+            <div id="view_coord_atual">
+              {{ (r.coord_atual_ele or '') ~ ( ' & ' if r.coord_atual_ele and r.coord_atual_ela else '' ) ~ (r.coord_atual_ela or '') or '—' }}
+            </div>
             <div id="edit_coord_atual" class="inline" style="display:none">
-              <input type="text" id="inp_coord_atual_ele" placeholder="Ele" value="{{ r.coord_atual_ele or '' }}" style="min-width:200px">
-              <input type="text" id="inp_coord_atual_ela" placeholder="Ela" value="{{ r.coord_atual_ela or '' }}" style="min-width:200px">
+              <select id="sel_coord_atual" style="min-width:320px">
+                <option value="">— selecione um casal (integrantes atuais) —</option>
+              </select>
               <button class="btn btn-sm btn-primary" onclick="saveCoordsAtuais()">Salvar</button>
               <button class="btn btn-sm" onclick="cancelEdit('coord_atual')">Cancelar</button>
+              <div class="hint">A lista é formada pelos <strong>integrantes atuais</strong> deste círculo.</div>
             </div>
           </div>
           <div><button class="btn btn-sm" onclick="startEdit('coord_atual')">Editar</button></div>
@@ -144,7 +148,7 @@
           <div class="muted small">—</div>
         </div>
 
-        <!-- Integrantes (preferência: atual) — visual -->
+        <!-- Integrantes (Atual) — visual -->
         <div class="row full">
           <div class="label">Integrantes (Atual)</div>
           <div>
@@ -223,11 +227,18 @@
   <script>
     const CIRC_ID = {{ r.id }};
     const ANO = {{ r.ano }};
+    const CURR_COORD_ELE = {{ (r.coord_atual_ele or '')|tojson }};
+    const CURR_COORD_ELA = {{ (r.coord_atual_ela or '')|tojson }};
+    let INTEGRANTES_ATUAL = [];
+
     // --- Edit genérico ---
     function startEdit(field){
       if(field === 'coord_atual'){
         document.getElementById('view_coord_atual').style.display='none';
         document.getElementById('edit_coord_atual').style.display='flex';
+        // se a combo ainda não estiver populada (primeiro uso), tenta popular agora
+        if (INTEGRANTES_ATUAL.length === 0) loadIntegrantes().then(populateCoordSelect);
+        else populateCoordSelect();
         return;
       }
       document.getElementById('view_'+field).style.display='none';
@@ -256,7 +267,6 @@
       const js = await resp.json();
       if(!js.ok){ alert(js.msg || 'Erro ao salvar.'); return; }
 
-      // Atualiza visual
       if(field === 'cor_circulo'){
         document.getElementById('view_cor_text').innerText = value || '';
       }
@@ -272,9 +282,48 @@
       }
       cancelEdit(field);
     }
+
+    // --- Coordenadores atuais (combo dos integrantes atuais) ---
+    function populateCoordSelect(){
+      const sel = document.getElementById('sel_coord_atual');
+      sel.innerHTML = '';
+      if(!INTEGRANTES_ATUAL || INTEGRANTES_ATUAL.length === 0){
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '— adicione integrantes atuais primeiro —';
+        sel.appendChild(opt);
+        sel.disabled = true;
+        return;
+      }
+      sel.disabled = false;
+      const firstOpt = document.createElement('option');
+      firstOpt.value = '';
+      firstOpt.textContent = '— selecione um casal —';
+      sel.appendChild(firstOpt);
+
+      INTEGRANTES_ATUAL.forEach(o=>{
+        const opt = document.createElement('option');
+        opt.value = String(o.id);
+        opt.textContent = `${o.nome_ele} & ${o.nome_ela}`;
+        opt.dataset.ele = o.nome_ele;
+        opt.dataset.ela = o.nome_ela;
+        // pré-seleciona se já estiver definido
+        if (o.nome_ele === CURR_COORD_ELE && o.nome_ela === CURR_COORD_ELA){
+          opt.selected = true;
+        }
+        sel.appendChild(opt);
+      });
+    }
     async function saveCoordsAtuais(){
-      const ele = document.getElementById('inp_coord_atual_ele').value.trim();
-      const ela = document.getElementById('inp_coord_atual_ela').value.trim();
+      const sel = document.getElementById('sel_coord_atual');
+      const opt = sel.selectedOptions[0];
+      if(!opt || !opt.value){
+        alert('Selecione um casal da lista de integrantes atuais.');
+        return;
+      }
+      const ele = opt.dataset.ele || '';
+      const ela = opt.dataset.ela || '';
+
       // salva em dois campos
       let ok1 = await fetch(`/api/circulos/${CIRC_ID}/update-field`, {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -286,6 +335,7 @@
         body: JSON.stringify({field:'coord_atual_ela', value:ela})
       }).then(r=>r.json());
       if(!ok2.ok){ alert(ok2.msg||'Erro ao salvar (Ela).'); return; }
+
       document.getElementById('view_coord_atual').innerText = (ele && ela) ? (ele+' & '+ela) : '—';
       cancelEdit('coord_atual');
     }
@@ -293,9 +343,7 @@
     // --- Integrantes ---
     function toggleAddIntegrantes(show){
       document.getElementById('integrantes_editor').style.display = show ? '' : 'none';
-      if(show){
-        document.getElementById('add_ele').focus();
-      }
+      if(show){ document.getElementById('add_ele').focus(); }
     }
     function renderIntegrantes(listEl, arr){
       listEl.innerHTML = '';
@@ -318,8 +366,13 @@
     async function loadIntegrantes(){
       const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes`).then(r=>r.json());
       if(!js.ok){ return; }
+      INTEGRANTES_ATUAL = js.atual || [];
       renderIntegrantes(document.getElementById('integrantes_atual_list'), js.atual);
       renderIntegrantes(document.getElementById('integrantes_original_list'), js.original);
+      // atualiza a combo (caso esteja no modo edição)
+      if(document.getElementById('edit_coord_atual').style.display !== 'none'){
+        populateCoordSelect();
+      }
     }
     async function buscarCasal(){
       const ele = document.getElementById('add_ele').value.trim();
@@ -339,7 +392,6 @@
         return;
       }
       if(js.multiplo){
-        // várias opções
         const wrap = document.createElement('div');
         wrap.className = 'stack';
         js.opcoes.forEach(o=>{
@@ -376,7 +428,6 @@
         body: JSON.stringify({encontrista_id: id})
       }).then(r=>r.json());
       if(!js.ok){ alert(js.msg||'Erro ao adicionar.'); return; }
-      // limpa área de busca e inputs, recarrega lista
       document.getElementById('busca_result').innerHTML = `<div class="note-ok">Integrante adicionado.</div>`;
       document.getElementById('add_ele').value = '';
       document.getElementById('add_ela').value = '';
@@ -384,9 +435,7 @@
       document.getElementById('add_ele').focus();
     }
     async function concluirIntegrantes(){
-      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/concluir`, {
-        method:'POST'
-      }).then(r=>r.json());
+      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/concluir`, { method:'POST' }).then(r=>r.json());
       if(!js.ok){ alert(js.msg||'Erro ao concluir.'); return; }
       await loadIntegrantes();
       toggleAddIntegrantes(false);
