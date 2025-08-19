@@ -2877,18 +2877,55 @@ def admin_revisao_confirmar():
     ))
 
 # ---------- CÍRCULOS (consulta) ----------
+# ---------- CÍRCULOS (consulta em cards por ano) ----------
 @app.route('/circulos')
 def circulos_list():
+    from collections import defaultdict
+
+    # Helpers de cor (suporta alguns nomes PT e hex #RRGGBB/#RGB)
+    def _hex_to_rgb(h):
+        h = h.strip().lstrip('#')
+        if len(h) == 3:
+            h = ''.join([c*2 for c in h])
+        if len(h) != 6:
+            return None
+        try:
+            return tuple(int(h[i:i+2], 16) for i in (0,2,4))
+        except ValueError:
+            return None
+
+    def _name_to_hex_pt(c):
+        if not c: return None
+        c = c.strip().lower()
+        mapa = {
+            'azul':'#2563eb','vermelho':'#ef4444','verde':'#22c55e','amarelo':'#eab308',
+            'laranja':'#f59e0b','roxo':'#8b5cf6','rosa':'#ec4899','marrom':'#92400e',
+            'cinza':'#6b7280','preto':'#111827','branco':'#ffffff'
+        }
+        # aceita alguns em EN tb
+        mapa.update({
+            'blue':'#2563eb','red':'#ef4444','green':'#22c55e','yellow':'#eab308',
+            'orange':'#f59e0b','purple':'#8b5cf6','pink':'#ec4899','brown':'#92400e',
+            'gray':'#6b7280','grey':'#6b7280','black':'#111827','white':'#ffffff'
+        })
+        return mapa.get(c)
+
+    def _cor_to_rgb_triplet(c):
+        if not c: return None
+        c = c.strip()
+        hx = _name_to_hex_pt(c) or (c if c.startswith('#') else None)
+        rgb = _hex_to_rgb(hx) if hx else None
+        if not rgb:  # não reconhecido
+            return None
+        return f"{rgb[0]},{rgb[1]},{rgb[2]}"
+
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
 
-    # Filtros
+    # Filtros simples
     ano = (request.args.get('ano') or '').strip()
     q   = (request.args.get('q') or '').strip()
-    pagina = max(1, int(request.args.get('pagina', 1)))
-    por_pagina = 50
 
-    # WHERE dinâmico
     where = ["1=1"]
     params = []
     if ano:
@@ -2897,25 +2934,18 @@ def circulos_list():
     if q:
         like = f"%{q}%"
         where.append("""(
-              LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
-              LOWER(c.coord_orig_ela)  LIKE LOWER(%s) OR
+              LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
+              LOWER(c.cor_circulo)     LIKE LOWER(%s) OR
               LOWER(c.coord_atual_ele) LIKE LOWER(%s) OR
               LOWER(c.coord_atual_ela) LIKE LOWER(%s) OR
-              LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
-              LOWER(c.cor_circulo)     LIKE LOWER(%s)
+              LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
+              LOWER(c.coord_orig_ela)  LIKE LOWER(%s)
         )""")
         params += [like, like, like, like, like, like]
 
     where_sql = " AND ".join(where)
 
-    # Total p/ paginação
-    cur.execute(f"SELECT COUNT(*) AS total FROM circulos c WHERE {where_sql}", params)
-    total = int((cur.fetchone() or {}).get('total') or 0)
-    total_paginas = max(1, (total + por_pagina - 1)//por_pagina)
-    pagina = min(pagina, total_paginas)
-    offset = (pagina - 1)*por_pagina
-
-    # Registros
+    # Busca todos (sem paginação, pois agora é em cards por ano)
     cur.execute(f"""
         SELECT
           c.id, c.ano, c.cor_circulo, c.nome_circulo,
@@ -2925,32 +2955,32 @@ def circulos_list():
         FROM circulos c
         WHERE {where_sql}
         ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
-        LIMIT %s OFFSET %s
-    """, params + [por_pagina, offset])
+    """, params)
     rows = cur.fetchall() or []
 
-    # Combo de anos
-    cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
-    anos = [r['ano'] for r in (cur.fetchall() or [])]
+    # Enriquecer com a cor pastel (rgba) para o fundo/borda do card do círculo
+    for r in rows:
+        trip = _cor_to_rgb_triplet(r.get('cor_circulo') or '')
+        r['rgb_triplet'] = trip  # ex.: "37,99,235" para usar com rgba(var(--c),0.12)
 
-    # Contagem por ano (para cards/gráfico)
-    cur.execute("""
-        SELECT ano, COUNT(*) AS total
-        FROM circulos
-        GROUP BY ano
-        ORDER BY ano DESC
-    """)
-    contagem_por_ano = cur.fetchall() or []
+    # Anos disponíveis para o <select>
+    cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
+    anos_combo = [a['ano'] for a in (cur.fetchall() or [])]
 
     cur.close(); conn.close()
 
+    # Agrupar por ano -> lista de círculos
+    agrupado = defaultdict(list)
+    for r in rows:
+        agrupado[r['ano']].append(r)
+    anos_ordenados = sorted(agrupado.keys(), reverse=True)
+
     return render_template(
         'circulos.html',
-        rows=rows,
-        anos=anos,
-        contagem_por_ano=contagem_por_ano,
+        anos_combo=anos_combo,
         filtros={'ano': ano, 'q': q},
-        paginacao={'pagina': pagina, 'por_pagina': por_pagina, 'total': total, 'total_paginas': total_paginas}
+        anos_ordenados=anos_ordenados,
+        agrupado=agrupado
     )
 @app.route('/circulos/<int:cid>')
 def circulos_view(cid):
