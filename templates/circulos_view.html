@@ -62,10 +62,10 @@
           <div class="label">Cor do círculo</div>
           <div>
             {% if rgb_triplet %}
-              <span class="swatch" style="background: rgba(var(--c),1)"></span>
+              <span class="swatch" style="background: rgba({{ rgb_triplet }}, 1)"></span>
               <span>{{ r.cor_circulo }}</span>
             {% elif r.cor_circulo %}
-              <span class="swatch" style="background: #fff"></span>
+              <span class="swatch" style="background: {{ r.cor_circulo }}"></span>
               <span>{{ r.cor_circulo }}</span>
             {% else %}
               <span class="muted">—</span>
@@ -96,12 +96,39 @@
           </div>
         </div>
 
-        <!-- Integrantes -->
+        <!-- Integrantes (principal: prefere "atual") -->
         <div class="row" style="grid-column: 1 / -1">
           <div class="label">Integrantes (IDs)</div>
           <div>
             {% if integrantes_list and integrantes_list|length > 0 %}
               {% for it in integrantes_list %}
+                <span class="chip">#{{ it }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Integrantes detalhados -->
+        <div class="row" style="grid-column: 1 / -1">
+          <div class="label">Integrantes — Atual</div>
+          <div>
+            {% if integrantes_atual_list and integrantes_atual_list|length > 0 %}
+              {% for it in integrantes_atual_list %}
+                <span class="chip">#{{ it }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row" style="grid-column: 1 / -1">
+          <div class="label">Integrantes — Original</div>
+          <div>
+            {% if integrantes_orig_list and integrantes_orig_list|length > 0 %}
+              {% for it in integrantes_orig_list %}
                 <span class="chip">#{{ it }}</span>
               {% endfor %}
             {% else %}
