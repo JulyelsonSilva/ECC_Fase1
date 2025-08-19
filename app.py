@@ -3056,6 +3056,256 @@ def circulos_view(cid):
         integrantes_orig_list=integrantes_orig_list
     )
 
+# -----------------------------
+# Helpers Circulos (internos)
+# -----------------------------
+def _csv_ids_unique(raw: str):
+    raw = (raw or "").replace(";", ",")
+    out = []
+    seen = set()
+    for part in raw.split(","):
+        p = part.strip()
+        if not p:
+            continue
+        if not p.isdigit():
+            continue
+        val = int(p)
+        if val not in seen:
+            seen.add(val)
+            out.append(val)
+    return out
+
+def _ids_to_csv(ids):
+    ids = [str(int(x)) for x in ids if str(x).isdigit()]
+    return ",".join(ids)
+
+def _resolve_encontristas(cur, id_list):
+    """Recebe lista de IDs (encontristas.id) e devolve na mesma ordem:
+       [{id, nome_ele, nome_ela, telefone_ele, telefone_ela, endereco, ano}]"""
+    if not id_list:
+        return []
+    placeholders = ",".join(["%s"] * len(id_list))
+    cur.execute(f"""
+        SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+        FROM encontristas
+        WHERE id IN ({placeholders})
+    """, tuple(id_list))
+    rows = cur.fetchall() or []
+    by_id = {r["id"]: r for r in rows}
+    out = []
+    for i in id_list:
+        r = by_id.get(i)
+        if r:
+            out.append({
+                "id": r["id"],
+                "nome_ele": r.get("nome_usual_ele") or "",
+                "nome_ela": r.get("nome_usual_ela") or "",
+                "telefone_ele": r.get("telefone_ele") or "",
+                "telefone_ela": r.get("telefone_ela") or "",
+                "endereco": r.get("endereco") or "",
+                "ano": r.get("ano"),
+            })
+    return out
+
+# -----------------------------
+# API: buscar encontrista por nomes (para integrantes_atual)
+# Regras:
+#  - casa por nomes usuais (case-insensitive, ignora espaços extras)
+#  - valida que o ANO do encontrista == ANO do círculo informado
+# -----------------------------
+@app.post("/api/circulos/buscar-encontrista")
+def api_circulos_buscar_encontrista():
+    data = request.get_json(silent=True) or {}
+    ano_circulo = data.get("ano")
+    ele = (data.get("ele") or "").strip()
+    ela = (data.get("ela") or "").strip()
+
+    if not (ano_circulo and ele and ela):
+        return jsonify({"ok": False, "msg": "Informe ano, Ele e Ela."}), 400
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        # busca exata (case-insensitive)
+        cur.execute("""
+            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+            FROM encontristas
+            WHERE LOWER(TRIM(nome_usual_ele)) = LOWER(TRIM(%s))
+              AND LOWER(TRIM(nome_usual_ela)) = LOWER(TRIM(%s))
+            ORDER BY ano DESC
+            LIMIT 1
+        """, (ele, ela))
+        r = cur.fetchone()
+
+        if not r:
+            # fallback: prefixo (LIKE) para ajudar durante digitação
+            cur.execute("""
+                SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+                FROM encontristas
+                WHERE nome_usual_ele LIKE %s
+                  AND nome_usual_ela LIKE %s
+                ORDER BY ano DESC
+                LIMIT 3
+            """, (f"{ele}%", f"{ela}%"))
+            sugest = cur.fetchall() or []
+            if not sugest:
+                return jsonify({"ok": False, "msg": "Casal não encontrado."}), 404
+            # Se houver mais de 1 sugestão, devolve lista para o cliente escolher
+            multi = []
+            for s in sugest:
+                multi.append({
+                    "id": s["id"],
+                    "nome_ele": s["nome_usual_ele"],
+                    "nome_ela": s["nome_usual_ela"],
+                    "telefone_ele": s.get("telefone_ele") or "",
+                    "telefone_ela": s.get("telefone_ela") or "",
+                    "endereco": s.get("endereco") or "",
+                    "ano": s.get("ano"),
+                    "match_ano": int(s.get("ano") or 0) == int(ano_circulo),
+                })
+            return jsonify({"ok": True, "multiplo": True, "opcoes": multi})
+
+        # valida ano
+        match_ano = int(r.get("ano") or 0) == int(ano_circulo)
+        return jsonify({
+            "ok": True,
+            "multiplo": False,
+            "id": r["id"],
+            "nome_ele": r["nome_usual_ele"],
+            "nome_ela": r["nome_usual_ela"],
+            "telefone_ele": r.get("telefone_ele") or "",
+            "telefone_ela": r.get("telefone_ela") or "",
+            "endereco": r.get("endereco") or "",
+            "ano": r.get("ano"),
+            "match_ano": match_ano
+        })
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+# -----------------------------
+# API: obter integrantes resolvidos (nomes) do círculo
+# -----------------------------
+@app.get("/api/circulos/<int:cid>/integrantes")
+def api_circulos_integrantes(cid):
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual, integrantes_original FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+
+        ids_atual = _csv_ids_unique(r.get("integrantes_atual") or "")
+        ids_orig  = _csv_ids_unique(r.get("integrantes_original") or "")
+
+        atual = _resolve_encontristas(cur, ids_atual)
+        orig  = _resolve_encontristas(cur, ids_orig)
+
+        return jsonify({"ok": True, "atual": atual, "original": orig})
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+# -----------------------------
+# API: acrescentar 1 integrante no 'integrantes_atual'
+# body: { "encontrista_id": 123 }
+# -----------------------------
+@app.post("/api/circulos/<int:cid>/integrantes/append")
+def api_circulos_integrantes_append(cid):
+    data = request.get_json(silent=True) or {}
+    eid = data.get("encontrista_id")
+    if not (eid and str(eid).isdigit()):
+        return jsonify({"ok": False, "msg": "encontrista_id inválido."}), 400
+
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+
+        ids = _csv_ids_unique(r.get("integrantes_atual") or "")
+        eid = int(eid)
+        if eid not in ids:
+            ids.append(eid)
+
+        novo_csv = _ids_to_csv(ids)
+        cur2 = conn.cursor()
+        cur2.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (novo_csv, cid))
+        conn.commit()
+        cur2.close()
+
+        # devolve resolvido
+        ids = _csv_ids_unique(novo_csv)
+        atual = _resolve_encontristas(cur, ids)
+        return jsonify({"ok": True, "atual": atual})
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+# -----------------------------
+# API: concluir integrantes -> copiar 'atual' para 'original'
+# -----------------------------
+@app.post("/api/circulos/<int:cid>/integrantes/concluir")
+def api_circulos_integrantes_concluir(cid):
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+        atual = (r.get("integrantes_atual") or "").strip()
+        cur2 = conn.cursor()
+        cur2.execute("""
+            UPDATE circulos
+               SET integrantes_original=%s
+             WHERE id=%s
+        """, (atual, cid))
+        conn.commit()
+        cur2.close()
+        return jsonify({"ok": True})
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+# -----------------------------
+# API: update genérico de campo (whitelist)
+# body: { "field": "...", "value": "..." }
+# Campos editáveis:
+#   cor_circulo, nome_circulo, coord_atual_ele, coord_atual_ela, integrantes_atual,
+#   situacao, observacao
+# (NÃO permite: ano, coord_orig_ele, coord_orig_ela)
+# -----------------------------
+@app.post("/api/circulos/<int:cid>/update-field")
+def api_circulos_update_field(cid):
+    data = request.get_json(silent=True) or {}
+    field = (data.get("field") or "").strip()
+    value = data.get("value")
+
+    ALLOWED = {
+        "cor_circulo", "nome_circulo",
+        "coord_atual_ele", "coord_atual_ela",
+        "integrantes_atual",
+        "situacao", "observacao"
+    }
+    if field not in ALLOWED:
+        return jsonify({"ok": False, "msg": "Campo não permitido para edição."}), 400
+
+    # normalização leve para CSV de integrantes se vier por aqui
+    if field == "integrantes_atual":
+        ids = _csv_ids_unique(str(value or ""))
+        value = _ids_to_csv(ids)
+
+    conn = db_conn(); cur = conn.cursor()
+    try:
+        sql = f"UPDATE circulos SET {field}=%s WHERE id=%s"
+        cur.execute(sql, (value, cid))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
+
 # =========================
 # Main
 # =========================
