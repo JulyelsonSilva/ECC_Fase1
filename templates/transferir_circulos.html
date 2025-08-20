@@ -88,10 +88,10 @@
         </div>
       </div>
 
-      <!-- DESTINO -->
+      <!-- DESTINO (agora mostra TODOS os anos, sem filtro) -->
       <div class="card">
         <h3>Destino</h3>
-        <div class="help muted">Disponibiliza apenas círculos do mesmo ano escolhido na origem.</div>
+        <div class="help muted">Escolha qualquer círculo de qualquer ano.</div>
         <div class="grid" data-role="to">
           {% for ano in anos %}
             <div class="year" data-ano="{{ ano }}">
@@ -136,16 +136,19 @@
 
   <script>
   (function () {
-    const state = { from_id: null, to_id: null, pid: null, ano: null, from_name: "", to_name: "", person_name: "" };
+    const state = {
+      from_id: null, from_name: "", from_year: null,
+      pid: null, person_name: "",
+      to_id: null, to_name: "", to_year: null
+    };
 
-    // util
     const $  = (sel, root=document) => root.querySelector(sel);
     const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
     const toast = (msg) => { try { alert(msg); } catch(_) {} };
 
     function setSummary() {
-      $('#sum_origin').innerText = state.from_id ? `${state.from_name} (Ano ${state.ano})` : '—';
-      $('#sum_dest').innerText   = state.to_id   ? `${state.to_name} (Ano ${state.ano})`   : '—';
+      $('#sum_origin').innerText = state.from_id ? `${state.from_name} (Ano ${state.from_year})` : '—';
+      $('#sum_dest').innerText   = state.to_id   ? `${state.to_name} (Ano ${state.to_year})`   : '—';
       $('#sum_person').innerText = state.pid     ? state.person_name : '—';
     }
 
@@ -180,7 +183,6 @@
         </label>
       `).join("");
 
-      // seleção de casal
       box.addEventListener('change', (e)=>{
         if(e.target && e.target.name === 'pid'){
           state.pid = Number(e.target.value);
@@ -194,23 +196,15 @@
       }, { once: true });
     }
 
-    function filterDestByYear(ano){
-      // mostra apenas o ano escolhido na origem
-      $$('#[data-role="to"] .year').forEach(y=>{
-        const yAno = Number(y.dataset.ano || 0);
-        y.style.display = (yAno === Number(ano)) ? '' : 'none';
-      });
-    }
-
     // clique nos cards de ORIGEM
     document.addEventListener('click', (e)=>{
       const cardFrom = e.target.closest('[data-role="from"] [data-cid]');
       if (!cardFrom) return;
 
       e.preventDefault();
-      state.from_id  = Number(cardFrom.dataset.cid);
-      state.ano      = Number(cardFrom.dataset.ano || 0);
-      state.from_name = (cardFrom.textContent || '').trim();
+      state.from_id    = Number(cardFrom.dataset.cid);
+      state.from_year  = Number(cardFrom.dataset.ano || 0);
+      state.from_name  = (cardFrom.textContent || '').trim();
       state.pid = null; state.person_name = '';
       $('#transfer_msg').textContent = '';
 
@@ -236,31 +230,20 @@
           renderIntegrantes([]);
         });
 
-      // limitar destino ao mesmo ano
-      filterDestByYear(state.ano);
-      // limpar seleção prévia de destino
-      state.to_id = null; state.to_name = '';
+      // limpar seleção prévia de destino (sem mais filtro por ano)
+      state.to_id = null; state.to_name = ''; state.to_year = null;
       markSelected('[data-role="to"]', -1);
       setSummary();
     });
 
-    // clique nos cards de DESTINO
+    // clique nos cards de DESTINO (sem checar ano)
     document.addEventListener('click', (e)=>{
       const cardTo = e.target.closest('[data-role="to"] [data-cid]');
       if (!cardTo) return;
 
       e.preventDefault();
-      const ano = Number(cardTo.dataset.ano || 0);
-      if (!state.from_id) {
-        toast('Escolha primeiro um círculo de origem.');
-        return;
-      }
-      if (ano !== Number(state.ano)) {
-        toast('O destino deve ser do mesmo ano do círculo de origem.');
-        return;
-      }
-
-      state.to_id = Number(cardTo.dataset.cid);
+      state.to_id   = Number(cardTo.dataset.cid);
+      state.to_year = Number(cardTo.dataset.ano || 0);
       state.to_name = (cardTo.textContent || '').trim();
       markSelected('[data-role="to"]', state.to_id);
       setSummary();
@@ -317,13 +300,12 @@
     // Reiniciar
     $('#btn-reset')?.addEventListener('click', ()=>{
       state.from_id = state.to_id = state.pid = null;
-      state.ano = null; state.from_name = state.to_name = state.person_name = '';
+      state.from_year = state.to_year = null;
+      state.from_name = state.to_name = state.person_name = '';
       $('#lista-origem').innerHTML = '<div class="muted">Selecione um círculo de origem para listar os casais.</div>';
       $('#transfer_msg').textContent = '';
       markSelected('[data-role="from"]', -1);
       markSelected('[data-role="to"]', -1);
-      // mostrar todos os anos novamente no destino
-      $$('#[data-role="to"] .year').forEach(y => y.style.display = '');
       setSummary();
       disableTransfer(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
