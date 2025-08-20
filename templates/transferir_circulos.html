@@ -7,25 +7,43 @@
   <style>
     :root{ --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb; }
     *{box-sizing:border-box}
-    body{ margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
+    body{
+      margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
       background: radial-gradient(1200px 800px at 80% -10%, #e0ebff 0, rgba(224,235,255,0) 60%),
                  radial-gradient(1000px 600px at -10% 110%, #fff3d6 0, rgba(255,243,214,0) 60%),
-                 var(--bg); }
-    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
+                 var(--bg);
+    }
+    .wrap{max-width:1150px; margin:0 auto; padding:24px 16px 64px;}
     .header{display:flex; align-items:center; justify-content:space-between; gap:12px}
-    a.btn, button.btn{height:36px; border:1px solid var(--border); border-radius:10px; padding:0 12px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff; cursor:pointer;}
+    a.btn, button.btn{
+      height:36px; border:1px solid var(--border); border-radius:10px; padding:0 12px;
+      display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit;
+      background:#fff; cursor:pointer;
+    }
     .btn-primary{background:var(--brand); color:#fff; border:none}
+    .btn[disabled]{opacity:.6; cursor:not-allowed}
     .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 8px 20px rgba(15,23,42,.05)}
     h1{margin:0 0 8px; font-size:20px}
-    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))}
+    h3{margin:0 0 8px; font-size:16px}
+    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))}
+    .cols{display:grid; grid-template-columns: 1fr 1fr 320px; gap:16px; align-items:start}
+    .circle{
+      text-decoration:none; color:inherit; display:block; border:1px solid var(--border);
+      border-radius:14px; padding:14px; background:#fff; transition:border-color .15s, box-shadow .15s;
+    }
     .circle[data-color]{ background: rgba(var(--c), .12); border-color: rgba(var(--c), .35) }
-    .circle{ text-decoration:none; color:inherit; display:block; border:1px solid var(--border); border-radius:14px; padding:14px; background:#fff; }
+    .circle.is-selected{ outline: 3px solid rgba(37,99,235,.35); box-shadow: 0 0 0 4px rgba(37,99,235,.15) }
     .muted{color:var(--muted)}
     .pill{display:inline-block; font-size:12px; border:1px solid rgba(0,0,0,.08); padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.6); margin:2px 6px 2px 0}
     .steps{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 16px}
     .steps .pill{border-color:var(--border)}
-    .list{display:flex; flex-wrap:wrap; gap:6px}
-    .chip{display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px}
+    .list{display:flex; flex-direction:column; gap:6px}
+    .row{display:flex; gap:.5rem; align-items:center}
+    .help{font-size:12px}
+    .summary{font-size:14px; line-height:1.4}
+    @media (max-width: 1060px){
+      .cols{grid-template-columns: 1fr; }
+    }
     @media (prefers-color-scheme: dark){
       :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; }
       .card{box-shadow:none}
@@ -47,250 +65,273 @@
       <span class="pill" id="step3">3) Escolha o círculo de destino</span>
     </div>
 
-    <div id="pick_origin" class="card">
-      {% for ano in anos %}
-        <h3 style="margin:8px 0 6px">{{ ano }}</h3>
-        <div class="grid">
-          {% for c in por_ano[ano] %}
-            <a href="javascript:void(0)"
-               class="circle"
-               {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}
-               onclick="selectOrigin({{ c.id }}, {{ ano }}, {{ (c.nome)|tojson }})">
-              <div><strong>{{ c.nome }}</strong></div>
-            </a>
+    <div class="cols">
+      <!-- ORIGEM -->
+      <div class="card">
+        <h3>Origem</h3>
+        <div class="help muted">Clique em um círculo para ver os casais.</div>
+        <div class="grid" data-role="from">
+          {% for ano in anos %}
+            <div class="year" data-ano="{{ ano }}">
+              <div class="muted" style="margin:8px 0 6px">Ano {{ ano }}</div>
+              {% for c in por_ano[ano] %}
+                <button type="button"
+                        class="circle"
+                        data-cid="{{ c.id }}"
+                        data-ano="{{ ano }}"
+                        {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
+                  <div><strong>{{ c.nome }}</strong></div>
+                </button>
+              {% endfor %}
+            </div>
           {% endfor %}
         </div>
-      {% endfor %}
-    </div>
-
-    <div id="pick_person" class="card" style="display:none">
-      <h3>Origem: <span id="origin_name"></span> • Ano <span id="origin_year"></span></h3>
-      <div id="origin_people" class="list" style="margin-top:8px"></div>
-    </div>
-
-    <div id="pick_dest" class="card" style="display:none">
-      <h3>Destino (mesmo ano <span id="dest_year"></span>)</h3>
-      {% for ano in anos %}
-        <div class="year" data-ano="{{ ano }}" style="margin-top:8px">
-          <h4 style="margin:0 0 6px">{{ ano }}</h4>
-          <div class="grid">
-            {% for c in por_ano[ano] %}
-              <a href="javascript:void(0)"
-                 class="circle"
-                 {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}
-                 onclick="selectDest({{ c.id }}, {{ ano }}, {{ (c.nome)|tojson }})">
-                <div><strong>{{ c.nome }}</strong></div>
-              </a>
-            {% endfor %}
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-
-    <div id="summary" class="card" style="display:none">
-      <div>Origem: <strong id="sum_origin"></strong></div>
-      <div>Casal: <strong id="sum_person"></strong></div>
-      <div>Destino: <strong id="sum_dest"></strong></div>
-      <div class="list" style="margin-top:10px">
-        <button class="btn btn-primary" onclick="doTransfer()">Transferir</button>
-        <button class="btn" onclick="location.reload()">Reiniciar</button>
       </div>
-      <div id="transfer_msg" class="muted" style="margin-top:8px"></div>
+
+      <!-- DESTINO -->
+      <div class="card">
+        <h3>Destino</h3>
+        <div class="help muted">Disponibiliza apenas círculos do mesmo ano escolhido na origem.</div>
+        <div class="grid" data-role="to">
+          {% for ano in anos %}
+            <div class="year" data-ano="{{ ano }}">
+              <div class="muted" style="margin:8px 0 6px">Ano {{ ano }}</div>
+              {% for c in por_ano[ano] %}
+                <button type="button"
+                        class="circle"
+                        data-cid="{{ c.id }}"
+                        data-ano="{{ ano }}"
+                        {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
+                  <div><strong>{{ c.nome }}</strong></div>
+                </button>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- SELEÇÃO + TRANSFERÊNCIA -->
+      <div class="card">
+        <h3>Casal do círculo de origem</h3>
+        <div id="lista-origem" class="list">
+          <div class="muted">Selecione um círculo de origem para listar os casais.</div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border); margin:12px 0">
+
+        <div class="summary">
+          <div>Origem: <strong id="sum_origin" class="muted">—</strong></div>
+          <div>Casal: <strong id="sum_person" class="muted">—</strong></div>
+          <div>Destino: <strong id="sum_dest" class="muted">—</strong></div>
+        </div>
+
+        <div class="list" style="margin-top:12px">
+          <button id="btn-transferir" class="btn btn-primary" disabled>Transferir</button>
+          <button class="btn" id="btn-reset">Reiniciar</button>
+          <div id="transfer_msg" class="muted"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    let ORIGIN_ID=null, ORIGIN_YEAR=null, ORIGIN_NAME=null;
-    let PERSON_ID=null, PERSON_NAME=null;
-    let DEST_ID=null, DEST_YEAR=null, DEST_NAME=null;
+  (function () {
+    const state = { from_id: null, to_id: null, pid: null, ano: null, from_name: "", to_name: "", person_name: "" };
 
-    function selectOrigin(id, ano, nome){
-      ORIGIN_ID = id; ORIGIN_YEAR = ano; ORIGIN_NAME = nome;
-      document.getElementById('origin_name').innerText = nome;
-      document.getElementById('origin_year').innerText = ano;
-      document.getElementById('pick_origin').style.display='none';
-      document.getElementById('pick_person').style.display='';
-      document.getElementById('step1').style.opacity=.5;
-      loadOriginPeople();
-      // limita destino ao mesmo ano
-      document.querySelectorAll('#pick_dest .year').forEach(y=>{
-        y.style.display = (parseInt(y.getAttribute('data-ano')) === ano) ? '' : 'none';
+    // util
+    const $  = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+    const toast = (msg) => { try { alert(msg); } catch(_) {} };
+
+    function setSummary() {
+      $('#sum_origin').innerText = state.from_id ? `${state.from_name} (Ano ${state.ano})` : '—';
+      $('#sum_dest').innerText   = state.to_id   ? `${state.to_name} (Ano ${state.ano})`   : '—';
+      $('#sum_person').innerText = state.pid     ? state.person_name : '—';
+    }
+
+    function markSelected(containerSel, cid){
+      $$(containerSel + ' [data-cid]').forEach(el=>{
+        el.classList.toggle('is-selected', Number(el.dataset.cid) === Number(cid));
       });
     }
 
-    async function loadOriginPeople(){
-      const box = document.getElementById('origin_people');
-      box.innerHTML = '<span class="muted">Carregando…</span>';
-      const js = await fetch(`/api/circulos/${ORIGIN_ID}/integrantes`).then(r=>r.json());
-      if(!js.ok){ box.innerHTML = '<span class="muted">Erro ao carregar.</span>'; return; }
-      const arr = js.atual || [];
-      box.innerHTML = '';
-      if(arr.length===0){ box.innerHTML = '<span class="muted">Sem integrantes neste círculo.</span>'; return; }
-      arr.forEach(p=>{
-        const el = document.createElement('button');
-        el.className = 'btn';
-        el.textContent = `${p.nome_ele} & ${p.nome_ela}`;
-        el.style.margin = '4px';
-        el.onclick = ()=>{
-          PERSON_ID = p.id;
-          PERSON_NAME = `${p.nome_ele} & ${p.nome_ela}`;
-          document.getElementById('pick_person').style.display='none';
-          document.getElementById('pick_dest').style.display='';
-          document.getElementById('step2').style.opacity=.5;
-          document.getElementById('dest_year').innerText = ORIGIN_YEAR;
-        };
-        box.appendChild(el);
-      });
+    function disableTransfer(disabled=true){
+      const btn = $('#btn-transferir');
+      if (disabled) btn.setAttribute('disabled','disabled');
+      else btn.removeAttribute('disabled');
     }
 
-    function selectDest(id, ano, nome){
-      DEST_ID = id; DEST_YEAR = ano; DEST_NAME = nome;
-      if(ano !== ORIGIN_YEAR){
-        alert('O destino deve ser do mesmo ano do círculo de origem.');
+    function renderIntegrantes(list){
+      const box = $('#lista-origem');
+      if(!box) return;
+
+      if(!list || list.length===0){
+        box.innerHTML = `<div class="muted">Sem integrantes atuais neste círculo.</div>`;
+        state.pid = null; state.person_name = "";
+        setSummary();
+        disableTransfer(true);
         return;
       }
-      document.getElementById('pick_dest').style.display='none';
-      document.getElementById('summary').style.display='';
-      document.getElementById('sum_origin').innerText = `${ORIGIN_NAME} (ano ${ORIGIN_YEAR})`;
-      document.getElementById('sum_person').innerText = PERSON_NAME;
-      document.getElementById('sum_dest').innerText = `${DEST_NAME} (ano ${DEST_YEAR})`;
-      document.getElementById('step3').style.opacity=.5;
-    }
 
-    async function doTransfer(){
-      const msg = document.getElementById('transfer_msg');
-      msg.textContent = 'Transferindo…';
-      const js = await fetch('/api/circulos/transferir', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({from_id: ORIGIN_ID, to_id: DEST_ID, encontrista_id: PERSON_ID})
-      }).then(r=>r.json());
-      if(!js.ok){ msg.textContent = js.msg || 'Erro ao transferir.'; return; }
-      msg.textContent = 'Transferido com sucesso.';
-      // opcional: ir para o círculo de destino
-      // window.location = `/circulos/${DEST_ID}`;
-    }
-    (function () {
-  const state = { from_id: null, to_id: null, pid: null, ano: null };
+      box.innerHTML = list.map(p => `
+        <label class="row">
+          <input type="radio" name="pid" value="${p.id}">
+          <span>${(p.nome_ele||'').trim()} &amp; ${(p.nome_ela||'').trim()}</span>
+        </label>
+      `).join("");
 
-  // util
-  function qs(sel, root=document){ return root.querySelector(sel); }
-  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
-  function toast(msg){ alert(msg); }
-
-  // pinta seleção visual
-  function markSelected(containerSel, cid){
-    qsa(containerSel + " [data-cid]").forEach(el=>{
-      el.classList.toggle("is-selected", Number(el.dataset.cid) === Number(cid));
-    });
-  }
-
-  // renderiza lista de casais da origem
-  function renderIntegrantes(list){
-    const box = qs("#lista-origem");
-    if(!box) return;
-    if(!list || list.length===0){
-      box.innerHTML = `<div class="muted">Sem integrantes atuais neste círculo.</div>`;
-      state.pid = null;
-      qs("#btn-transferir")?.setAttribute("disabled","disabled");
-      return;
-    }
-    box.innerHTML = list.map(p => `
-      <label class="row">
-        <input type="radio" name="pid" value="${p.id}">
-        <span>${p.nome_ele} &amp; ${p.nome_ela}</span>
-      </label>
-    `).join("");
-    // seleção de casal
-    box.addEventListener("change", (e)=>{
-      if(e.target && e.target.name === "pid"){
-        state.pid = Number(e.target.value);
-        if(state.from_id && state.to_id && state.pid){
-          qs("#btn-transferir")?.removeAttribute("disabled");
+      // seleção de casal
+      box.addEventListener('change', (e)=>{
+        if(e.target && e.target.name === 'pid'){
+          state.pid = Number(e.target.value);
+          const label = e.target.closest('label');
+          state.person_name = label ? label.textContent.trim() : '';
+          setSummary();
+          if(state.from_id && state.to_id && state.pid){
+            disableTransfer(false);
+          }
         }
+      }, { once: true });
+    }
+
+    function filterDestByYear(ano){
+      // mostra apenas o ano escolhido na origem
+      $$('#[data-role="to"] .year').forEach(y=>{
+        const yAno = Number(y.dataset.ano || 0);
+        y.style.display = (yAno === Number(ano)) ? '' : 'none';
+      });
+    }
+
+    // clique nos cards de ORIGEM
+    document.addEventListener('click', (e)=>{
+      const cardFrom = e.target.closest('[data-role="from"] [data-cid]');
+      if (!cardFrom) return;
+
+      e.preventDefault();
+      state.from_id  = Number(cardFrom.dataset.cid);
+      state.ano      = Number(cardFrom.dataset.ano || 0);
+      state.from_name = (cardFrom.textContent || '').trim();
+      state.pid = null; state.person_name = '';
+      $('#transfer_msg').textContent = '';
+
+      markSelected('[data-role="from"]', state.from_id);
+      setSummary();
+      disableTransfer(true);
+
+      // carregar integrantes do círculo de origem
+      const box = $('#lista-origem');
+      box.innerHTML = `<div class="muted">Carregando integrantes…</div>`;
+      fetch(`/api/circulos/${state.from_id}/integrantes`)
+        .then(r=>r.json())
+        .then(j=>{
+          if (j && j.ok !== undefined && !j.ok) throw new Error(j.msg || 'Falha ao carregar.');
+          const atual = j.atual || [];
+          const original = j.original || [];
+          const lista = (atual.length ? atual : original);
+          renderIntegrantes(lista);
+        })
+        .catch(err=>{
+          console.error(err);
+          toast('Não foi possível carregar os integrantes do círculo de origem.');
+          renderIntegrantes([]);
+        });
+
+      // limitar destino ao mesmo ano
+      filterDestByYear(state.ano);
+      // limpar seleção prévia de destino
+      state.to_id = null; state.to_name = '';
+      markSelected('[data-role="to"]', -1);
+      setSummary();
+    });
+
+    // clique nos cards de DESTINO
+    document.addEventListener('click', (e)=>{
+      const cardTo = e.target.closest('[data-role="to"] [data-cid]');
+      if (!cardTo) return;
+
+      e.preventDefault();
+      const ano = Number(cardTo.dataset.ano || 0);
+      if (!state.from_id) {
+        toast('Escolha primeiro um círculo de origem.');
+        return;
       }
-    }, { once: true });
-  }
+      if (ano !== Number(state.ano)) {
+        toast('O destino deve ser do mesmo ano do círculo de origem.');
+        return;
+      }
 
-  // clique nos cards de ORIGEM
-  document.addEventListener("click", (e)=>{
-    const card = e.target.closest('[data-role="from"] [data-cid"] , [data-role="from"] [data-cid]');
-    // fallback porque alguns editores mudam as aspas no seletor
-    const _card = card || e.target.closest('[data-role="from"] [data-cid]');
-    if(!_card) return;
+      state.to_id = Number(cardTo.dataset.cid);
+      state.to_name = (cardTo.textContent || '').trim();
+      markSelected('[data-role="to"]', state.to_id);
+      setSummary();
 
-    e.preventDefault();
-    const cid = Number(_card.dataset.cid);
-    const ano = Number(_card.dataset.ano || 0);
+      if(state.from_id && state.to_id && state.pid){
+        disableTransfer(false);
+      }
+    });
 
-    state.from_id = cid; state.ano = ano; state.pid = null;
-    markSelected('[data-role="from"]', cid);
-    qs("#btn-transferir")?.setAttribute("disabled","disabled");
-    qs("#lista-origem") && (qs("#lista-origem").innerHTML = `<div class="muted">Carregando integrantes…</div>`);
+    // ação TRANSFERIR
+    $('#btn-transferir')?.addEventListener('click', ()=>{
+      if(!(state.from_id && state.to_id && state.pid)){
+        return toast('Escolha um círculo de origem, um de destino e um casal.');
+      }
+      const msg = $('#transfer_msg');
+      msg.textContent = 'Transferindo…';
+      disableTransfer(true);
 
-    fetch(`/api/circulos/${cid}/integrantes`)
+      const payload = {
+        from_id: state.from_id,
+        to_id: state.to_id,
+        encontrista_id: state.pid
+      };
+
+      fetch('/api/circulos/transferir', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      })
       .then(r=>r.json())
       .then(j=>{
-        if(!j.ok){ throw new Error(j.msg || "Falha ao carregar integrantes."); }
-        // Preferir "atual"; se vazio, cair no "original"
-        const lista = (j.atual && j.atual.length) ? j.atual : (j.original || []);
+        if(!j.ok) throw new Error(j.msg || 'Falha ao transferir.');
+        const cleared = j.cleared_coord ? ' (Coordenador do círculo de origem foi limpo.)' : '';
+        msg.textContent = 'Transferido com sucesso.' + cleared;
+
+        // Recarrega a lista da origem
+        return fetch(`/api/circulos/${state.from_id}/integrantes`).then(r=>r.json());
+      })
+      .then(j2=>{
+        const lista = (j2.atual && j2.atual.length) ? j2.atual : (j2.original || []);
         renderIntegrantes(lista);
       })
       .catch(err=>{
         console.error(err);
-        toast("Não foi possível carregar os integrantes do círculo de origem.");
-        renderIntegrantes([]);
+        msg.textContent = err.message || 'Erro ao transferir.';
+      })
+      .finally(()=>{
+        if(state.from_id && state.to_id && state.pid){
+          disableTransfer(false);
+        }
       });
-  });
-
-  // clique nos cards de DESTINO
-  document.addEventListener("click", (e)=>{
-    const card = e.target.closest('[data-role="to"] [data-cid]');
-    if(!card) return;
-    e.preventDefault();
-    state.to_id = Number(card.dataset.cid);
-    markSelected('[data-role="to"]', state.to_id);
-    if(state.from_id && state.to_id && state.pid){
-      qs("#btn-transferir")?.removeAttribute("disabled");
-    }
-  });
-
-  // ação TRANSFERIR
-  qs("#btn-transferir")?.addEventListener("click", ()=>{
-    if(!(state.from_id && state.to_id && state.pid)){
-      return toast("Escolha um círculo de origem, um de destino e um casal.");
-    }
-    const payload = {
-      from_id: state.from_id,
-      to_id: state.to_id,
-      encontrista_id: state.pid
-    };
-    qs("#btn-transferir").setAttribute("disabled","disabled");
-    fetch("/api/circulos/transferir", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
-    })
-    .then(r=>r.json())
-    .then(j=>{
-      if(!j.ok) throw new Error(j.msg || "Falha ao transferir.");
-      const cleared = j.cleared_coord ? "\n(Obs.: coordenador do círculo de origem foi limpo.)" : "";
-      toast("Transferência concluída!" + cleared);
-      // Atualiza a lista da origem
-      return fetch(`/api/circulos/${state.from_id}/integrantes`).then(r=>r.json());
-    })
-    .then(j2=>{
-      const lista = (j2.atual && j2.atual.length) ? j2.atual : (j2.original || []);
-      renderIntegrantes(lista);
-    })
-    .catch(err=>{
-      console.error(err);
-      toast(err.message);
-    })
-    .finally(()=>{
-      qs("#btn-transferir")?.removeAttribute("disabled");
     });
-  });
-})();
+
+    // Reiniciar
+    $('#btn-reset')?.addEventListener('click', ()=>{
+      state.from_id = state.to_id = state.pid = null;
+      state.ano = null; state.from_name = state.to_name = state.person_name = '';
+      $('#lista-origem').innerHTML = '<div class="muted">Selecione um círculo de origem para listar os casais.</div>';
+      $('#transfer_msg').textContent = '';
+      markSelected('[data-role="from"]', -1);
+      markSelected('[data-role="to"]', -1);
+      // mostrar todos os anos novamente no destino
+      $$('#[data-role="to"] .year').forEach(y => y.style.display = '');
+      setSummary();
+      disableTransfer(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // estado inicial
+    setSummary();
+  })();
   </script>
 </body>
 </html>
