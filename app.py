@@ -3113,16 +3113,16 @@ for r in rows:
 anos = sorted(por_ano.keys(), reverse=True)
 
 
-   return render_template(
-        'circulos.html',
-        anos_combo=anos_combo,
-        filtros={'ano': ano, 'q': q},
-        anos_ordenados=anos_ordenados,
-        agrupado=agrupado,
-        # aliases/estrutura que o template usa:
-        anos=anos,
-        por_ano=por_ano
-    )
+return render_template(
+    'circulos.html',
+    anos_combo=anos_combo,
+    filtros={'ano': ano, 'q': q},
+    anos_ordenados=anos_ordenados,
+    agrupado=agrupado,
+    # aliases/estrutura que o template usa:
+    anos=anos,
+    por_ano=por_ano
+)
 
 # ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
