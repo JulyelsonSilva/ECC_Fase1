@@ -2973,156 +2973,107 @@ def admin_revisao_confirmar():
     ))
 
 # ---------- CÍRCULOS (consulta) ----------
-# ---------- CÍRCULOS (consulta em cards por ano) ----------
-@app.route('/circulos')
+
+@app.route("/circulos")
 def circulos_list():
-    from collections import defaultdict
-
-    # Helpers de cor (suporta alguns nomes PT e hex #RRGGBB/#RGB)
-    def _hex_to_rgb(h):
-        h = h.strip().lstrip('#')
-        if len(h) == 3:
-            h = ''.join([c*2 for c in h])
-        if len(h) != 6:
-            return None
-        try:
-            return tuple(int(h[i:i+2], 16) for i in (0,2,4))
-        except ValueError:
-            return None
-
-    def _name_to_hex_pt(c):
-        if not c: return None
-        c = c.strip().lower()
-        mapa = {
-            'azul':'#2563eb','vermelho':'#ef4444','verde':'#22c55e','amarelo':'#eab308',
-            'laranja':'#f59e0b','roxo':'#8b5cf6','rosa':'#ec4899','marrom':'#92400e',
-            'cinza':'#6b7280','preto':'#111827','branco':'#ffffff'
-        }
-        # aceita alguns em EN tb
-        mapa.update({
-            'blue':'#2563eb','red':'#ef4444','green':'#22c55e','yellow':'#eab308',
-            'orange':'#f59e0b','purple':'#8b5cf6','pink':'#ec4899','brown':'#92400e',
-            'gray':'#6b7280','grey':'#6b7280','black':'#111827','white':'#ffffff'
-        })
-        return mapa.get(c)
-
-    def _cor_to_rgb_triplet(c):
-        if not c: return None
-        c = c.strip()
-        hx = _name_to_hex_pt(c) or (c if c.startswith('#') else None)
-        rgb = _hex_to_rgb(hx) if hx else None
-        if not rgb:  # não reconhecido
-            return None
-        return f"{rgb[0]},{rgb[1]},{rgb[2]}"
-
-    conn = db_conn()
-    cur = conn.cursor(dictionary=True)
-
-    # Filtros simples
+    # filtros simples (opcionais)
     ano = (request.args.get('ano') or '').strip()
-    q   = (request.args.get('q') or '').strip()
+    q   = (request.args.get('q')   or '').strip()
 
-    where = ["1=1"]
-    params = []
-    if ano:
-        where.append("c.ano = %s")
-        params.append(ano)
-    if q:
-        like = f"%{q}%"
-        where.append("""(
-              LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
-              LOWER(c.cor_circulo)     LIKE LOWER(%s) OR
-              LOWER(c.coord_atual_ele) LIKE LOWER(%s) OR
-              LOWER(c.coord_atual_ela) LIKE LOWER(%s) OR
-              LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
-              LOWER(c.coord_orig_ela)  LIKE LOWER(%s)
-        )""")
-        params += [like, like, like, like, like, like]
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    try:
+        where = ["1=1"]
+        params = []
+        if ano:
+            where.append("c.ano = %s")
+            params.append(ano)
+        if q:
+            like = f"%{q}%"
+            where.append("""(
+                  LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
+                  LOWER(c.cor_circulo)     LIKE LOWER(%s) OR
+                  LOWER(c.coord_atual_ele) LIKE LOWER(%s) OR
+                  LOWER(c.coord_atual_ela) LIKE LOWER(%s) OR
+                  LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
+                  LOWER(c.coord_orig_ela)  LIKE LOWER(%s)
+            )""")
+            params += [like, like, like, like, like, like]
 
-    where_sql = " AND ".join(where)
+        where_sql = " AND ".join(where)
 
-    # Busca todos (sem paginação, pois agora é em cards por ano)
-    cur.execute(f"""
-        SELECT
-           c.id, c.ano, c.cor_circulo, c.nome_circulo,
-           c.coord_orig_ele, c.coord_orig_ela,
-           c.coord_atual_ele, c.coord_atual_ela,
-           c.integrantes_original, c.integrantes_atual,
-           c.situacao, c.observacao, c.created_at
-        FROM circulos c
-        WHERE {where_sql}
-        ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
-    """, params)
-    rows = cur.fetchall() or []
+        cur.execute(f"""
+            SELECT
+               c.id, c.ano, c.cor_circulo, c.nome_circulo,
+               c.coord_orig_ele, c.coord_orig_ela,
+               c.coord_atual_ele, c.coord_atual_ela,
+               c.integrantes_original, c.integrantes_atual,
+               c.situacao, c.observacao, c.created_at
+            FROM circulos c
+            WHERE {where_sql}
+            ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
+        """, params)
+        rows = cur.fetchall() or []
 
-    # Enriquecer com a cor pastel (rgba) para o fundo/borda do card do círculo
+        # anos para o <select>
+        cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
+        anos_combo = [a['ano'] for a in (cur.fetchall() or [])]
+    finally:
+        try:
+            cur.close(); conn.close()
+        except Exception:
+            pass
+
+    # converte cor para triplet RGB (usa helper que você já colou no topo)
     for r in rows:
-        trip = _cor_to_rgb_triplet(r.get('cor_circulo') or '')
-        r['rgb_triplet'] = trip  # ex.: "37,99,235" para usar com rgba(var(--c),0.12)
+        r['rgb_triplet'] = _color_to_rgb_triplet(r.get('cor_circulo') or '')
 
-    # Anos disponíveis para o <select>
-    cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
-    anos_combo = [a['ano'] for a in (cur.fetchall() or [])]
-
-    cur.close(); conn.close()
-
-    # Agrupar por ano -> lista de círculos
+    # agrupa para navegação básica
+    from collections import defaultdict
     agrupado = defaultdict(list)
     for r in rows:
         agrupado[r['ano']].append(r)
     anos_ordenados = sorted(agrupado.keys(), reverse=True)
 
-    # --- Normaliza dados no formato que o template espera ---
-from collections import defaultdict
+    # ---- Normaliza no formato que o template costuma usar (anos/por_ano) ----
+    por_ano = defaultdict(list)
+    for r in rows:
+        ano_item = r["ano"]
+        nome = (r.get("nome_circulo") or "").strip() or "— Sem nome —"
+        trip = r.get("rgb_triplet")
 
-por_ano = defaultdict(list)
-for r in rows:
-    ano = r["ano"]
+        ca_ele = (r.get("coord_atual_ele") or "").strip()
+        ca_ela = (r.get("coord_atual_ela") or "").strip()
+        co_ele = (r.get("coord_orig_ele")  or "").strip()
+        co_ela = (r.get("coord_orig_ela")  or "").strip()
 
-    # nome do card
-    nome = (r.get("nome_circulo") or "").strip() or "— Sem nome —"
+        if ca_ele and ca_ela:
+            coord = f"{ca_ele} & {ca_ela}"; hint = ""
+        elif co_ele or co_ela:
+            coord = f"{co_ele} & {co_ela}"; hint = " (Original)"
+        else:
+            coord = "— (sem coordenadores)"; hint = ""
 
-    # cor (aliás para 'rgb' usado no template)
-    trip = r.get("rgb_triplet")  # já calculado acima
-    rgb = trip if trip else None
+        por_ano[ano_item].append({
+            "id": r["id"],
+            "nome": nome,
+            "rgb": trip,           # usado no bg do card
+            "coord": coord,
+            "coord_hint": hint
+        })
 
-    # coordenadores + hint
-    ca_ele = (r.get("coord_atual_ele") or "").strip()
-    ca_ela = (r.get("coord_atual_ela") or "").strip()
-    co_ele = (r.get("coord_orig_ele")  or "").strip()
-    co_ela = (r.get("coord_orig_ela")  or "").strip()
+    anos = sorted(por_ano.keys(), reverse=True)
 
-    if ca_ele and ca_ela:
-        coord = f"{ca_ele} & {ca_ela}"
-        coord_hint = ""
-    elif co_ele or co_ela:
-        coord = f"{co_ele} & {co_ela}"
-        coord_hint = " (Original)"
-    else:
-        coord = "— (sem coordenadores)"
-        coord_hint = ""
-
-    por_ano[ano].append({
-        "id": r["id"],
-        "nome": nome,
-        "rgb": rgb,               # <- usado no bg do card
-        "coord": coord,
-        "coord_hint": coord_hint,
-    })
-
-anos = sorted(por_ano.keys(), reverse=True)
-
-
-return render_template(
-    'circulos.html',
-    anos_combo=anos_combo,
-    filtros={'ano': ano, 'q': q},
-    anos_ordenados=anos_ordenados,
-    agrupado=agrupado,
-    # aliases/estrutura que o template usa:
-    anos=anos,
-    por_ano=por_ano
-)
+    return render_template(
+        'circulos.html',
+        # contexto “novo”
+        anos_combo=anos_combo,
+        filtros={'ano': ano, 'q': q},
+        anos_ordenados=anos_ordenados,
+        agrupado=agrupado,
+        # aliases esperados por alguns templates
+        anos=anos,
+        por_ao=por_ano  # <<< se seu template usa "por_ano", mantenha essa chave EXACTAMENTE como "por_ano"
+    )
 
 # ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
