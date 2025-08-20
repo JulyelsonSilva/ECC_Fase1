@@ -3072,16 +3072,58 @@ def circulos_list():
         agrupado[r['ano']].append(r)
     anos_ordenados = sorted(agrupado.keys(), reverse=True)
 
-    return render_template(
+    # --- Normaliza dados no formato que o template espera ---
+from collections import defaultdict
+
+por_ano = defaultdict(list)
+for r in rows:
+    ano = r["ano"]
+
+    # nome do card
+    nome = (r.get("nome_circulo") or "").strip() or "— Sem nome —"
+
+    # cor (aliás para 'rgb' usado no template)
+    trip = r.get("rgb_triplet")  # já calculado acima
+    rgb = trip if trip else None
+
+    # coordenadores + hint
+    ca_ele = (r.get("coord_atual_ele") or "").strip()
+    ca_ela = (r.get("coord_atual_ela") or "").strip()
+    co_ele = (r.get("coord_orig_ele")  or "").strip()
+    co_ela = (r.get("coord_orig_ela")  or "").strip()
+
+    if ca_ele and ca_ela:
+        coord = f"{ca_ele} & {ca_ela}"
+        coord_hint = ""
+    elif co_ele or co_ela:
+        coord = f"{co_ele} & {co_ela}"
+        coord_hint = " (Original)"
+    else:
+        coord = "— (sem coordenadores)"
+        coord_hint = ""
+
+    por_ano[ano].append({
+        "id": r["id"],
+        "nome": nome,
+        "rgb": rgb,               # <- usado no bg do card
+        "coord": coord,
+        "coord_hint": coord_hint,
+    })
+
+anos = sorted(por_ano.keys(), reverse=True)
+
+
+   return render_template(
         'circulos.html',
         anos_combo=anos_combo,
         filtros={'ano': ano, 'q': q},
         anos_ordenados=anos_ordenados,
         agrupado=agrupado,
-        # aliases para compatibilidade com templates que esperam esses nomes:
-        anos=anos_ordenados,
-        por_ano=agrupado
+        # aliases/estrutura que o template usa:
+        anos=anos,
+        por_ano=por_ano
     )
+
 # ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
 def circulos_view(cid):
