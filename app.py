@@ -3072,7 +3072,7 @@ def circulos_list():
         agrupado=agrupado,
         # aliases esperados por alguns templates
         anos=anos,
-        por_ao=por_ano  # <<< se seu template usa "por_ano", mantenha essa chave EXACTAMENTE como "por_ano"
+        por_ano=por_ano  # <<< se seu template usa "por_ano", mantenha essa chave EXACTAMENTE como "por_ano"
     )
 
 # ---------- CÍRCULOS • Detalhe ----------
