@@ -169,6 +169,128 @@
       // opcional: ir para o círculo de destino
       // window.location = `/circulos/${DEST_ID}`;
     }
+    (function () {
+  const state = { from_id: null, to_id: null, pid: null, ano: null };
+
+  // util
+  function qs(sel, root=document){ return root.querySelector(sel); }
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+  function toast(msg){ alert(msg); }
+
+  // pinta seleção visual
+  function markSelected(containerSel, cid){
+    qsa(containerSel + " [data-cid]").forEach(el=>{
+      el.classList.toggle("is-selected", Number(el.dataset.cid) === Number(cid));
+    });
+  }
+
+  // renderiza lista de casais da origem
+  function renderIntegrantes(list){
+    const box = qs("#lista-origem");
+    if(!box) return;
+    if(!list || list.length===0){
+      box.innerHTML = `<div class="muted">Sem integrantes atuais neste círculo.</div>`;
+      state.pid = null;
+      qs("#btn-transferir")?.setAttribute("disabled","disabled");
+      return;
+    }
+    box.innerHTML = list.map(p => `
+      <label class="row">
+        <input type="radio" name="pid" value="${p.id}">
+        <span>${p.nome_ele} &amp; ${p.nome_ela}</span>
+      </label>
+    `).join("");
+    // seleção de casal
+    box.addEventListener("change", (e)=>{
+      if(e.target && e.target.name === "pid"){
+        state.pid = Number(e.target.value);
+        if(state.from_id && state.to_id && state.pid){
+          qs("#btn-transferir")?.removeAttribute("disabled");
+        }
+      }
+    }, { once: true });
+  }
+
+  // clique nos cards de ORIGEM
+  document.addEventListener("click", (e)=>{
+    const card = e.target.closest('[data-role="from"] [data-cid"] , [data-role="from"] [data-cid]');
+    // fallback porque alguns editores mudam as aspas no seletor
+    const _card = card || e.target.closest('[data-role="from"] [data-cid]');
+    if(!_card) return;
+
+    e.preventDefault();
+    const cid = Number(_card.dataset.cid);
+    const ano = Number(_card.dataset.ano || 0);
+
+    state.from_id = cid; state.ano = ano; state.pid = null;
+    markSelected('[data-role="from"]', cid);
+    qs("#btn-transferir")?.setAttribute("disabled","disabled");
+    qs("#lista-origem") && (qs("#lista-origem").innerHTML = `<div class="muted">Carregando integrantes…</div>`);
+
+    fetch(`/api/circulos/${cid}/integrantes`)
+      .then(r=>r.json())
+      .then(j=>{
+        if(!j.ok){ throw new Error(j.msg || "Falha ao carregar integrantes."); }
+        // Preferir "atual"; se vazio, cair no "original"
+        const lista = (j.atual && j.atual.length) ? j.atual : (j.original || []);
+        renderIntegrantes(lista);
+      })
+      .catch(err=>{
+        console.error(err);
+        toast("Não foi possível carregar os integrantes do círculo de origem.");
+        renderIntegrantes([]);
+      });
+  });
+
+  // clique nos cards de DESTINO
+  document.addEventListener("click", (e)=>{
+    const card = e.target.closest('[data-role="to"] [data-cid]');
+    if(!card) return;
+    e.preventDefault();
+    state.to_id = Number(card.dataset.cid);
+    markSelected('[data-role="to"]', state.to_id);
+    if(state.from_id && state.to_id && state.pid){
+      qs("#btn-transferir")?.removeAttribute("disabled");
+    }
+  });
+
+  // ação TRANSFERIR
+  qs("#btn-transferir")?.addEventListener("click", ()=>{
+    if(!(state.from_id && state.to_id && state.pid)){
+      return toast("Escolha um círculo de origem, um de destino e um casal.");
+    }
+    const payload = {
+      from_id: state.from_id,
+      to_id: state.to_id,
+      encontrista_id: state.pid
+    };
+    qs("#btn-transferir").setAttribute("disabled","disabled");
+    fetch("/api/circulos/transferir", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    })
+    .then(r=>r.json())
+    .then(j=>{
+      if(!j.ok) throw new Error(j.msg || "Falha ao transferir.");
+      const cleared = j.cleared_coord ? "\n(Obs.: coordenador do círculo de origem foi limpo.)" : "";
+      toast("Transferência concluída!" + cleared);
+      // Atualiza a lista da origem
+      return fetch(`/api/circulos/${state.from_id}/integrantes`).then(r=>r.json());
+    })
+    .then(j2=>{
+      const lista = (j2.atual && j2.atual.length) ? j2.atual : (j2.original || []);
+      renderIntegrantes(lista);
+    })
+    .catch(err=>{
+      console.error(err);
+      toast(err.message);
+    })
+    .finally(()=>{
+      qs("#btn-transferir")?.removeAttribute("disabled");
+    });
+  });
+})();
   </script>
 </body>
 </html>
