@@ -3077,7 +3077,10 @@ def circulos_list():
         anos_combo=anos_combo,
         filtros={'ano': ano, 'q': q},
         anos_ordenados=anos_ordenados,
-        agrupado=agrupado
+        agrupado=agrupado,
+        # aliases para compatibilidade com templates que esperam esses nomes:
+        anos=anos_ordenados,
+        por_ano=agrupado
     )
 # ---------- CÍRCULOS • Detalhe ----------
 @app.route('/circulos/<int:cid>')
