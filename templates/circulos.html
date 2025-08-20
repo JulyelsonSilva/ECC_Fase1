@@ -2,136 +2,67 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <title>Círculos • Consulta</title>
+  <title>Círculos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
+    :root{ --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; }
+    *{box-sizing:border-box}
     body{
-      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
+      margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
       background:
         radial-gradient(1200px 800px at 80% -10%, #e0ebff 0, rgba(224,235,255,0) 60%),
         radial-gradient(1000px 600px at -10% 110%, #fff3d6 0, rgba(255,243,214,0) 60%),
         var(--bg);
     }
     .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
-    header{display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap; padding:12px 0 8px;}
-    .brand{display:flex; align-items:center; gap:12px;}
-    .logo{width:54px; height:54px; border-radius:50%; display:grid; place-items:center; background: linear-gradient(135deg, var(--brand), var(--brand-600)); color:white; font-size:28px;}
-    .titles h1{margin:0; font-size:22px}
-    .titles p{margin:2px 0 0; color:var(--muted); font-size:13px}
-    a.btn{height:40px; border:1px solid var(--border); border-radius:10px; padding:0 14px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff}
-
-    .hero{
-      margin:18px 0 8px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px;
-      display:grid; gap:12px; grid-template-columns: 1fr auto; align-items:end;
-      box-shadow: 0 8px 20px rgba(15,23,42,.05);
-    }
-    .hero .text h2{margin:0 0 6px; font-size:20px}
-    .hero .text p{margin:0; color:var(--muted); font-size:14px}
-    label{font-size:12px; color:var(--muted)}
-    select,input{height:40px; border:1px solid var(--border); border-radius:10px; padding:0 12px; background:#fff}
-    .controls{display:flex; gap:10px; align-items:end; flex-wrap:wrap}
-    .btn-primary{background:var(--brand); color:#fff; border:none; height:40px; border-radius:10px; padding:0 14px; font-weight:600; cursor:pointer}
-
-    .year-card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,.04); margin-top:16px}
-    .year-title{margin:0 0 10px; font-size:18px}
-    .grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));}
-
-    .circle{
-      position:relative; display:block; text-decoration:none; color:inherit;
-      border:1px solid var(--border); border-radius:14px; padding:12px; background:#fff;
-      transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
-    }
-    .circle:hover{transform: translateY(-2px); box-shadow: 0 10px 22px rgba(15,23,42,.08)}
-    .circle[data-color]{background: rgba(var(--c), .12); border-color: rgba(var(--c), .35)}
-    .circle .name{font-weight:700; margin-bottom:6px; font-size:15px}
+    .header{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    a.btn, button.btn{height:36px; border:1px solid var(--border); border-radius:10px; padding:0 12px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff; cursor:pointer;}
+    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; text-decoration:none; color:inherit; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease; box-shadow:0 8px 20px rgba(15,23,42,.05)}
+    .card:hover{ transform: translateY(-2px); box-shadow:0 12px 26px rgba(15,23,42,.08); border-color:#d2d7e0; background:#fcfdff }
+    .circle[data-color]{ background: rgba(var(--c), .12); border-color: rgba(var(--c), .35) }
+    h1{margin:0 0 6px; font-size:20px}
+    h2{margin:16px 0 8px; font-size:18px; color:#334155}
     .muted{color:var(--muted)}
-    .badge{font-size:11px; border:1px solid var(--border); padding:2px 6px; border-radius:999px; margin-left:6px; color:#475569; background:#fff}
-
-    footer{margin-top:32px; color:var(--muted); font-size:12px; text-align:center}
-
     @media (prefers-color-scheme: dark){
-      :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a; }
-      .hero,.year-card,.circle{ box-shadow:none }
-      .circle .badge{ background:transparent }
-      a.btn{background:transparent}
+      :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; }
+      .card{box-shadow:none}
+      .card:hover{background:#0f172a}
+      h2{color:#cbd5e1}
+      a.btn,button.btn{background:transparent}
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">⭕</div>
-        <div class="titles">
-          <h1>Círculos</h1>
-          <p>Consulta dos círculos por ano, em cartões.</p>
-        </div>
+    <div class="header">
+      <h1>Círculos</h1>
+      <div class="actions" style="display:flex; gap:8px; flex-wrap:wrap">
+        <a class="btn" href="{{ url_for('circulos_transferir') }}">🔁 Transferir casal entre círculos</a>
+        <a class="btn" href="{{ url_for('pesquisa_circulos') }}">🔎 Pesquisa de Círculos</a>
+        <a class="btn" href="{{ url_for('index') }}">🏠 Início</a>
       </div>
-      <a class="btn" href="{{ url_for('index') }}">← Voltar</a>
-    </header>
+    </div>
 
-    <section class="hero" role="region" aria-label="Filtros">
-      <div class="text">
-        <h2>Filtros</h2>
-        <p>Escolha um ano e/ou pesquise por nome do círculo ou coordenadores.</p>
-      </div>
-      <form method="get" class="controls">
-        <div>
-          <label for="ano">Ano</label><br>
-          <select id="ano" name="ano">
-            <option value="">Todos</option>
-            {% for a in anos_combo %}
-              <option value="{{a}}" {% if filtros.ano|string == a|string %}selected{% endif %}>{{a}}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label for="q">Busca</label><br>
-          <input id="q" name="q" type="text" value="{{filtros.q or ''}}" placeholder="Ex.: Azul, São José, Maria…">
-        </div>
-        <button class="btn-primary" type="submit">Aplicar</button>
-        <a class="btn" href="{{ url_for('circulos_list') }}">Limpar</a>
-      </form>
-    </section>
-
-    {% for ano in anos_ordenados %}
-      <section class="year-card" aria-label="Ano {{ ano }}">
-        <h2 class="year-title">{{ ano }}</h2>
+    {% if not anos %}
+      <p class="muted" style="margin-top:6px">Nenhum círculo cadastrado.</p>
+    {% else %}
+      {% for ano in anos %}
+        <h2>{{ ano }}</h2>
         <div class="grid">
-          {% for r in agrupado[ano] %}
-            {% set tem_atual = (r.coord_atual_ele or '')|trim and (r.coord_atual_ela or '')|trim %}
-            <a class="circle" href="{{ url_for('circulos_view', cid=r.id) }}"
-               {% if r.rgb_triplet %} data-color="1" style="--c: {{ r.rgb_triplet }}"{% endif %}>
-              <div class="name">{{ r.nome_circulo or '— Sem nome —' }}</div>
-              <div class="muted">
-                {% if tem_atual %}
-                  {{ r.coord_atual_ele }} &amp; {{ r.coord_atual_ela }}
-                {% else %}
-                  {{ r.coord_orig_ele }} &amp; {{ r.coord_orig_ela }}
-                  <span class="badge">Original</span>
-                {% endif %}
+          {% for c in por_ano[ano] %}
+            <a class="card circle"
+               href="{{ url_for('circulos_view', cid=c.id) }}"
+               {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
+              <div style="font-weight:600">{{ c.nome or '— Sem nome —' }}</div>
+              <div class="muted" style="margin-top:4px">
+                {{ c.coord }}{{ c.coord_hint }}
               </div>
             </a>
           {% endfor %}
-          {% if agrupado[ano]|length == 0 %}
-            <div class="muted">Sem círculos cadastrados para este ano.</div>
-          {% endif %}
         </div>
-      </section>
-    {% endfor %}
-
-    {% if anos_ordenados|length == 0 %}
-      <p class="muted">Nenhum registro encontrado para os filtros aplicados.</p>
+      {% endfor %}
     {% endif %}
-
-    <footer>
-      <p>“Que o amor de Cristo una e fortaleça nossas famílias.”</p>
-    </footer>
   </div>
 </body>
 </html>
