@@ -3358,14 +3358,6 @@ def api_circulos_integrantes_concluir(cid):
     finally:
         try: cur.close(); conn.close()
         except Exception: pass
-# Alias de compatibilidade: mantém o caminho antigo usado no template
-app.add_url_rule(
-    '/api/circulos/<int:cid>/integrantes/copy-atual-para-original',
-    endpoint='api_circulos_copy_atual_para_original',
-    view_func=api_circulos_integrantes_concluir,
-    methods=['POST']
-)
-
 # -----------------------------
 # API: update genérico de campo (whitelist)
 # body: { "field": "...", "value": "..." }
@@ -3816,9 +3808,21 @@ def api_circulos_remove_integrante(cid):
 
 # Alias: copiar 'atual' -> 'original'
 @app.route("/api/circulos/<int:cid>/integrantes/copy-atual-para-original", methods=["POST"])
-def api_circulos_copy_atual_para_original():
-    # Reaproveita a sua rota existente /integrantes/concluir
-    return api_circulos_integrantes_concluir.__wrapped__(cid)  # chama a função original
+def api_circulos_copy_atual_para_original(cid):
+    conn = db_conn(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE circulos
+               SET integrantes_original = COALESCE(integrantes_atual, '')
+             WHERE id=%s
+        """, (cid,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        try:
+            cur.close(); conn.close()
+        except Exception:
+            pass
 
 # Definir/limpar coordenador atual
 @app.route("/api/circulos/<int:cid>/definir-coord", methods=["POST"])
