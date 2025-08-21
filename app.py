@@ -3358,6 +3358,13 @@ def api_circulos_integrantes_concluir(cid):
     finally:
         try: cur.close(); conn.close()
         except Exception: pass
+# Alias de compatibilidade: mantém o caminho antigo usado no template
+app.add_url_rule(
+    '/api/circulos/<int:cid>/integrantes/copy-atual-para-original',
+    endpoint='api_circulos_copy_atual_para_original',
+    view_func=api_circulos_integrantes_concluir,
+    methods=['POST']
+)
 
 # -----------------------------
 # API: update genérico de campo (whitelist)
