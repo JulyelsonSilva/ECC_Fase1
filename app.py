@@ -3604,19 +3604,17 @@ def api_circulos_transferir():
         dst = cur.fetchone()
         if not src or not dst:
             return jsonify({"ok": False, "msg": "Círculo origem/destino não encontrado."}), 404
-        if src["ano"] != dst["ano"]:
-            return jsonify({"ok": False, "msg": "Origem e destino devem ser do mesmo ano."}), 409
 
-        src_ids = [i for i in _parse_id_list(src.get("integrantes_atual"))]
-        dst_ids = [i for i in _parse_id_list(dst.get("integrantes_atual"))]
-
+        src_ids = _parse_id_list(src.get("integrantes_atual"))
         if pid not in src_ids:
             return jsonify({"ok": False, "msg": "Casal não está no círculo de origem."}), 404
+        dst_ids = _parse_id_list(dst.get("integrantes_atual"))
         if pid in dst_ids:
             return jsonify({"ok": False, "msg": "Casal já está no círculo de destino."}), 409
 
-        # remove do origem / adiciona no destino
+        # remove do origem
         src_ids = [i for i in src_ids if i != pid]
+        # adiciona no destino
         dst_ids.append(int(pid))
 
         ne, na = _encontrista_name_by_id(conn, pid)
@@ -3627,19 +3625,14 @@ def api_circulos_transferir():
                 cleared_coord = True
 
         # aplica
-        cur2 = conn.cursor()
-        try:
-            cur2.execute(
-                "UPDATE circulos SET integrantes_atual=%s{clear} WHERE id=%s".format(
-                    clear=", coord_atual_ele=NULL, coord_atual_ela=NULL" if cleared_coord else ""
-                ),
-                (_ids_to_str(src_ids), from_id)
-            )
-            cur2.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(dst_ids), to_id))
-            conn.commit()
-        finally:
-            cur2.close()
-
+        cur.execute(
+            "UPDATE circulos SET integrantes_atual=%s{clear} WHERE id=%s".format(
+                clear=", coord_atual_ele=NULL, coord_atual_ela=NULL" if cleared_coord else ""
+            ),
+            (_ids_to_str(src_ids), from_id)
+        )
+        cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(dst_ids), to_id))
+        conn.commit()
         return jsonify({"ok": True, "cleared_coord": cleared_coord})
     finally:
         cur.close(); conn.close()
