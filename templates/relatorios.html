@@ -1,17 +1,14 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>Relatórios • ECC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Chart.js via CDN -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
     :root{
       --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
+      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b; --ok:#10b981; --bad:#ef4444;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -38,11 +35,245 @@
       display:flex; align-items:center; gap:10px; color:#334155; font-size:13px;
       background: var(--brand-50); border:1px solid #dbeafe; padding:8px 12px; border-radius:999px;
     }
-    .stamp .dot{
-      width:10px; height:10px; border-radius:999px; background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(245,158,11,.15);
-    }
+    .stamp .dot{ width:10px; height:10px; border-radius:999px; background: var(--accent); box-shadow: 0 0 0 4px rgba(245,158,11,.15); }
 
     .hero{
       margin:18px 0 8px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px;
       display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    .hero .left h2{ margin:.2rem 0 .2rem; font-size:18px;}
+    .hero .left p{ margin:0; color:var(--muted); font-size:13px;}
+    .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .controls input, .controls select, .controls button{
+      font:inherit; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#fff;
+    }
+    .controls button{ background:var(--brand); color:#fff; border-color:transparent; cursor:pointer; }
+    .controls button:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .grid{
+      display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; margin-top:16px;
+    }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; }
+    .card h3{ margin:0 0 10px; font-size:16px; }
+    .chart-wrap{height:420px; position:relative;}
+    .legend{
+      display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--muted); font-size:12px;
+    }
+    .legend .chip{
+      border:1px solid var(--border); padding:6px 10px; border-radius:999px; background:#fff;
+    }
+    .table{
+      width:100%; border-collapse:separate; border-spacing:0; font-size:14px; margin-top:8px;
+    }
+    .table th, .table td{ padding:10px 12px; border-bottom:1px solid var(--border); }
+    .table th{ text-align:left; font-weight:600; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+    .status{ font-weight:600; }
+    .status.ok{ color:var(--ok);}
+    .status.warn{ color:#f59e0b;}
+    .status.bad{ color:var(--bad);}
+
+    @media (max-width:980px){
+      .grid{ grid-template-columns: 1fr; }
+      .chart-wrap{height:360px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">E</div>
+        <div class="titles">
+          <h1>Relatórios • ECC</h1>
+          <p>Indicadores de equipes por ano, com metas mínimas e máximas.</p>
+        </div>
+      </div>
+      <div class="stamp"><span class="dot"></span> Relatórios dinâmicos</div>
+    </header>
+
+    <section class="hero">
+      <div class="left">
+        <h2>Montagem — Integrantes por equipe</h2>
+        <p>Compare o total atual de integrantes por equipe com as metas (mín./máx.).</p>
+      </div>
+      <div class="controls">
+        <label for="ano">Ano:&nbsp;</label>
+        <input id="ano" type="number" min="2000" step="1" style="width:120px" />
+        <button id="btnLoad">Atualizar</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Barras por equipe</h3>
+        <div class="chart-wrap"><canvas id="chartEquipes"></canvas></div>
+        <div class="legend">
+          <span class="chip">Barra: integrantes atuais</span>
+          <span class="chip">Linha sólida: meta mín.</span>
+          <span class="chip">Linha tracejada: meta máx.</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Tabela detalhada</h3>
+        <table class="table" id="tbl">
+          <thead>
+            <tr>
+              <th>Equipe</th>
+              <th style="text-align:right;">Integrantes</th>
+              <th style="text-align:right;">Mín.</th>
+              <th style="text-align:right;">Máx.</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const TEAMS_ORDER = [
+      "Sala","Circulos","Café e Minimercado","Compras","Acolhida",
+      "Ordem e Limpeza","Liturgia e Vigilia","Secretaria","Cozinha","Visitação"
+    ];
+
+    const chartCtx = document.getElementById('chartEquipes').getContext('2d');
+    let barChart;
+
+    function byTeamOrder(obj){
+      const out = {};
+      TEAMS_ORDER.forEach(k => out[k] = Number(obj[k] || 0));
+      return out;
+    }
+
+    async function fetchJSON(url){
+      const r = await fetch(url, {headers: {"Accept": "application/json"}});
+      if(!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function statusText(n, min, max){
+      if (max === 0) { // segurança p/ times sem alvo
+        return n === 0 ? ["OK", "ok"] : [`Excedeu ${n}`, "bad"];
+      }
+      if (n < min) return [`Falta ${min - n}`, "warn"];
+      if (n > max) return [`Excedeu ${n - max}`, "bad"];
+      return ["OK", "ok"];
+    }
+
+    function buildTable(counts, limits){
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = "";
+      TEAMS_ORDER.forEach(team=>{
+        const n = counts[team] ?? 0;
+        const lim = limits[team] || {min:0, max:0};
+        const [txt, cls] = statusText(n, Number(lim.min||0), Number(lim.max||0));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${team}</td>
+          <td style="text-align:right;">${n}</td>
+          <td style="text-align:right;">${lim.min ?? 0}</td>
+          <td style="text-align:right;">${lim.max ?? 0}</td>
+          <td class="status ${cls}">${txt}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderChart(counts, limits){
+      const labels = TEAMS_ORDER;
+      const dataCounts = labels.map(k => counts[k] ?? 0);
+      const dataMin = labels.map(k => (limits[k]?.min ?? 0));
+      const dataMax = labels.map(k => (limits[k]?.max ?? 0));
+
+      const dsBar = {
+        type: 'bar',
+        label: 'Integrantes',
+        data: dataCounts,
+        borderWidth: 1,
+      };
+      const dsMin = {
+        type: 'line',
+        label: 'Meta Mín.',
+        data: dataMin,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: .25
+      };
+      const dsMax = {
+        type: 'line',
+        label: 'Meta Máx.',
+        data: dataMax,
+        borderWidth: 2,
+        borderDash: [6,6],
+        pointRadius: 0,
+        tension: .25
+      };
+
+      if (barChart) barChart.destroy();
+      barChart = new Chart(chartCtx, {
+        data: {
+          labels,
+          datasets: [dsBar, dsMin, dsMax]
+        },
+        options: {
+          responsive:true,
+          maintainAspectRatio:false,
+          indexAxis:'y',
+          plugins: {
+            legend: {display:false},
+            tooltip: {
+              callbacks:{
+                label: (ctx)=>{
+                  const t = labels[ctx.dataIndex];
+                  const min = dataMin[ctx.dataIndex];
+                  const max = dataMax[ctx.dataIndex];
+                  const n = dataCounts[ctx.dataIndex];
+                  return ` ${t}: ${n} (min ${min} • máx ${max})`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { beginAtZero:true, grid:{color:'rgba(0,0,0,.06)'} },
+            y: { grid:{display:false} }
+          }
+        }
+      });
+    }
+
+    async function loadAll(){
+      const btn = document.getElementById('btnLoad');
+      btn.disabled = true;
+      try{
+        const anoInput = document.getElementById('ano');
+        let ano = parseInt(anoInput.value, 10);
+        if(!ano || String(ano).length!==4){
+          const now = new Date();
+          ano = now.getFullYear();
+          anoInput.value = String(ano);
+        }
+
+        const [{ok:ok1, counts}, {ok:ok2, limits}] = await Promise.all([
+          fetchJSON(`/api/team-kpis?ano=${ano}`),
+          fetchJSON(`/api/team-limits`)
+        ]);
+
+        if(!ok1 || !ok2) throw new Error("Falha ao carregar dados.");
+        const orderedCounts = byTeamOrder(counts || {});
+        renderChart(orderedCounts, limits || {});
+        buildTable(orderedCounts, limits || {});
+      }catch(err){
+        alert("Erro ao carregar dados: " + (err?.message || err));
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('btnLoad').addEventListener('click', loadAll);
+    // auto-init
+    document.getElementById('ano').value = new Date().getFullYear();
+    loadAll();
+  </script>
+</body>
+</html>
