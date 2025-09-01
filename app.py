@@ -3983,25 +3983,54 @@ def auditoria_enderecos():
 # --- Lote de normalização + geocodificação (apenas nova tabela) ---
 @app.route("/admin/normalizar-geocodificar", methods=["POST"])
 def normalizar_geocodificar():
-    lote = int(request.args.get("lote", 50))
-    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    """
+    Processa em lotes pequenos sem manter cursor/tx abertos durante chamadas externas.
+    Estratégia:
+      1) Abre conexão curta só para buscar IDS + endereços.
+      2) Fecha a conexão.
+      3) Para cada linha: normaliza, consulta cache/HTTP e abre UMA conexão curta para aplicar o UPDATE.
+         (autocommit on + ping).
+    """
+    import time
+    lote = max(1, int(request.args.get("lote", 20)))  # lote menor evita timeouts na hospedagem
 
-    # seleciona pendentes/erro e também quem não tem normalizado
-    cur.execute(f"""
-      SELECT e.id as encontrista_id, e.endereco as endereco_original,
-             g.endereco_normalizado, g.geocode_status
-      FROM encontristas e
-      JOIN encontristas_geo g ON g.encontrista_id = e.id
-      WHERE (g.geocode_status IN ('pending','error','not_found') OR g.geocode_status IS NULL)
-         OR g.endereco_normalizado IS NULL
-      ORDER BY e.id DESC
-      LIMIT {lote}
-    """)
-    rows = cur.fetchall()
+    # 1) Buscar o lote de trabalho (somente dados necessários) e FECHAR a conexão imediatamente
+    conn_sel = db_conn()
+    try:
+        conn_sel.autocommit = True
+    except Exception:
+        pass
+    cur_sel = conn_sel.cursor(dictionary=True)
+    try:
+        cur_sel.execute(f"""
+            SELECT e.id AS encontrista_id, e.endereco AS endereco_original
+              FROM encontristas e
+              LEFT JOIN encontristas_geo g ON g.encontrista_id = e.id
+             WHERE g.encontrista_id IS NULL
+                OR g.geocode_status IS NULL
+                OR g.geocode_status IN ('pending','error','not_found')
+                OR g.endereco_normalizado IS NULL
+             ORDER BY e.id DESC
+             LIMIT {lote}
+        """)
+        rows = cur_sel.fetchall() or []
+    finally:
+        try:
+            cur_sel.close()
+            conn_sel.close()
+        except Exception:
+            pass
 
-    atualizados = 0
+    if not rows:
+        return jsonify({"processados": 0, "mensagem": "Nada a processar."})
+
+    processados = 0
+    ok = 0
+    not_found = 0
+    erros = 0
+
     for r in rows:
-        raw = r["endereco_original"] or ""
+        raw = (r.get("endereco_original") or "").strip()
         norm = normalize_address(raw)
         h = addr_hash(norm) if norm else None
 
@@ -4010,52 +4039,107 @@ def normalizar_geocodificar():
         status = "not_found"
         source = None
 
-        if norm:
-            cache_row = None
-            try:
-                cache_row = get_cache(conn, h)
-            except:
-                pass
-
-            if cache_row and cache_row["status"] in ("ok", "partial"):
-                lat, lng, display, status = cache_row["lat"], cache_row["lng"], cache_row["formatted_address"], cache_row["status"]
-                source = "cache"
-            else:
-                lat, lng, display, status = nominatim_geocode(norm)
-                source = "nominatim"
+        try:
+            if norm:
+                # cache primeiro (não segura conexão de banco)
+                cache_row = None
                 try:
-                    save_cache(conn, h, norm, lat, lng, display, status)
-                except:
+                    # abrir conexão curtíssima só para cache get
+                    conn_cache = db_conn()
+                    try:
+                        conn_cache.autocommit = True
+                    except Exception:
+                        pass
+                    cache_row = get_cache(conn_cache, h)
+                finally:
+                    try:
+                        conn_cache.close()
+                    except Exception:
+                        pass
+
+                if cache_row and cache_row.get("status") in ("ok", "partial"):
+                    lat = cache_row["lat"]; lng = cache_row["lng"]; display = cache_row["formatted_address"]; status = cache_row["status"]
+                    source = "cache"
+                else:
+                    # chamada HTTP (sem qualquer cursor/tx aberta)
+                    lat, lng, display, status = nominatim_geocode(norm)
+                    source = "nominatim"
+
+                    # salva cache em conexão separada e curtinha
+                    try:
+                        conn_cache2 = db_conn()
+                        try:
+                            conn_cache2.autocommit = True
+                        except Exception:
+                            pass
+                        if h:
+                            save_cache(conn_cache2, h, norm, lat, lng, display, status)
+                    finally:
+                        try:
+                            conn_cache2.close()
+                        except Exception:
+                            pass
+
+            # 3) Aplicar UPSERT em conexão curta (autocommit)
+            conn_up = db_conn()
+            try:
+                conn_up.autocommit = True
+            except Exception:
+                pass
+            try:
+                # manter a sessão viva mesmo se a hospedagem for instável
+                try:
+                    conn_up.ping(reconnect=True, attempts=2, delay=0.2)
+                except Exception:
                     pass
-        else:
-            status = "not_found"
 
-        cur2 = conn.cursor()
-        # como encontrista_id é PK, usamos UPSERT
-        cur2.execute("""
-          INSERT INTO encontristas_geo
-            (encontrista_id, endereco_original, endereco_normalizado, endereco_hash,
-             formatted_address, geo_lat, geo_lng, geocode_status, geocode_source, geocode_updated_at)
-          VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-          ON DUPLICATE KEY UPDATE
-            endereco_original=VALUES(endereco_original),
-            endereco_normalizado=VALUES(endereco_normalizado),
-            endereco_hash=VALUES(endereco_hash),
-            formatted_address=VALUES(formatted_address),
-            geo_lat=VALUES(geo_lat), geo_lng=VALUES(geo_lng),
-            geocode_status=VALUES(geocode_status),
-            geocode_source=VALUES(geocode_source),
-            geocode_updated_at=VALUES(geocode_updated_at)
-        """, (
-            r["encontrista_id"], raw or None, norm or None, h,
-            display, lat, lng, status, source, datetime.datetime.now()
-        ))
-        cur2.close()
-        atualizados += 1
+                cur_up = conn_up.cursor()
+                cur_up.execute("""
+                  INSERT INTO encontristas_geo
+                    (encontrista_id, endereco_original, endereco_normalizado, endereco_hash,
+                     formatted_address, geo_lat, geo_lng, geocode_status, geocode_source, geocode_updated_at)
+                  VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                  ON DUPLICATE KEY UPDATE
+                    endereco_original=VALUES(endereco_original),
+                    endereco_normalizado=VALUES(endereco_normalizado),
+                    endereco_hash=VALUES(endereco_hash),
+                    formatted_address=VALUES(formatted_address),
+                    geo_lat=VALUES(geo_lat), geo_lng=VALUES(geo_lng),
+                    geocode_status=VALUES(geocode_status),
+                    geocode_source=VALUES(geocode_source),
+                    geocode_updated_at=VALUES(geocode_updated_at)
+                """, (
+                    r["encontrista_id"], raw or None, norm or None, h,
+                    display, lat, lng, status, source
+                ))
+                cur_up.close()
+            finally:
+                try:
+                    conn_up.close()
+                except Exception:
+                    pass
 
-    conn.commit(); cur.close(); conn.close()
-    return jsonify({"processados": atualizados, "mensagem": "Lote concluído."})
+            processados += 1
+            if status == "ok":
+                ok += 1
+            elif status == "not_found":
+                not_found += 1
 
+            # polidez com o provedor + evita saturar CPU da hospedagem
+            time.sleep(0.3)
+
+        except Exception:
+            erros += 1
+            # continua o loop – erro por item não deve derrubar o lote
+            continue
+
+    return jsonify({
+        "processados": processados,
+        "ok": ok,
+        "not_found": not_found,
+        "erros": erros,
+        "mensagem": "Lote concluído (conexões curtas/commit por linha)."
+    })
 # --- GeoJSON para o mapa (JOIN; somente status ok) ---
 @app.route("/api/encontristas/geo")
 def api_encontristas_geo():
