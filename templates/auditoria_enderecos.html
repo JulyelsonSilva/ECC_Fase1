@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Auditoria de Endereços</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f6f7fb;color:#0f172a}
+    header{padding:16px 20px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;gap:12px;align-items:center}
+    main{padding:20px;max-width:1100px;margin:0 auto}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:20px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{font-weight:600;color:#334155;background:#f9fafb}
+    .btn{padding:10px 14px;border:1px solid #2563eb;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e5e7eb;font-size:12px}
+  </style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('index') }}">← Voltar</a>
+  <h1 style="margin:0">Auditoria de Endereços</h1>
+  <button class="btn" id="runBatch">Normalizar + Geocodificar (lote 100)</button>
+</header>
+<main>
+  <div class="card">
+    <h2 style="margin-top:0">Resumo</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      {% for r in resumo %}
+        <div class="pill">{{ r.geocode_status or 'nulo' }}: <b>{{ r.total }}</b></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Pendentes/Problemas (máx. 200)</h2>
+    <table>
+      <thead><tr>
+        <th>ID</th><th>Casal</th><th>Endereço Original</th><th>Normalizado</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+      {% for f in faltantes %}
+        <tr>
+          <td>{{ f.id }}</td>
+          <td>{{ f.nome_usual_ele }} e {{ f.nome_usual_ela }}</td>
+          <td>{{ f.endereco or '' }}</td>
+          <td>{{ f.endereco_normalizado or '' }}</td>
+          <td>{{ f.geocode_status or '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+<script>
+  document.getElementById('runBatch').onclick = async () => {
+    const btn = document.getElementById('runBatch');
+    btn.disabled = true; btn.textContent = 'Processando...';
+    try{
+      const r = await fetch('/admin/normalizar-geocodificar?lote=100', {method:'POST'});
+      const j = await r.json();
+      alert('Processados: '+j.processados);
+      location.reload();
+    }catch(e){
+      alert('Erro ao processar.');
+    }finally{
+      btn.disabled = false; btn.textContent = 'Normalizar + Geocodificar (lote 100)';
+    }
+  };
+</script>
+</body>
+</html>
