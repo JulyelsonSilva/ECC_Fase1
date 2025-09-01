@@ -1,14 +1,17 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>Relatórios • ECC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Chart.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     :root{
       --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b; --ok:#10b981; --bad:#ef4444;
+      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -35,46 +38,57 @@
       display:flex; align-items:center; gap:10px; color:#334155; font-size:13px;
       background: var(--brand-50); border:1px solid #dbeafe; padding:8px 12px; border-radius:999px;
     }
-    .stamp .dot{ width:10px; height:10px; border-radius:999px; background: var(--accent); box-shadow: 0 0 0 4px rgba(245,158,11,.15); }
+    .stamp .dot{
+      width:10px; height:10px; border-radius:999px; background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(245,158,11,.15);
+    }
 
     .hero{
       margin:18px 0 8px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px;
       display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      box-shadow: 0 8px 20px rgba(15,23,42,.05);
     }
-    .hero .left h2{ margin:.2rem 0 .2rem; font-size:18px;}
-    .hero .left p{ margin:0; color:var(--muted); font-size:13px;}
-    .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .controls input, .controls select, .controls button{
-      font:inherit; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#fff;
+    .hero .text h2{ margin:0 0 6px; font-size:20px; }
+    .hero .text p{ margin:0; color:var(--muted); font-size:14px; }
+    .hero .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn{
+      text-decoration:none; background:var(--brand); color:#fff; padding:10px 14px; border-radius:10px; border:1px solid var(--brand-600);
     }
-    .controls button{ background:var(--brand); color:#fff; border-color:transparent; cursor:pointer; }
-    .controls button:disabled{ opacity:.6; cursor:not-allowed; }
+    /* Botão secundário discreto */
+    .btn-outline{
+      background:transparent; color:var(--brand-600); border:1px solid var(--brand-600);
+    }
+    .btn:hover{ filter:brightness(0.98); }
+    .btn-outline:hover{ background:var(--brand-50); }
 
-    .grid{
-      display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; margin-top:16px;
-    }
-    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; }
-    .card h3{ margin:0 0 10px; font-size:16px; }
-    .chart-wrap{height:420px; position:relative;}
-    .legend{
-      display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--muted); font-size:12px;
-    }
-    .legend .chip{
-      border:1px solid var(--border); padding:6px 10px; border-radius:999px; background:#fff;
-    }
-    .table{
-      width:100%; border-collapse:separate; border-spacing:0; font-size:14px; margin-top:8px;
-    }
-    .table th, .table td{ padding:10px 12px; border-bottom:1px solid var(--border); }
-    .table th{ text-align:left; font-weight:600; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
-    .status{ font-weight:600; }
-    .status.ok{ color:var(--ok);}
-    .status.warn{ color:#f59e0b;}
-    .status.bad{ color:var(--bad);}
+    /* Pilha vertical: DONUT em cima; duas barras embaixo */
+    .stack{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:18px; }
 
-    @media (max-width:980px){
-      .grid{ grid-template-columns: 1fr; }
-      .chart-wrap{height:360px;}
+    .chart-card{
+      background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px;
+      min-height:340px; position:relative;
+    }
+    .chart-card canvas{ height: 100%; width: 100%; }
+    .msg{
+      position:absolute; inset:0; display:grid; place-items:center;
+      color:var(--muted); font-size:14px; padding:12px; text-align:center;
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
+        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
+      }
+      .logo, .hero{ box-shadow:none; }
+      body{
+        background:
+          radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
+          var(--bg);
+      }
+      .chart-card{ background:var(--card); }
+      .btn-outline{ color:#93c5fd; border-color:#60a5fa; }
+      .btn-outline:hover{ background:rgba(59,130,246,.1); }
     }
   </style>
 </head>
@@ -82,198 +96,145 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <div class="logo">E</div>
+        <div class="logo" aria-hidden="true">🕊️</div>
         <div class="titles">
-          <h1>Relatórios • ECC</h1>
-          <p>Indicadores de equipes por ano, com metas mínimas e máximas.</p>
+          <h1>Relatórios</h1>
+          <p>Paróquia Divino Espírito Santo — Jatiúca • Arquidiocese de Maceió</p>
         </div>
       </div>
-      <div class="stamp"><span class="dot"></span> Relatórios dinâmicos</div>
+      <div class="stamp" title="Serviço Pastoral">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Serviço à comunidade</span>
+      </div>
     </header>
 
-    <section class="hero">
-      <div class="left">
-        <h2>Montagem — Integrantes por equipe</h2>
-        <p>Compare o total atual de integrantes por equipe com as metas (mín./máx.).</p>
+    <section class="hero" role="region" aria-label="Filtros e ações">
+      <div class="text">
+        <h2>Visão estatística do ECC</h2>
+        <p>Origem (ano de encontro), casais que trabalharam (dedup) e total de registros por ano.</p>
       </div>
-      <div class="controls">
-        <label for="ano">Ano:&nbsp;</label>
-        <input id="ano" type="number" min="2000" step="1" style="width:120px" />
-        <button id="btnLoad">Atualizar</button>
+      <div class="actions">
+        <label for="anoSel" style="color:var(--muted); font-size:13px;">Ano de trabalho:</label>
+        <select id="anoSel">
+          {% for a in anos %}
+            <option value="{{a}}">{{a}}</option>
+          {% endfor %}
+        </select>
+
+        <!-- existente -->
+        <a class="btn" href="{{ url_for('docs_index') }}" target="_blank">🖨️ Documentos de impressão</a>
+
+        <!-- NOVOS: mapa e auditoria -->
+        <a class="btn" href="{{ url_for('relatorio_mapa_encontristas') }}">🗺️ Mapa dos Encontristas</a>
+        <a class="btn btn-outline" href="{{ url_for('auditoria_enderecos') }}">🔎 Auditoria de Endereços</a>
       </div>
     </section>
 
-    <section class="grid">
-      <div class="card">
-        <h3>Barras por equipe</h3>
-        <div class="chart-wrap"><canvas id="chartEquipes"></canvas></div>
-        <div class="legend">
-          <span class="chip">Barra: integrantes atuais</span>
-          <span class="chip">Linha sólida: meta mín.</span>
-          <span class="chip">Linha tracejada: meta máx.</span>
-        </div>
+    <!-- DONUT em cima -->
+    <div class="stack" aria-label="Gráficos de Relatórios">
+      <div class="chart-card">
+        <canvas id="distAnoEncontro"></canvas>
+        <div id="msgDist" class="msg" style="display:none;"></div>
       </div>
-      <div class="card">
-        <h3>Tabela detalhada</h3>
-        <table class="table" id="tbl">
-          <thead>
-            <tr>
-              <th>Equipe</th>
-              <th style="text-align:right;">Integrantes</th>
-              <th style="text-align:right;">Mín.</th>
-              <th style="text-align:right;">Máx.</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
+
+      <!-- Barras: casais (dedup) -->
+      <div class="chart-card">
+        <canvas id="barTrabalhos"></canvas>
+        <div id="msgBar" class="msg" style="display:none;"></div>
       </div>
-    </section>
+
+      <!-- Barras — registros em 'encontreiros' por ano -->
+      <div class="chart-card">
+        <canvas id="barEncontreiros"></canvas>
+        <div id="msgEnctr" class="msg" style="display:none;"></div>
+      </div>
+    </div>
   </div>
 
-  <script>
-    const TEAMS_ORDER = [
-      "Sala","Circulos","Café e Minimercado","Compras","Acolhida",
-      "Ordem e Limpeza","Liturgia e Vigilia","Secretaria","Cozinha","Visitação"
-    ];
+<script>
+let chBar, chDist, chEnctr;
+function destroyIf(c){ if(c) c.destroy(); }
+function showMsg(id, text){ const el = document.getElementById(id); if(!el) return; el.textContent = text; el.style.display = 'grid'; }
+function hideMsg(id){ const el = document.getElementById(id); if(!el) return; el.style.display = 'none'; }
 
-    const chartCtx = document.getElementById('chartEquipes').getContext('2d');
-    let barChart;
+async function safeFetchJson(url){
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(`HTTP ${res.status} em ${url} → ${t.slice(0,200)}`);
+  }
+  return res.json();
+}
 
-    function byTeamOrder(obj){
-      const out = {};
-      TEAMS_ORDER.forEach(k => out[k] = Number(obj[k] || 0));
-      return out;
-    }
+async function carregaTrabalhosPorAno(){
+  try{
+    hideMsg('msgBar');
+    const data = await safeFetchJson("/api/trabalhos_por_ano");
+    const labels = data.map(d => d.ano);
+    const valores = data.map(d => d.qtd);
+    destroyIf(chBar);
+    chBar = new Chart(document.getElementById("barTrabalhos"), {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Casais que trabalharam por ano (dedup)", data: valores }] },
+      options: { responsive:true, maintainAspectRatio:false }
+    });
+  }catch(err){
+    console.error(err);
+    showMsg('msgBar', "Erro ao carregar 'casais que trabalharam por ano'. Verifique /api/trabalhos_por_ano.");
+  }
+}
 
-    async function fetchJSON(url){
-      const r = await fetch(url, {headers: {"Accept": "application/json"}});
-      if(!r.ok) throw new Error(await r.text());
-      return r.json();
-    }
+async function carregaEncontreirosPorAno(){
+  try{
+    hideMsg('msgEnctr');
+    const data = await safeFetchJson("/api/encontreiros_por_ano");
+    const labels = data.map(d => d.ano);
+    const valores = data.map(d => d.qtd);
+    destroyIf(chEnctr);
+    chEnctr = new Chart(document.getElementById("barEncontreiros"), {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Registros de encontreiros por ano", data: valores }] },
+      options: { responsive:true, maintainAspectRatio:false }
+    });
+  }catch(err){
+    console.error(err);
+    showMsg('msgEnctr', "Erro ao carregar 'encontreiros por ano'. Verifique /api/encontreiros_por_ano.");
+  }
+}
 
-    function statusText(n, min, max){
-      if (max === 0) { // segurança p/ times sem alvo
-        return n === 0 ? ["OK", "ok"] : [`Excedeu ${n}`, "bad"];
-      }
-      if (n < min) return [`Falta ${min - n}`, "warn"];
-      if (n > max) return [`Excedeu ${n - max}`, "bad"];
-      return ["OK", "ok"];
-    }
+async function carregaDistribuicaoAnoEncontro(ano){
+  try{
+    hideMsg('msgDist');
+    if(!ano){ throw new Error("Ano inválido"); }
+    const data = await safeFetchJson(`/api/ano_origem_dos_trabalhadores?ano=${encodeURIComponent(ano)}`);
+    if(!data.dist){ throw new Error("Resposta inesperada da API"); }
+    const labels = data.dist.map(d => d.ano_encontro);
+    const valores = data.dist.map(d => d.qtd);
+    destroyIf(chDist);
+    chDist = new Chart(document.getElementById("distAnoEncontro"), {
+      type: "doughnut",
+      data: { labels, datasets: [{ label: `Ano de encontro de quem trabalhou em ${ano}`, data: valores }] },
+      options: { responsive:true, maintainAspectRatio:false }
+    });
+  }catch(err){
+    console.error(err);
+    showMsg('msgDist', "Erro ao carregar 'origem (ano de encontro)'. Verifique /api/ano_origem_dos_trabalhadores?ano=AAAA.");
+  }
+}
 
-    function buildTable(counts, limits){
-      const tbody = document.getElementById('tbody');
-      tbody.innerHTML = "";
-      TEAMS_ORDER.forEach(team=>{
-        const n = counts[team] ?? 0;
-        const lim = limits[team] || {min:0, max:0};
-        const [txt, cls] = statusText(n, Number(lim.min||0), Number(lim.max||0));
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${team}</td>
-          <td style="text-align:right;">${n}</td>
-          <td style="text-align:right;">${lim.min ?? 0}</td>
-          <td style="text-align:right;">${lim.max ?? 0}</td>
-          <td class="status ${cls}">${txt}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function renderChart(counts, limits){
-      const labels = TEAMS_ORDER;
-      const dataCounts = labels.map(k => counts[k] ?? 0);
-      const dataMin = labels.map(k => (limits[k]?.min ?? 0));
-      const dataMax = labels.map(k => (limits[k]?.max ?? 0));
-
-      const dsBar = {
-        type: 'bar',
-        label: 'Integrantes',
-        data: dataCounts,
-        borderWidth: 1,
-      };
-      const dsMin = {
-        type: 'line',
-        label: 'Meta Mín.',
-        data: dataMin,
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: .25
-      };
-      const dsMax = {
-        type: 'line',
-        label: 'Meta Máx.',
-        data: dataMax,
-        borderWidth: 2,
-        borderDash: [6,6],
-        pointRadius: 0,
-        tension: .25
-      };
-
-      if (barChart) barChart.destroy();
-      barChart = new Chart(chartCtx, {
-        data: {
-          labels,
-          datasets: [dsBar, dsMin, dsMax]
-        },
-        options: {
-          responsive:true,
-          maintainAspectRatio:false,
-          indexAxis:'y',
-          plugins: {
-            legend: {display:false},
-            tooltip: {
-              callbacks:{
-                label: (ctx)=>{
-                  const t = labels[ctx.dataIndex];
-                  const min = dataMin[ctx.dataIndex];
-                  const max = dataMax[ctx.dataIndex];
-                  const n = dataCounts[ctx.dataIndex];
-                  return ` ${t}: ${n} (min ${min} • máx ${max})`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { beginAtZero:true, grid:{color:'rgba(0,0,0,.06)'} },
-            y: { grid:{display:false} }
-          }
-        }
-      });
-    }
-
-    async function loadAll(){
-      const btn = document.getElementById('btnLoad');
-      btn.disabled = true;
-      try{
-        const anoInput = document.getElementById('ano');
-        let ano = parseInt(anoInput.value, 10);
-        if(!ano || String(ano).length!==4){
-          const now = new Date();
-          ano = now.getFullYear();
-          anoInput.value = String(ano);
-        }
-
-        const [{ok:ok1, counts}, {ok:ok2, limits}] = await Promise.all([
-          fetchJSON(`/api/team-kpis?ano=${ano}`),
-          fetchJSON(`/api/team-limits`)
-        ]);
-
-        if(!ok1 || !ok2) throw new Error("Falha ao carregar dados.");
-        const orderedCounts = byTeamOrder(counts || {});
-        renderChart(orderedCounts, limits || {});
-        buildTable(orderedCounts, limits || {});
-      }catch(err){
-        alert("Erro ao carregar dados: " + (err?.message || err));
-      }finally{
-        btn.disabled = false;
-      }
-    }
-
-    document.getElementById('btnLoad').addEventListener('click', loadAll);
-    // auto-init
-    document.getElementById('ano').value = new Date().getFullYear();
-    loadAll();
-  </script>
+document.getElementById("anoSel").addEventListener("change", e => carregaDistribuicaoAnoEncontro(e.target.value));
+window.addEventListener("DOMContentLoaded", async () => {
+  if(!window.Chart){
+    showMsg('msgDist', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    showMsg('msgBar', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    showMsg('msgEnctr', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    return;
+  }
+  const anoIni = document.getElementById("anoSel")?.value;
+  await carregaDistribuicaoAnoEncontro(anoIni);   // donut
+  await carregaTrabalhosPorAno();                 // barras (dedup)
+  await carregaEncontreirosPorAno();              // barras (registros)
+});
+</script>
 </body>
 </html>
