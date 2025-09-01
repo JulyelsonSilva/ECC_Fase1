@@ -3,8 +3,85 @@ import mysql.connector
 from collections import defaultdict
 import math
 import os, re
+import hashlib, datetime, requests
 from difflib import SequenceMatcher
 from mysql.connector import errors as mysql_errors
+
+# =========================
+# Helpers para MAPAS
+# =========================
+
+DEFAULT_CITY = os.getenv("DEFAULT_CITY", "Maceió")
+DEFAULT_STATE = os.getenv("DEFAULT_STATE", "AL")
+DEFAULT_COUNTRY = os.getenv("DEFAULT_COUNTRY", "Brasil")
+NOMINATIM_EMAIL = os.getenv("NOMINATIM_EMAIL", "julyelson@gmail.com")
+
+def normalize_address(raw: str) -> str:
+    if not raw:
+        return ""
+    s = raw.strip()
+    s = re.sub(r'\s+', ' ', s)
+    s = s.replace(" ,", ",").replace(", ,", ",")
+    s = s.replace(" Apt®", " Apt").replace("Apt®", "Apt")
+    s = s.replace(" nº", " n.º").replace(" No ", " n.º ")
+    s = s.replace("Av:", "Av.").replace("Av :", "Av.").replace("Av ", "Av. ")
+    s = s.replace("Rua:", "Rua").replace("R:", "Rua ")
+    s = s.replace("Jatiuca", "Jatiúca")
+
+    lower = s.lower()
+    needs_city = (DEFAULT_CITY.lower() not in lower)
+    needs_state = (f"- {DEFAULT_STATE.lower()}" not in lower) and (f", {DEFAULT_STATE.lower()}" not in lower)
+    needs_country = (DEFAULT_COUNTRY.lower() not in lower)
+
+    tail = []
+    if needs_city: tail.append(DEFAULT_CITY)
+    if needs_state: tail.append(DEFAULT_STATE)
+    if needs_country: tail.append(DEFAULT_COUNTRY)
+
+    if tail:
+        if not s.endswith(","):
+            if not s.endswith(" "): s += " "
+            s += ", "
+        s += " - ".join(tail) if len(tail) == 2 else ", ".join(tail)
+
+    s = re.sub(r'\s*,\s*,', ', ', s)
+    s = re.sub(r'\s*-\s*-', ' - ', s)
+    s = re.sub(r'\s*,\s*-\s*', ', ', s)
+    return s.strip(" ,")
+def addr_hash(s: str) -> str:
+    return hashlib.sha1(s.encode("utf-8")).hexdigest()
+
+def nominatim_geocode(query: str):
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": query, "format": "jsonv2", "addressdetails": 0, "limit": 1, "countrycodes": "br"}
+    headers = {"User-Agent": f"ECCDivino/1.0 ({NOMINATIM_EMAIL})"}
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        if not data:
+            return None, None, None, "not_found"
+        item = data[0]
+        return float(item["lat"]), float(item["lon"]), item.get("display_name"), "ok"
+    except requests.RequestException:
+        return None, None, None, "error"
+
+def save_cache(conn, h, query, lat, lng, display, status):
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO geocoding_cache (endereco_hash, query, formatted_address, lat, lng, status, provider, updated_at)
+        VALUES (%s,%s,%s,%s,%s,%s,'nominatim',NOW())
+        ON DUPLICATE KEY UPDATE
+          query=VALUES(query), formatted_address=VALUES(formatted_address),
+          lat=VALUES(lat), lng=VALUES(lng), status=VALUES(status), updated_at=NOW()
+    """, (h, query, display, lat, lng, status))
+    conn.commit(); cur.close()
+
+def get_cache(conn, h):
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM geocoding_cache WHERE endereco_hash=%s", (h,))
+    row = cur.fetchone(); cur.close()
+    return row
 
 # =========================
 # Helpers para CÍRCULOS (com proteção anti-colisão)
@@ -3868,6 +3945,150 @@ def api_circulos_definir_coord(cid):
         return jsonify({"ok": True})
     finally:
         cur.close(); conn.close()
+# --- Auditoria: contagens + pendentes (JOIN nova tabela) ---
+@app.route("/relatorios/auditoria-enderecos")
+def auditoria_enderecos():
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+
+    # garante que todo encontrista tenha uma linha em encontristas_geo (status pending)
+    cur.execute("""
+      INSERT INTO encontristas_geo (encontrista_id, endereco_original, geocode_status)
+      SELECT e.id, e.endereco, 'pending'
+      FROM encontristas e
+      LEFT JOIN encontristas_geo g ON g.encontrista_id = e.id
+      WHERE g.encontrista_id IS NULL
+    """)
+    conn.commit()
+
+    cur.execute("""
+      SELECT geocode_status, COUNT(*) as total
+      FROM encontristas_geo
+      GROUP BY geocode_status
+    """)
+    resumo = cur.fetchall()
+
+    cur.execute("""
+      SELECT e.id, e.nome_usual_ele, e.nome_usual_ela, e.endereco,
+             g.endereco_normalizado, g.geocode_status
+      FROM encontristas e
+      JOIN encontristas_geo g ON g.encontrista_id = e.id
+      WHERE g.geocode_status IN ('pending','not_found','error') OR g.endereco_normalizado IS NULL
+      ORDER BY e.id DESC
+      LIMIT 200
+    """)
+    faltantes = cur.fetchall()
+    cur.close(); conn.close()
+    return render_template("auditoria_enderecos.html", resumo=resumo, faltantes=faltantes)
+
+# --- Lote de normalização + geocodificação (apenas nova tabela) ---
+@app.route("/admin/normalizar-geocodificar", methods=["POST"])
+def normalizar_geocodificar():
+    lote = int(request.args.get("lote", 50))
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+
+    # seleciona pendentes/erro e também quem não tem normalizado
+    cur.execute(f"""
+      SELECT e.id as encontrista_id, e.endereco as endereco_original,
+             g.endereco_normalizado, g.geocode_status
+      FROM encontristas e
+      JOIN encontristas_geo g ON g.encontrista_id = e.id
+      WHERE (g.geocode_status IN ('pending','error','not_found') OR g.geocode_status IS NULL)
+         OR g.endereco_normalizado IS NULL
+      ORDER BY e.id DESC
+      LIMIT {lote}
+    """)
+    rows = cur.fetchall()
+
+    atualizados = 0
+    for r in rows:
+        raw = r["endereco_original"] or ""
+        norm = normalize_address(raw)
+        h = addr_hash(norm) if norm else None
+
+        lat = lng = None
+        display = None
+        status = "not_found"
+        source = None
+
+        if norm:
+            cache_row = None
+            try:
+                cache_row = get_cache(conn, h)
+            except:
+                pass
+
+            if cache_row and cache_row["status"] in ("ok", "partial"):
+                lat, lng, display, status = cache_row["lat"], cache_row["lng"], cache_row["formatted_address"], cache_row["status"]
+                source = "cache"
+            else:
+                lat, lng, display, status = nominatim_geocode(norm)
+                source = "nominatim"
+                try:
+                    save_cache(conn, h, norm, lat, lng, display, status)
+                except:
+                    pass
+        else:
+            status = "not_found"
+
+        cur2 = conn.cursor()
+        # como encontrista_id é PK, usamos UPSERT
+        cur2.execute("""
+          INSERT INTO encontristas_geo
+            (encontrista_id, endereco_original, endereco_normalizado, endereco_hash,
+             formatted_address, geo_lat, geo_lng, geocode_status, geocode_source, geocode_updated_at)
+          VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+          ON DUPLICATE KEY UPDATE
+            endereco_original=VALUES(endereco_original),
+            endereco_normalizado=VALUES(endereco_normalizado),
+            endereco_hash=VALUES(endereco_hash),
+            formatted_address=VALUES(formatted_address),
+            geo_lat=VALUES(geo_lat), geo_lng=VALUES(geo_lng),
+            geocode_status=VALUES(geocode_status),
+            geocode_source=VALUES(geocode_source),
+            geocode_updated_at=VALUES(geocode_updated_at)
+        """, (
+            r["encontrista_id"], raw or None, norm or None, h,
+            display, lat, lng, status, source, datetime.datetime.now()
+        ))
+        cur2.close()
+        atualizados += 1
+
+    conn.commit(); cur.close(); conn.close()
+    return jsonify({"processados": atualizados, "mensagem": "Lote concluído."})
+
+# --- GeoJSON para o mapa (JOIN; somente status ok) ---
+@app.route("/api/encontristas/geo")
+def api_encontristas_geo():
+    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    cur.execute("""
+      SELECT e.id, e.nome_usual_ele, e.nome_usual_ela, e.ano,
+             g.formatted_address, g.geo_lat, g.geo_lng
+      FROM encontristas e
+      JOIN encontristas_geo g ON g.encontrista_id = e.id
+      WHERE g.geocode_status='ok' AND g.geo_lat IS NOT NULL AND g.geo_lng IS NOT NULL
+    """)
+    pts = cur.fetchall()
+    cur.close(); conn.close()
+
+    features = []
+    for p in pts:
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(p["geo_lng"]), float(p["geo_lat"])]},
+            "properties": {
+                "id": p["id"],
+                "nome": f'{p.get("nome_usual_ele","")} e {p.get("nome_usual_ela","")}',
+                "endereco": p.get("formatted_address",""),
+                "ano": p.get("ano")
+            }
+        })
+    return jsonify({"type": "FeatureCollection", "features": features})
+
+# --- Página do mapa (reaproveita o template já enviado) ---
+@app.route("/relatorios/mapa-encontristas")
+def relatorio_mapa_encontristas():
+    return render_template("relatorio_mapa_encontristas.html")
+
 
 # =========================
 # Main
