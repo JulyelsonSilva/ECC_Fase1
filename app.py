@@ -4089,11 +4089,6 @@ def api_encontristas_geo():
 def relatorio_mapa_encontristas():
     return render_template("relatorio_mapa_encontristas.html")
 
-# ----- Relatórios (página) -----
-@app.route('/relatorios')
-def relatorios():
-    return render_template('relatorios.html')
-
 # ----- Expor limites de equipe (min/max) -----
 @app.route('/api/team-limits')
 def api_team_limits():
