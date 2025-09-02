@@ -1496,7 +1496,7 @@ def visao_casal():
 
         # ENCONTREIROS (histórico de trabalho)
         cursor.execute("""
-            SELECT ano, equipe, coordenador, endereco, telefones
+            SELECT ano, equipe, coordenador, endereco, telefones, status, observacao
               FROM encontreiros 
              WHERE nome_ele = %s AND nome_ela = %s
              ORDER BY ano DESC, equipe ASC
@@ -1534,6 +1534,8 @@ def visao_casal():
         por_ano_trabalhos[r["ano"]].append({
             "equipe": r.get("equipe") or "",
             "coordenador": r.get("coordenador") or ""
+            "status": r.get("status") or "",
+            "observacao": r.get("observacao") or ""
         })
 
     por_ano_palestras = defaultdict(list)
