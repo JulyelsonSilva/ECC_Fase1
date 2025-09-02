@@ -24,7 +24,9 @@
   {%- endif -%}
 {%- endmacro %}
 
-{% macro fmt_nome(ele, ela) -%}
+{% macro fmt_nome(r) -%}
+  {% set ele = r.ele if r.ele is defined and r.ele else r.nome_ele %}
+  {% set ela = r.ela if r.ela is defined and r.ela else r.nome_ela %}
   {{ proper_case(ele or '') }} &amp; {{ proper_case(ela or '') }}
 {%- endmacro %}
 
@@ -57,14 +59,14 @@
       <tbody>
         {% for r in ns.coords %}
           <tr>
-            <td><span class="badge">Coordenador</span> {{ fmt_nome(r.ele or r.nome_ele, r.ela or r.nome_ela) }} {{ badge_subfunc(r) }}</td>
+            <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
         {% endfor %}
         {% for r in ns.outros %}
           <tr>
-            <td>{{ fmt_nome(r.ele or r.nome_ele, r.ela or r.nome_ela) }} {{ badge_subfunc(r) }}</td>
+            <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
