@@ -82,6 +82,157 @@ def get_cache(conn, h):
     cur.execute("SELECT * FROM geocoding_cache WHERE endereco_hash=%s", (h,))
     row = cur.fetchone(); cur.close()
     return row
+# =========================
+# Helpers adicionais p/ normalização & geocodificação "esperta"
+# =========================
+import re
+from difflib import SequenceMatcher
+import requests
+
+BAIRRO_FIX = {
+    "jatiuca": "Jatiúca", "jatiúca": "Jatiúca",
+    "ponta verde": "Ponta Verde",
+    "pajuçara": "Pajuçara", "pajucara": "Pajuçara",
+    "poço": "Poço", "poco": "Poço",
+    "pitanguinha": "Pitanguinha",
+}
+LOGR_FIX = {
+    r"^(av|av\.|avenida)\b": "Av.",
+    r"^(rua|r\.?)\b": "Rua",
+    r"^(trav|travessa)\b": "Travessa",
+    r"^(al|alameda)\b": "Alameda",
+}
+CEP_RE = re.compile(r"\b\d{5}-?\d{3}\b")
+NUM_RE = re.compile(r"\b(\d{1,5})(?:\s*[^\w\s]\s*[\w\-\/]+)?\b")
+
+def _apply_map_start(s: str, fmap: dict):
+    for pat, rep in fmap.items():
+        s = re.sub(pat, rep, s, flags=re.I)
+    return s
+
+def split_address_components(raw: str, default_city=DEFAULT_CITY, default_state=DEFAULT_STATE):
+    if not raw:
+        return {"logradouro":"", "numero":"", "bairro":"", "cep":"", "cidade": default_city, "uf": default_state}
+    s = re.sub(r"\s+", " ", raw.strip())
+
+    cep = CEP_RE.search(s)
+    cep = cep.group(0) if cep else ""
+    if cep:
+        s = s.replace(cep, "").strip(",; ")
+
+    partes = [p.strip() for p in re.split(r"[,\-•–;|]", s) if p.strip()]
+    logradouro = partes[0] if partes else ""
+    bairro = ""
+    if len(partes) >= 2:
+        poss = partes[-1]
+        low = poss.lower()
+        if "maceió" not in low and "al" != low and "brasil" not in low:
+            bairro = poss
+
+    logradouro = _apply_map_start(logradouro, LOGR_FIX).strip()
+
+    numero = ""
+    m = NUM_RE.search(logradouro)
+    if m:
+        numero = m.group(1)
+        logradouro = re.sub(r"\b" + re.escape(numero) + r"\b", "", logradouro).replace(" ,", ",").strip(" ,")
+
+    if bairro:
+        b_low = bairro.lower()
+        if b_low in BAIRRO_FIX:
+            bairro = BAIRRO_FIX[b_low]
+        else:
+            best = None; best_ratio = 0.0
+            for k in BAIRRO_FIX.keys():
+                r = SequenceMatcher(None, b_low, k).ratio()
+                if r > best_ratio:
+                    best_ratio, best = r, k
+            if best_ratio >= 0.84:
+                bairro = BAIRRO_FIX[best]
+
+    return {
+        "logradouro": logradouro.strip(),
+        "numero": numero.strip(),
+        "bairro": bairro.strip(),
+        "cep": cep.replace("-", ""),
+        "cidade": default_city,
+        "uf": default_state
+    }
+
+def viacep_busca_por_rua(cidade: str, uf: str, logradouro: str):
+    if not (cidade and uf and logradouro):
+        return []
+    try:
+        url = f"https://viacep.com.br/ws/{uf}/{cidade}/{logradouro}/json/"
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        data = r.json()
+        if isinstance(data, dict) and data.get("erro"):
+            return []
+        if isinstance(data, list):
+            return data
+        return []
+    except requests.RequestException:
+        return []
+
+def geocode_br_smart(raw: str):
+    norm = normalize_address(raw or "")
+    if not norm:
+        return None, None, None, "not_found"
+
+    lat, lng, display, status = nominatim_geocode(norm)
+    if status == "ok":
+        return lat, lng, display, "ok"
+
+    c = split_address_components(norm)
+    comp_full = ", ".join([p for p in [
+        f"{c['logradouro']} {c['numero']}".strip(),
+        c['bairro'] or None,
+        f"{c['cidade']} - {c['uf']}",
+        "Brasil"
+    ] if p])
+    lat, lng, display, status = nominatim_geocode(comp_full)
+    if status == "ok":
+        return lat, lng, display, "ok"
+
+    comp_sem_num = ", ".join([p for p in [
+        c['logradouro'],
+        c['bairro'] or None,
+        f"{c['cidade']} - {c['uf']}", "Brasil"
+    ] if p])
+    lat, lng, display, status = nominatim_geocode(comp_sem_num)
+    if status == "ok":
+        return lat, lng, display, "ok"
+
+    viacep_hits = viacep_busca_por_rua(c['cidade'], c['uf'], c['logradouro'])
+    if viacep_hits:
+        hit = viacep_hits[0]
+        cep = (hit.get("cep") or "").replace("-", "")
+        if cep:
+            lat, lng, display, status = nominatim_geocode(f"{cep}, Brasil")
+            if status == "ok":
+                return lat, lng, display, "ok"
+        alt_q = ", ".join([p for p in [
+            hit.get("logradouro") or c['logradouro'],
+            (hit.get("bairro") or c['bairro']) or None,
+            f"{hit.get('localidade') or c['cidade']} - {hit.get('uf') or c['uf']}",
+            "Brasil"
+        ] if p])
+        lat, lng, display, status = nominatim_geocode(alt_q)
+        if status == "ok":
+            return lat, lng, display, "ok"
+
+    if c['bairro']:
+        q_bairro = f"{c['bairro']}, {c['cidade']} - {c['uf']}, Brasil"
+        lat, lng, display, status = nominatim_geocode(q_bairro)
+        if status == "ok":
+            return lat, lng, f"{display} (centro do bairro)", "partial"
+
+    lat, lng, display, status = nominatim_geocode(f"{c['cidade']} - {c['uf']}, Brasil")
+    if status == "ok":
+        return lat, lng, f"{display} (centro da cidade)", "partial"
+
+    return None, None, None, "not_found"
 
 # =========================
 # Helpers para CÍRCULOS (com proteção anti-colisão)
@@ -2471,67 +2622,66 @@ def relatorios():
     anos = [r["ano"] for r in cur.fetchall()]
     cur.close(); conn.close()
     return render_template("relatorios.html", anos=anos)
-@app.get("/api/trabalhos_por_ano")
+    
+@app.route("/api/trabalhos_por_ano")
 def api_trabalhos_por_ano():
     conn = db_conn(); cur = conn.cursor(dictionary=True)
-    cur.execute("""
-        SELECT ano,
-               COUNT(DISTINCT CONCAT('NM#', LOWER(TRIM(nome_ele)), '#', LOWER(TRIM(nome_ela)))) AS qtd
-        FROM encontreiros
-        WHERE ano IS NOT NULL
-          AND ano NOT IN (2020, 2021)
-          AND LOWER(TRIM(COALESCE(status,''))) NOT IN ('desistiu','recusou')
-        GROUP BY ano
-        ORDER BY ano
-    """)
-    rows = cur.fetchall()
-    cur.close(); conn.close()
-    return jsonify(rows)
+    try:
+        cur.execute("""
+            SELECT ano, COUNT(DISTINCT CONCAT_WS('::', nome_ele, nome_ela)) AS qtd
+              FROM encontreiros
+             WHERE (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+             GROUP BY ano
+             ORDER BY ano
+        """)
+        data = cur.fetchall()
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+    return jsonify(data)
 
 
-@app.get("/api/ano_origem_dos_trabalhadores")
+@app.route("/api/ano_origem_dos_trabalhadores")
 def api_ano_origem_dos_trabalhadores():
     ano = request.args.get("ano", type=int)
     if not ano:
-        return jsonify({"error":"ano requerido"}), 400
-
+        return jsonify({"dist": []})
     conn = db_conn(); cur = conn.cursor(dictionary=True)
-    rows = _q(cur, """
-        SELECT
-          COALESCE(CAST(i.ano AS CHAR), 'Não informado') AS ano_encontro,
-          COUNT(DISTINCT CONCAT('NM#', LOWER(TRIM(e.nome_ele)), '#', LOWER(TRIM(e.nome_ela)))) AS qtd
-        FROM encontreiros e
-        LEFT JOIN encontristas i
-          ON LOWER(TRIM(e.nome_ele)) = LOWER(TRIM(i.nome_usual_ele))
-         AND LOWER(TRIM(e.nome_ela)) = LOWER(TRIM(i.nome_usual_ela))
-        WHERE e.ano = %s
-          AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
-        GROUP BY ano_encontro
-        ORDER BY
-          CASE WHEN ano_encontro = 'Não informado' THEN 1 ELSE 0 END,
-          ano_encontro
-    """, [ano])
-    cur.close(); conn.close()
-    return jsonify({"ano_trabalho": ano, "dist": rows})
-@app.get("/api/encontreiros_por_ano")
+    try:
+        # Ano de ENCONTRO (tabela ENCONTRISTAS) das pessoas que TRABALHARAM no ano informado
+        cur.execute("""
+            SELECT e2.ano AS ano_encontro, COUNT(*) AS qtd
+              FROM encontreiros e
+              JOIN encontristas e2
+                ON e.nome_ele = e2.nome_usual_ele AND e.nome_ela = e2.nome_usual_ela
+             WHERE e.ano = %s
+               AND (e.status IS NULL OR UPPER(TRIM(e.status)) NOT IN ('RECUSOU','DESISTIU'))
+             GROUP BY e2.ano
+             ORDER BY e2.ano
+        """, (ano,))
+        dist = cur.fetchall()
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+    return jsonify({"dist": dist})
+    
+@app.route("/api/encontreiros_por_ano")
 def api_encontreiros_por_ano():
-    """
-    Contagem de REGISTROS em 'encontreiros' por ano (não deduplica casal).
-    Ignora status Desistiu/Recusou e exclui 2020/2021.
-    """
     conn = db_conn(); cur = conn.cursor(dictionary=True)
-    cur.execute("""
-        SELECT ano, COUNT(*) AS qtd
-        FROM encontreiros
-        WHERE ano IS NOT NULL
-          AND ano NOT IN (2020, 2021)
-          AND LOWER(TRIM(COALESCE(status,''))) NOT IN ('desistiu','recusou')
-        GROUP BY ano
-        ORDER BY ano
-    """)
-    rows = cur.fetchall()
-    cur.close(); conn.close()
-    return jsonify(rows)
+    try:
+        cur.execute("""
+            SELECT ano, COUNT(*) AS qtd
+              FROM encontreiros
+             WHERE (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+             GROUP BY ano
+             ORDER BY ano
+        """)
+        data = cur.fetchall()
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+    return jsonify(data)
+
 
 
 @app.route("/docs")
@@ -3947,44 +4097,49 @@ def api_circulos_definir_coord(cid):
 # --- Auditoria: contagens + pendentes (JOIN nova tabela) ---
 @app.route("/relatorios/auditoria-enderecos")
 def auditoria_enderecos():
-    conn = db_conn(); cur = conn.cursor(dictionary=True)
+    resumo = []
+    faltantes = []
 
-    # garante que todo encontrista tenha uma linha em encontristas_geo (status pending)
-    cur.execute("""
-      INSERT INTO encontristas_geo (encontrista_id, endereco_original, geocode_status)
-      SELECT e.id, e.endereco, 'pending'
-      FROM encontristas e
-      LEFT JOIN encontristas_geo g ON g.encontrista_id = e.id
-      WHERE g.encontrista_id IS NULL
-    """)
-    conn.commit()
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        # Resumo rápido por status
+        cur.execute("""
+          SELECT geocode_status AS status, COUNT(*) AS qtd
+            FROM encontristas_geo
+           GROUP BY geocode_status
+        """)
+        resumo = cur.fetchall() or []
 
-    cur.execute("""
-      SELECT geocode_status, COUNT(*) as total
-      FROM encontristas_geo
-      GROUP BY geocode_status
-    """)
-    resumo = cur.fetchall()
+        # Pendências priorizadas
+        cur.execute("""
+          SELECT e.id, e.nome_usual_ele, e.nome_usual_ela, e.endereco,
+                 g.endereco_normalizado, g.geocode_status, g.formatted_address
+            FROM encontristas e
+            JOIN encontristas_geo g ON g.encontrista_id = e.id
+           WHERE
+                 g.geocode_status IS NULL
+            OR   g.geocode_status IN ('pending','error')
+            OR   g.endereco_normalizado IS NULL
+            OR  (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+           ORDER BY e.id DESC
+           LIMIT 200
+        """)
+        faltantes = cur.fetchall() or []
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
 
-    cur.execute("""
-      SELECT e.id, e.nome_usual_ele, e.nome_usual_ela, e.endereco,
-             g.endereco_normalizado, g.geocode_status
-      FROM encontristas e
-      JOIN encontristas_geo g ON g.encontrista_id = e.id
-      WHERE g.geocode_status IN ('pending','not_found','error') OR g.endereco_normalizado IS NULL
-      ORDER BY e.id DESC
-      LIMIT 200
-    """)
-    faltantes = cur.fetchall()
-    cur.close(); conn.close()
-    return render_template("auditoria_enderecos.html", resumo=resumo, faltantes=faltantes)
+    return render_template("auditoria_enderecos.html",
+                           resumo=resumo,
+                           faltantes=faltantes)
 
 # --- Lote de normalização + geocodificação (apenas nova tabela) ---
 @app.route("/admin/normalizar-geocodificar", methods=["POST"])
 def normalizar_geocodificar():
     """
-    Normaliza + geocodifica em lotes curtos sem manter cursor/tx abertos durante chamadas externas.
-    Evita reprocessar not_found que JÁ têm endereco_normalizado.
+    Normaliza + geocodifica em lotes curtos, sem manter cursor/tx abertos durante chamadas externas.
+    Reprocessa 'not_found' apenas quando NÃO há endereco_normalizado.
     """
     import time
 
@@ -3993,7 +4148,7 @@ def normalizar_geocodificar():
     except ValueError:
         lote = 50
 
-    # 1) Seleciona o lote e FECHA a conexão imediatamente
+    # 1) Seleciona o lote e fecha a conexão
     conn_sel = db_conn()
     cur_sel = conn_sel.cursor(dictionary=True)
     try:
@@ -4023,78 +4178,29 @@ def normalizar_geocodificar():
         rows = cur_sel.fetchall() or []
     finally:
         try:
-            cur_sel.close()
-            conn_sel.close()
+            cur_sel.close(); conn_sel.close()
         except Exception:
             pass
 
     if not rows:
-        return jsonify({"processados": 0, "ok": True, "mensagem": "Nada a processar."})
+        return jsonify({"ok": True, "processados": 0, "mensagem": "Nada a processar."})
 
-    processados = ok = not_found = erros = 0
+    processados = ok = partial = not_found = erros = 0
 
     for r in rows:
         try:
             raw = (r.get("endereco_original") or "").strip()
-            norm = normalize_address(raw)
-            h = addr_hash(norm) if norm else None
 
-            lat = lng = None
-            display = None
-            status = "not_found"
-            source = None
+            # 2) Geocode "esperto" (usa normalize_address + heurísticas + ViaCEP)
+            lat, lng, display, status = geocode_br_smart(raw)
 
-            # 2) Cache + HTTP SEM segurar conexão de banco
-            if norm:
-                cache_row = None
-                # pega cache em conexão curtinha
-                try:
-                    conn_cache = db_conn()
-                    try:
-                        conn_cache.autocommit = True
-                    except Exception:
-                        pass
-                    cache_row = get_cache(conn_cache, h)
-                finally:
-                    try:
-                        conn_cache.close()
-                    except Exception:
-                        pass
-
-                if cache_row and cache_row.get("status") in ("ok", "partial"):
-                    lat = cache_row["lat"]; lng = cache_row["lng"]; display = cache_row["formatted_address"]; status = cache_row["status"]
-                    source = "cache"
-                else:
-                    lat, lng, display, status = nominatim_geocode(norm)
-                    source = "nominatim"
-                    # salva no cache (conexão curtinha)
-                    try:
-                        conn_cache2 = db_conn()
-                        try:
-                            conn_cache2.autocommit = True
-                        except Exception:
-                            pass
-                        if h:
-                            save_cache(conn_cache2, h, norm, lat, lng, display, status)
-                    finally:
-                        try:
-                            conn_cache2.close()
-                        except Exception:
-                            pass
-            else:
-                status = "not_found"
-
-            # 3) UPSERT em conexão curtinha (autocommit)
+            # 3) UPSERT em conexão curtinha
             conn_up = db_conn()
             try:
-                try:
-                    conn_up.autocommit = True
-                except Exception:
-                    pass
-                try:
-                    conn_up.ping(reconnect=True, attempts=2, delay=0.2)
-                except Exception:
-                    pass
+                try: conn_up.autocommit = True
+                except Exception: pass
+                try: conn_up.ping(reconnect=True, attempts=2, delay=0.2)
+                except Exception: pass
 
                 cur_up = conn_up.cursor()
                 cur_up.execute("""
@@ -4112,24 +4218,26 @@ def normalizar_geocodificar():
                     geocode_source=VALUES(geocode_source),
                     geocode_updated_at=VALUES(geocode_updated_at)
                 """, (
-                    r["encontrista_id"], raw or None, norm or None, h,
-                    display, lat, lng, status, source
+                    r["encontrista_id"],
+                    raw or None,
+                    normalize_address(raw) or None,
+                    addr_hash(normalize_address(raw)) if normalize_address(raw) else None,
+                    display, lat, lng, status, "smart"
                 ))
                 cur_up.close()
             finally:
-                try:
-                    conn_up.close()
-                except Exception:
-                    pass
+                try: conn_up.close()
+                except Exception: pass
 
             processados += 1
             if status == "ok":
                 ok += 1
+            elif status == "partial":
+                partial += 1
             elif status == "not_found":
                 not_found += 1
 
-            # polidez com o provedor e estabilidade da hospedagem
-            time.sleep(0.3)
+            time.sleep(0.3)  # polidez + estabilidade
 
         except Exception:
             erros += 1
@@ -4139,37 +4247,48 @@ def normalizar_geocodificar():
         "ok": True,
         "processados": processados,
         "ok_count": ok,
+        "partial": partial,
         "not_found": not_found,
         "erros": erros,
         "mensagem": "Lote concluído."
     })
+
     
 @app.route("/api/encontristas/geo")
 def api_encontristas_geo():
-    conn = db_conn(); cur = conn.cursor(dictionary=True)
-    cur.execute("""
-      SELECT e.id, e.nome_usual_ele, e.nome_usual_ela, e.ano,
-             g.formatted_address, g.geo_lat, g.geo_lng
-      FROM encontristas e
-      JOIN encontristas_geo g ON g.encontrista_id = e.id
-      WHERE g.geocode_status='ok' AND g.geo_lat IS NOT NULL AND g.geo_lng IS NOT NULL
-    """)
-    pts = cur.fetchall()
-    cur.close(); conn.close()
-
     features = []
-    for p in pts:
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [float(p["geo_lng"]), float(p["geo_lat"])]},
-            "properties": {
-                "id": p["id"],
-                "nome": f'{p.get("nome_usual_ele","")} e {p.get("nome_usual_ela","")}',
-                "endereco": p.get("formatted_address",""),
-                "ano": p.get("ano")
-            }
-        })
+
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+          SELECT e.id, e.nome_usual_ele, e.nome_usual_ela,
+                 e.ano,
+                 g.formatted_address, g.geo_lat, g.geo_lng, g.geocode_status
+            FROM encontristas e
+            JOIN encontristas_geo g ON g.encontrista_id = e.id
+           WHERE g.geo_lat IS NOT NULL
+             AND g.geo_lng IS NOT NULL
+             AND g.geocode_status IN ('ok','partial')
+        """)
+        for r in cur.fetchall() or []:
+            features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(r["geo_lng"]), float(r["geo_lat"])]},
+                "properties": {
+                    "id": r["id"],
+                    "nome": f'{r.get("nome_usual_ele") or ""} e {r.get("nome_usual_ela") or ""}',
+                    "ano": r.get("ano"),
+                    "address": r.get("formatted_address") or "",
+                    "status": r.get("geocode_status") or "ok"
+                }
+            })
+    finally:
+        try: cur.close(); conn.close()
+        except Exception: pass
+
     return jsonify({"type": "FeatureCollection", "features": features})
+
 
 # --- Página do mapa (reaproveita o template já enviado) ---
 @app.route("/relatorios/mapa-encontristas")
