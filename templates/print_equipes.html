@@ -24,14 +24,33 @@
   {%- endif -%}
 {%- endmacro %}
 
+{# Pega o primeiro valor não-vazio dentre várias chaves possíveis #}
+{% macro pick(r, keys) -%}
+  {%- set v = '' -%}
+  {%- for k in keys %}
+    {%- if r.get is defined %}
+      {%- set vv = r.get(k) %}
+    {%- else %}
+      {# objeto tipo Row com atributos #}
+      {%- set vv = attribute(r, k) if attribute is defined else (r[k] if k in r else None) %}
+    {%- endif %}
+    {%- if vv %}
+      {%- set v = vv %}
+      {%- break %}
+    {%- endif %}
+  {%- endfor %}
+  {{ v }}
+{%- endmacro %}
+
 {% macro fmt_nome(r) -%}
-  {% set ele = r.ele if r.ele is defined and r.ele else r.nome_ele %}
-  {% set ela = r.ela if r.ela is defined and r.ela else r.nome_ela %}
+  {# tenta: ele/ela → nome_ele/nome_ela → nome_usual_ele/nome_usual_ela #}
+  {% set ele = pick(r, ['ele','nome_ele','nome_usual_ele']) %}
+  {% set ela = pick(r, ['ela','nome_ela','nome_usual_ela']) %}
   {{ proper_case(ele or '') }} &amp; {{ proper_case(ela or '') }}
 {%- endmacro %}
 
 {% macro badge_subfunc(r) -%}
-  {% set eq = (r.equipe or '') %}
+  {% set eq = (pick(r, ['equipe']) or '') %}
   {% set up = eq|upper %}
   {% if 'DIRIGENTE' in up and '-' in eq %}
     {% set sub = eq.split('-', 1)[1].strip() %}
@@ -47,7 +66,7 @@
   {% if lista|length %}
     {% set ns = namespace(coords=[], outros=[]) %}
     {% for r in lista %}
-      {% set coord = (r.is_coord if r.is_coord is defined else (r.coordenador or '')|trim|lower == 'sim') %}
+      {% set coord = (r.is_coord if r.is_coord is defined else (pick(r, ['coordenador']) or '')|trim|lower == 'sim') %}
       {% if coord %}{% set _ = ns.coords.append(r) %}{% else %}{% set _ = ns.outros.append(r) %}{% endif %}
     {% endfor %}
 
@@ -60,15 +79,15 @@
         {% for r in ns.coords %}
           <tr>
             <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
-            <td>{{ r.telefones or '' }}</td>
-            <td>{{ r.endereco or '' }}</td>
+            <td>{{ pick(r, ['telefones']) or '' }}</td>
+            <td>{{ pick(r, ['endereco']) or '' }}</td>
           </tr>
         {% endfor %}
         {% for r in ns.outros %}
           <tr>
             <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
-            <td>{{ r.telefones or '' }}</td>
-            <td>{{ r.endereco or '' }}</td>
+            <td>{{ pick(r, ['telefones']) or '' }}</td>
+            <td>{{ pick(r, ['endereco']) or '' }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -93,7 +112,7 @@
 ) %}
 
 {% for r in rows %}
-  {% set eq = (r.equipe or '') %}
+  {% set eq = (pick(r, ['equipe']) or '') %}
   {% set E = eq|upper %}
   {% if 'CASAL COORDENADOR GERAL' in E %}
     {% set _ = up.cg.append(r) %}
