@@ -1,37 +1,107 @@
 {% extends "_print_base.html" %}
 {% block content %}
-{% set _title = "Equipes • " ~ ano ~ (equipe and (" • " ~ equipe) or "") %}
+{% set _title = "Equipes • " ~ ano %}
 {% set title = _title %}
 
-<h2>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h2>
+<h2>Equipes • {{ ano }}</h2>
 <p class="muted">Coordenadores destacados.</p>
 
-{% set atual = None %}
-{% for r in rows %}
-  {% if not equipe and (atual != r.equipe) %}
-    {% if not loop.first %}</tbody></table>{% endif %}
-    <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ r.equipe or '—' }}</h3>
+{# ----------- Helper para nomes ----------- #}
+{% macro fmt_nome(r) -%}
+  {{ (r.ele or r.nome_ele or r.nome_usual_ele or '')|upper }}
+  &amp;
+  {{ (r.ela or r.nome_ela or r.nome_usual_ela or '')|upper }}
+{%- endmacro %}
+
+{# ----------- Helper para renderizar cada equipe ----------- #}
+{% macro render_bloco(titulo, lista) -%}
+  {% if lista|length %}
+    <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
     <table>
-      <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
+      <thead>
+        <tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
+      </thead>
       <tbody>
-    {% set atual = r.equipe %}
+        {% for r in lista %}
+          <tr>
+            <td>
+              {% if r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')) %}
+                <span class="badge">Coordenador</span>
+              {% endif %}
+              {{ fmt_nome(r) }}
+              {% if r.equipe and '-' in r.equipe %}
+                <span class="badge muted" style="margin-left:6pt">{{ r.equipe.split('-', 1)[1].strip() }}</span>
+              {% endif %}
+            </td>
+            <td>{{ r.telefones or '' }}</td>
+            <td>{{ r.endereco or '' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% endif %}
-  <tr>
-    <td>
-      {% if r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')) %}
-        <span class="badge">Coordenador</span>
-      {% endif %}
-      {{ (r.ele or r.nome_ele or r.nome_usual_ele or '')|upper }}
-      &amp;
-      {{ (r.ela or r.nome_ela or r.nome_usual_ela or '')|upper }}
-    </td>
-    <td>{{ r.telefones or '' }}</td>
-    <td>{{ r.endereco or '' }}</td>
-  </tr>
-  {% if loop.last %}</tbody></table>{% endif %}
+{%- endmacro %}
+
+{# ----------- Agrupamento ----------- #}
+{% set grupos = {
+  'Equipe Dirigente': [],
+  'Casal Coordenador Geral': [],
+  'Equipe Sala': [],
+  'Equipe Círculos': [],
+  'Equipe Café e Minimercado': [],
+  'Equipe Compras': [],
+  'Equipe Acolhida': [],
+  'Equipe Ordem e Limpeza': [],
+  'Equipe Liturgia e Vigilia': [],
+  'Equipe Secretaria': [],
+  'Equipe Cozinha': [],
+  'Equipe Visitação': []
+} %}
+
+{% for r in rows %}
+  {% set eq = (r.equipe or '')|upper %}
+  {% if 'DIRIGENTE' in eq %}
+    {% set _ = grupos['Equipe Dirigente'].append(r) %}
+  {% elif 'CASAL COORDENADOR GERAL' in eq %}
+    {% set _ = grupos['Casal Coordenador Geral'].append(r) %}
+  {% elif 'SALA' in eq %}
+    {% set _ = grupos['Equipe Sala'].append(r) %}
+  {% elif 'CÍRCULOS' in eq or 'CIRCULOS' in eq %}
+    {% set _ = grupos['Equipe Círculos'].append(r) %}
+  {% elif 'CAFÉ E MINIMERCADO' in eq or 'CAFE E MINIMERCADO' in eq %}
+    {% set _ = grupos['Equipe Café e Minimercado'].append(r) %}
+  {% elif 'COMPRAS' in eq %}
+    {% set _ = grupos['Equipe Compras'].append(r) %}
+  {% elif 'ACOLHIDA' in eq %}
+    {% set _ = grupos['Equipe Acolhida'].append(r) %}
+  {% elif 'ORDEM E LIMPEZA' in eq %}
+    {% set _ = grupos['Equipe Ordem e Limpeza'].append(r) %}
+  {% elif 'LITURGIA' in eq %}
+    {% set _ = grupos['Equipe Liturgia e Vigilia'].append(r) %}
+  {% elif 'SECRETARIA' in eq %}
+    {% set _ = grupos['Equipe Secretaria'].append(r) %}
+  {% elif 'COZINHA' in eq %}
+    {% set _ = grupos['Equipe Cozinha'].append(r) %}
+  {% elif 'VISITA' in eq %}
+    {% set _ = grupos['Equipe Visitação'].append(r) %}
+  {% endif %}
 {% endfor %}
 
-{% if equipe and not rows|length %}
-<p class="muted">Nenhum integrante encontrado para {{equipe}} em {{ano}}.</p>
+{# ----------- Ordem fixa ----------- #}
+{{ render_bloco('Equipe Dirigente', grupos['Equipe Dirigente']) }}
+{{ render_bloco('Casal Coordenador Geral', grupos['Casal Coordenador Geral']) }}
+{{ render_bloco('Equipe Sala', grupos['Equipe Sala']) }}
+{{ render_bloco('Equipe Círculos', grupos['Equipe Círculos']) }}
+{{ render_bloco('Equipe Café e Minimercado', grupos['Equipe Café e Minimercado']) }}
+{{ render_bloco('Equipe Compras', grupos['Equipe Compras']) }}
+{{ render_bloco('Equipe Acolhida', grupos['Equipe Acolhida']) }}
+{{ render_bloco('Equipe Ordem e Limpeza', grupos['Equipe Ordem e Limpeza']) }}
+{{ render_bloco('Equipe Liturgia e Vigilia', grupos['Equipe Liturgia e Vigilia']) }}
+{{ render_bloco('Equipe Secretaria', grupos['Equipe Secretaria']) }}
+{{ render_bloco('Equipe Cozinha', grupos['Equipe Cozinha']) }}
+{{ render_bloco('Equipe Visitação', grupos['Equipe Visitação']) }}
+
+{% if not rows or rows|length == 0 %}
+  <p class="muted">Nenhum integrante encontrado para {{ ano }}.</p>
 {% endif %}
 {% endblock %}
