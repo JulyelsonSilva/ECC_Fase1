@@ -24,20 +24,12 @@
   {%- endif -%}
 {%- endmacro %}
 
-{# Pega o primeiro valor não-vazio dentre várias chaves possíveis #}
+{# Pega o primeiro valor não-vazio dentre várias chaves possíveis (sem usar break) #}
 {% macro pick(r, keys) -%}
   {%- set v = '' -%}
   {%- for k in keys %}
-    {%- if r.get is defined %}
-      {%- set vv = r.get(k) %}
-    {%- else %}
-      {# objeto tipo Row com atributos #}
-      {%- set vv = attribute(r, k) if attribute is defined else (r[k] if k in r else None) %}
-    {%- endif %}
-    {%- if vv %}
-      {%- set v = vv %}
-      {%- break %}
-    {%- endif %}
+    {%- set vv = (r.get(k) if r.get is defined else None) %}
+    {%- if not v and vv %}{%- set v = vv -%}{%- endif %}
   {%- endfor %}
   {{ v }}
 {%- endmacro %}
