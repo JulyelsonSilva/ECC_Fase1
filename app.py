@@ -3984,44 +3984,42 @@ def auditoria_enderecos():
 @app.route("/admin/normalizar-geocodificar", methods=["POST"])
 def normalizar_geocodificar():
     """
-    Processa em lotes pequenos sem manter cursor/tx abertos durante chamadas externas.
-    Estratégia:
-      1) Abre conexão curta só para buscar IDS + endereços.
-      2) Fecha a conexão.
-      3) Para cada linha: normaliza, consulta cache/HTTP e abre UMA conexão curta para aplicar o UPDATE.
-         (autocommit on + ping).
+    Normaliza + geocodifica em lotes curtos sem manter cursor/tx abertos durante chamadas externas.
+    Evita reprocessar not_found que JÁ têm endereco_normalizado.
     """
     import time
-    lote = max(1, int(request.args.get("lote", 20)))  # lote menor evita timeouts na hospedagem
 
-    # 1) Buscar o lote de trabalho (somente dados necessários) e FECHAR a conexão imediatamente
-    conn_sel = db_conn()
     try:
-        conn_sel.autocommit = True
-    except Exception:
-        pass
+        lote = max(1, int(request.args.get("lote", 50)))
+    except ValueError:
+        lote = 50
+
+    # 1) Seleciona o lote e FECHA a conexão imediatamente
+    conn_sel = db_conn()
     cur_sel = conn_sel.cursor(dictionary=True)
     try:
-        cur.execute(f"""
-            SELECT e.id as encontrista_id, e.endereco as endereco_original,
-                g.endereco_normalizado, g.geocode_status
-            FROM encontristas e
-            JOIN encontristas_geo g ON g.encontrista_id = e.id
-            WHERE
-                g.geocode_status IS NULL
-             OR g.geocode_status IN ('pending','error')
-             OR g.endereco_normalizado IS NULL
-             OR (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
-            ORDER BY
-                CASE
-                    WHEN g.geocode_status IS NULL THEN 0
-                    WHEN g.geocode_status IN ('pending','error') THEN 1
-                    WHEN g.endereco_normalizado IS NULL THEN 2
-                    WHEN g.geocode_status='not_found' THEN 3
-                    ELSE 9
-                END,
-                e.id ASC
-            LIMIT {lote}
+        cur_sel.execute(f"""
+            SELECT e.id AS encontrista_id,
+                   COALESCE(e.endereco, '') AS endereco_original,
+                   g.endereco_normalizado,
+                   g.geocode_status
+              FROM encontristas e
+              JOIN encontristas_geo g ON g.encontrista_id = e.id
+             WHERE
+                   g.geocode_status IS NULL
+              OR   g.geocode_status IN ('pending','error')
+              OR   g.endereco_normalizado IS NULL
+              OR  (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+             ORDER BY
+                   CASE
+                     WHEN g.geocode_status IS NULL THEN 0
+                     WHEN g.geocode_status IN ('pending','error') THEN 1
+                     WHEN g.endereco_normalizado IS NULL THEN 2
+                     WHEN g.geocode_status='not_found' THEN 3
+                     ELSE 9
+                   END,
+                   e.id ASC
+             LIMIT {lote}
         """)
         rows = cur_sel.fetchall() or []
     finally:
@@ -4032,29 +4030,26 @@ def normalizar_geocodificar():
             pass
 
     if not rows:
-        return jsonify({"processados": 0, "mensagem": "Nada a processar."})
+        return jsonify({"processados": 0, "ok": True, "mensagem": "Nada a processar."})
 
-    processados = 0
-    ok = 0
-    not_found = 0
-    erros = 0
+    processados = ok = not_found = erros = 0
 
     for r in rows:
-        raw = (r.get("endereco_original") or "").strip()
-        norm = normalize_address(raw)
-        h = addr_hash(norm) if norm else None
-
-        lat = lng = None
-        display = None
-        status = "not_found"
-        source = None
-
         try:
+            raw = (r.get("endereco_original") or "").strip()
+            norm = normalize_address(raw)
+            h = addr_hash(norm) if norm else None
+
+            lat = lng = None
+            display = None
+            status = "not_found"
+            source = None
+
+            # 2) Cache + HTTP SEM segurar conexão de banco
             if norm:
-                # cache primeiro (não segura conexão de banco)
                 cache_row = None
+                # pega cache em conexão curtinha
                 try:
-                    # abrir conexão curtíssima só para cache get
                     conn_cache = db_conn()
                     try:
                         conn_cache.autocommit = True
@@ -4071,11 +4066,9 @@ def normalizar_geocodificar():
                     lat = cache_row["lat"]; lng = cache_row["lng"]; display = cache_row["formatted_address"]; status = cache_row["status"]
                     source = "cache"
                 else:
-                    # chamada HTTP (sem qualquer cursor/tx aberta)
                     lat, lng, display, status = nominatim_geocode(norm)
                     source = "nominatim"
-
-                    # salva cache em conexão separada e curtinha
+                    # salva no cache (conexão curtinha)
                     try:
                         conn_cache2 = db_conn()
                         try:
@@ -4089,15 +4082,16 @@ def normalizar_geocodificar():
                             conn_cache2.close()
                         except Exception:
                             pass
+            else:
+                status = "not_found"
 
-            # 3) Aplicar UPSERT em conexão curta (autocommit)
+            # 3) UPSERT em conexão curtinha (autocommit)
             conn_up = db_conn()
             try:
-                conn_up.autocommit = True
-            except Exception:
-                pass
-            try:
-                # manter a sessão viva mesmo se a hospedagem for instável
+                try:
+                    conn_up.autocommit = True
+                except Exception:
+                    pass
                 try:
                     conn_up.ping(reconnect=True, attempts=2, delay=0.2)
                 except Exception:
@@ -4135,22 +4129,22 @@ def normalizar_geocodificar():
             elif status == "not_found":
                 not_found += 1
 
-            # polidez com o provedor + evita saturar CPU da hospedagem
+            # polidez com o provedor e estabilidade da hospedagem
             time.sleep(0.3)
 
         except Exception:
             erros += 1
-            # continua o loop – erro por item não deve derrubar o lote
             continue
 
     return jsonify({
+        "ok": True,
         "processados": processados,
-        "ok": ok,
+        "ok_count": ok,
         "not_found": not_found,
         "erros": erros,
-        "mensagem": "Lote concluído (conexões curtas/commit por linha)."
+        "mensagem": "Lote concluído."
     })
-# --- GeoJSON para o mapa (JOIN; somente status ok) ---
+    
 @app.route("/api/encontristas/geo")
 def api_encontristas_geo():
     conn = db_conn(); cur = conn.cursor(dictionary=True)
