@@ -8,31 +8,20 @@
 
 {# =============== Helpers =============== #}
 {% macro proper_case(s) -%}
-  {# Normaliza para "Primeira Maiúscula" respeitando hífen e pequenas palavras (de/da/das/do/dos/e) #}
-  {% if not s %}{{ "" }}{% else %}
-    {% set small = ['de','da','das','do','dos','e','d','di'] %}
-    {% set parts = (s|string)|lower|trim|split(' ') %}
-    {% set out = [] %}
-    {% for p in parts %}
-      {% set subtoks = p.split('-') %}
-      {% set subtoks_out = [] %}
-      {% for t in subtoks %}
-        {% if loop.parentloop.first and loop.first %}
-          {# primeira palavra do nome: capitaliza #}
-          {% set subtoks_out = subtoks_out + [t[:1]|upper ~ t[1:]] %}
-        {% else %}
-          {% if t in small %}
-            {% set subtoks_out = subtoks_out + [t] %}
-          {% else %}
-            {% set subtoks_out = subtoks_out + [t[:1]|upper ~ t[1:]] %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-      {% set token = '-'.join(subtoks_out) %}
-      {% set out = out + [token] %}
-    {% endfor %}
-    {{ out|join(' ') }}
-  {% endif %}
+  {%- if s %}
+    {%- set parts = s.strip().lower().split() %}
+    {%- set words = [] %}
+    {%- for p in parts %}
+      {%- if p in ['de','da','das','do','dos','e','d','di'] and not loop.first %}
+        {%- set words = words + [p] %}
+      {%- else %}
+        {%- set words = words + [p[:1].upper() + p[1:]] %}
+      {%- endif %}
+    {%- endfor %}
+    {{ words | join(' ') }}
+  {%- else -%}
+    {{ '' }}
+  {%- endif -%}
 {%- endmacro %}
 
 {% macro fmt_nome(ele, ela) -%}
@@ -101,7 +90,6 @@
   visitacao = []
 ) %}
 
-{# Bucketização por grupo lógico — combina com o mapeamento do app.py #}
 {% for r in rows %}
   {% set eq = (r.equipe or '') %}
   {% set E = eq|upper %}
