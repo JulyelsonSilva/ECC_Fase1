@@ -4002,16 +4002,26 @@ def normalizar_geocodificar():
         pass
     cur_sel = conn_sel.cursor(dictionary=True)
     try:
-        cur_sel.execute(f"""
-            SELECT e.id AS encontrista_id, e.endereco AS endereco_original
-              FROM encontristas e
-              LEFT JOIN encontristas_geo g ON g.encontrista_id = e.id
-             WHERE g.encontrista_id IS NULL
-                OR g.geocode_status IS NULL
-                OR g.geocode_status IN ('pending','error','not_found')
-                OR g.endereco_normalizado IS NULL
-             ORDER BY e.id DESC
-             LIMIT {lote}
+        cur.execute(f"""
+            SELECT e.id as encontrista_id, e.endereco as endereco_original,
+                g.endereco_normalizado, g.geocode_status
+            FROM encontristas e
+            JOIN encontristas_geo g ON g.encontrista_id = e.id
+            WHERE
+                g.geocode_status IS NULL
+             OR g.geocode_status IN ('pending','error')
+             OR g.endereco_normalizado IS NULL
+             OR (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+            ORDER BY
+                CASE
+                    WHEN g.geocode_status IS NULL THEN 0
+                    WHEN g.geocode_status IN ('pending','error') THEN 1
+                    WHEN g.endereco_normalizado IS NULL THEN 2
+                    WHEN g.geocode_status='not_found' THEN 3
+                    ELSE 9
+                END,
+                e.id ASC
+            LIMIT {lote}
         """)
         rows = cur_sel.fetchall() or []
     finally:
