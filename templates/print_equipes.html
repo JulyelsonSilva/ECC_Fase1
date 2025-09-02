@@ -2,31 +2,125 @@
 {% block content %}
 {% set _title = "Equipes • " ~ ano ~ (equipe and (" • " ~ equipe) or "") %}
 {% set title = _title %}
-<h2>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h2>
-<p class="muted">Coordenadores destacados.</p>
 
-{% set atual = None %}
-{% for r in rows %}
-  {% if not equipe and (atual != r.equipe) %}
-    {% if not loop.first %}</tbody></table>{% endif %}
-    <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ r.equipe or '—' }}</h3>
-    <table>
-      <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
-      <tbody>
-    {% set atual = r.equipe %}
+<h2>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h2>
+<p class="muted">Coordenadores destacados (aparecem primeiro em cada equipe).</p>
+
+{# ===== Helpers de template ===== #}
+{% macro is_coord(r) -%}
+  {# usa r.is_coord se vier, senão confere campo 'coordenador' #}
+  {% if r.is_coord is defined %}
+    {{ r.is_coord }}
+  {% else %}
+    {{ (r.coordenador or '')|trim|lower == 'sim' }}
   {% endif %}
-  <tr>
-    <td>
-      {% if r.is_coord %}<span class="badge">Coordenador</span> {% endif %}
-      {{ r.ele or '' }} &amp; {{ r.ela or '' }}
-    </td>
-    <td>{{ r.telefones or '' }}</td>
-    <td>{{ r.endereco or '' }}</td>
-  </tr>
-  {% if loop.last %}</tbody></table>{% endif %}
+{%- endmacro %}
+
+{% macro badge_subfunc(r) -%}
+  {# Gera um badge pequeno com subfunção quando fizer sentido (Dirigente/Sala) #}
+  {% set eq = (r.equipe or '') %}
+  {% set up = eq|upper %}
+  {% if 'DIRIGENTE' in up and '-' in eq %}
+    {% set sub = eq.split('-', 1)[1].strip() %}
+    <span class="badge muted" style="margin-left:6pt">{{ sub }}</span>
+  {% elif 'SALA' in up and '-' in eq %}
+    {% set sub = eq.split('-', 1)[1].strip() %}
+    <span class="badge muted" style="margin-left:6pt">{{ sub }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro render_bloco(titulo, lista) -%}
+  {% if lista|length %}
+    <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
+    <table>
+      <thead>
+        <tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
+      </thead>
+      <tbody>
+        {# Coordenadores primeiro, depois os demais #}
+        {% for r in lista if is_coord(r) %}
+          <tr>
+            <td><span class="badge">Coordenador</span> {{ r.ele or r.nome_ele or '' }} &amp; {{ r.ela or r.nome_ela or '' }} {{ badge_subfunc(r) }}</td>
+            <td>{{ r.telefones or '' }}</td>
+            <td>{{ r.endereco or '' }}</td>
+          </tr>
+        {% endfor %}
+        {% for r in lista if not is_coord(r) %}
+          <tr>
+            <td>{{ r.ele or r.nome_ele or '' }} &amp; {{ r.ela or r.nome_ela or '' }} {{ badge_subfunc(r) }}</td>
+            <td>{{ r.telefones or '' }}</td>
+            <td>{{ r.endereco or '' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{%- endmacro %}
+
+{# ===== Funções de agrupamento (sem repetir cabeçalho por casal) ===== #}
+{% set up = namespace(
+  dirigente = [],
+  cg = [],
+  sala = [],
+  circulos = [],
+  cafe = [],
+  compras = [],
+  acolhida = [],
+  ordem = [],
+  liturgia = [],
+  secretaria = [],
+  cozinha = [],
+  visitacao = []
+) %}
+
+{# Normaliza equipe por grupo-alvo #}
+{% for r in rows %}
+  {% set eq = (r.equipe or '') %}
+  {% set E = eq|upper %}
+  {% if 'CASAL COORDENADOR GERAL' in E %}
+    {% set _ = up.cg.append(r) %}
+  {% elif 'DIRIGENTE' in E %}
+    {# Todas as variações sob "Equipe Dirigente" #}
+    {% set _ = up.dirigente.append(r) %}
+  {% elif 'SALA' in E %}
+    {# Inclui subequipes: Canto, Boa Vontade, Som e Projeção, Recepção Palestrantes #}
+    {% set _ = up.sala.append(r) %}
+  {% elif 'CÍRCULOS' in E or 'CIRCULOS' in E %}
+    {% set _ = up.circulos.append(r) %}
+  {% elif 'CAFÉ E MINIMERCADO' in E or 'CAFE E MINIMERCADO' in E %}
+    {% set _ = up.cafe.append(r) %}
+  {% elif 'COMPRAS' in E %}
+    {% set _ = up.compras.append(r) %}
+  {% elif 'ACOLHIDA' in E %}
+    {% set _ = up.acolhida.append(r) %}
+  {% elif 'ORDEM E LIMPEZA' in E %}
+    {% set _ = up.ordem.append(r) %}
+  {% elif 'LITURGIA E VIGILIA' in E or 'LITURGIA E VIGÍLIA' in E %}
+    {% set _ = up.liturgia.append(r) %}
+  {% elif 'SECRETARIA' in E %}
+    {% set _ = up.secretaria.append(r) %}
+  {% elif 'COZINHA' in E %}
+    {% set _ = up.cozinha.append(r) %}
+  {% elif 'VISITA' in E %}
+    {% set _ = up.visitacao.append(r) %}
+  {% endif %}
 {% endfor %}
 
-{% if equipe and not rows|length %}
-<p class="muted">Nenhum integrante encontrado para {{equipe}} em {{ano}}.</p>
+{# ===== Ordem fixa de impressão ===== #}
+{{ render_bloco('Equipe Dirigente', up.dirigente) }}
+{{ render_bloco('Casal Coordenador Geral', up.cg) }}
+{{ render_bloco('Equipe Sala', up.sala) }}
+{{ render_bloco('Equipe Círculos', up.circulos) }}
+{{ render_bloco('Equipe Café e Minimercado', up.cafe) }}
+{{ render_bloco('Equipe Compras', up.compras) }}
+{{ render_bloco('Equipe Acolhida', up.acolhida) }}
+{{ render_bloco('Equipe Ordem e Limpeza', up.ordem) }}
+{{ render_bloco('Equipe Liturgia e Vigilia', up.liturgia) }}
+{{ render_bloco('Equipe Secretaria', up.secretaria) }}
+{{ render_bloco('Equipe Cozinha', up.cozinha) }}
+{{ render_bloco('Equipe Visitação', up.visitacao) }}
+
+{% if not rows or rows|length == 0 %}
+  <p class="muted">Nenhum integrante encontrado para {{ ano }}.</p>
 {% endif %}
 {% endblock %}
