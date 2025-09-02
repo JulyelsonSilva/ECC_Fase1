@@ -1,217 +1,125 @@
 {% extends "base.html" %}
 {% block content %}
-<style>
-  :root{
-    --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-    --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
-    --ok:#065f46; --warn:#92400e; --err:#b91c1c;
-  }
-  .vc-wrap{max-width:1100px;margin:24px auto;padding:0 16px 40px;color:var(--ink)}
-  .vc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-  .vc-title{display:flex;align-items:center;gap:10px}
-  .vc-logo{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;font-size:22px}
-  h1{margin:0;font-size:22px}
-  .btn{appearance:none;border:1px solid var(--border);background:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;text-decoration:none;color:inherit}
-  .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-  .muted{color:var(--muted)}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-  .search{display:grid;gap:10px;grid-template-columns: 1fr 1fr auto}
-  .search input{padding:10px 12px;border:1px solid var(--border);border-radius:10px}
-  .kards{display:grid;gap:14px;grid-template-columns:1fr}
-  .info-grid{display:grid;gap:16px;grid-template-columns:1fr}
-  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;margin-left:6px}
-  .table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff}
-  .table th,.table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;text-align:left}
-  .table thead th{background:#f1f5f9;font-weight:600}
-  .table tr:last-child td{border-bottom:none}
-  @media (min-width: 900px){
-    .info-grid{grid-template-columns:1fr 1fr}
-  }
-</style>
+{% set title = "Visão do Casal" %}
 
-<div class="vc-wrap">
-  <div class="vc-head">
-    <div class="vc-title">
-      <div class="vc-logo" aria-hidden="true">💑</div>
-      <div>
-        <h1>Visão do Casal</h1>
-        <div class="muted" style="font-size:13px">Paróquia Divino Espírito Santo — Jatiúca</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-    </div>
-  </div>
+{# ---------- Helpers ---------- #}
+{% macro proper_case(s) -%}
+  {% if not s %}{{ "" }}{% else %}
+    {% set small = ['de','da','das','do','dos','e','d','di'] %}
+    {% set parts = (s|string)|lower|trim|split(' ') %}
+    {% set out = [] %}
+    {% for p in parts %}
+      {% set subtoks = p.split('-') %}
+      {% set subtoks_out = [] %}
+      {% for t in subtoks %}
+        {% if loop.parentloop.first and loop.first %}
+          {% set subtoks_out = subtoks_out + [t[:1]|upper ~ t[1:]] %}
+        {% else %}
+          {% if t in small %}
+            {% set subtoks_out = subtoks_out + [t] %}
+          {% else %}
+            {% set subtoks_out = subtoks_out + [t[:1]|upper ~ t[1:]] %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {% set token = '-'.join(subtoks_out) %}
+      {% set out = out + [token] %}
+    {% endfor %}
+    {{ out|join(' ') }}
+  {% endif %}
+{%- endmacro %}
 
-  <!-- Busca -->
-  <div class="card" style="margin-bottom:12px">
-    <form method="get" class="search">
-      <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome (Ele)" value="{{ nome_ele }}" list="sugestoes_ele" required>
-      <datalist id="sugestoes_ele"></datalist>
-      <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome (Ela)" value="{{ nome_ela }}" list="sugestoes_ela" required>
-      <datalist id="sugestoes_ela"></datalist>
-      <button type="submit" class="btn primary">Buscar</button>
-    </form>
-    {% if erro %}
-      <div class="muted" style="color:var(--err);margin-top:8px">{{ erro }}</div>
+{% macro fmt_nome(ele, ela) -%}
+  {{ proper_case(ele or '') }} &amp; {{ proper_case(ela or '') }}
+{%- endmacro %}
+
+{% macro status_badge(st) -%}
+  {% set v = (st or '')|trim|lower %}
+  {% if v == 'recusou' %}
+    <span class="badge" style="background:#fee2e2; border-color:#fecaca; color:#991b1b;">Recusou</span>
+  {% elif v == 'desistiu' %}
+    <span class="badge" style="background:#fffbeb; border-color:#fef3c7; color:#92400e;">Desistiu</span>
+  {% elif v == 'concluido' %}
+    <span class="badge" style="background:#ecfdf5; border-color:#d1fae5; color:#065f46;">Concluído</span>
+  {% elif v == 'aberto' %}
+    <span class="badge" style="background:#eff6ff; border-color:#dbeafe; color:#1e40af;">Aberto</span>
+  {% elif v == 'aceito' %}
+    <span class="badge" style="background:#eef2ff; border-color:#e0e7ff; color:#3730a3;">Aceito</span>
+  {% endif %}
+{%- endmacro %}
+
+<h2>Visão do Casal</h2>
+
+{% if erro %}
+  <p class="muted">{{ erro }}</p>
+{% else %}
+  <div class="card" style="margin-bottom:10pt;">
+    <h3 style="margin:0 0 6pt;">{{ fmt_nome(nome_ele, nome_ela) }}</h3>
+    {% if dados_encontrista %}
+      <p class="muted" style="margin:0;">
+        Encontristas em {{ dados_encontrista.ano_encontro }} —
+        {{ dados_encontrista.telefones or '—' }} • {{ dados_encontrista.endereco or '—' }}
+      </p>
     {% endif %}
   </div>
 
-  <!-- Bloco de dados do encontrista -->
-  {% if dados_encontrista %}
-    <div class="card" style="margin-bottom:12px">
-      <h3 style="margin:0 0 8px">Dados do Encontro</h3>
-      <div class="kards">
-        <div><b>Ano do Encontro:</b> {{ dados_encontrista.ano_encontro }}</div>
-        <div><b>Endereço:</b> {{ dados_encontrista.endereco }}</div>
-        <div><b>Telefones:</b> {{ dados_encontrista.telefones }}</div>
-      </div>
-    </div>
-  {% elif nome_ele and nome_ela and not erro %}
-    <div class="card" style="margin-bottom:12px">
-      <div class="muted">Casal não encontrado.</div>
-    </div>
+  {% if anos and anos|length %}
+    {% for a in anos %}
+      <h3 style="margin:12pt 0 6pt;">{{ a }}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34%;">Equipe</th>
+            <th style="width:18%;">Papel</th>
+            <th style="width:18%;">Status</th>
+            <th>Observação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {# Trabalhos (encontreiros) #}
+          {% for r in (por_ano_trabalhos.get(a) or []) %}
+            {% set coord = (r.coordenador or '')|trim|lower == 'sim' %}
+            {% set st = r.status or '' %}
+            <tr>
+              <td>{{ r.equipe or '—' }}</td>
+              <td>
+                {% if coord %}
+                  <span class="badge">Coordenador</span>
+                {% else %}
+                  Integrante
+                {% endif %}
+              </td>
+              <td>{{ status_badge(st) }}</td>
+              <td>
+                {# Em caso de Recusou/Desistiu, exiba o motivo; senão, mostre observações se houver #}
+                {% set v = (st or '')|trim|lower %}
+                {% if v in ['recusou','desistiu'] %}
+                  {{ r.observacao or '—' }}
+                {% else %}
+                  {{ r.observacao or '' }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+
+          {# Palestras (se houver no ano) #}
+          {% for p in (por_ano_palestras.get(a) or []) %}
+            <tr>
+              <td>—</td>
+              <td>Palestra</td>
+              <td>—</td>
+              <td>{{ p.palestra }}</td>
+            </tr>
+          {% endfor %}
+
+          {% if not (por_ano_trabalhos.get(a) or []) and not (por_ano_palestras.get(a) or []) %}
+            <tr><td colspan="4" class="muted">Sem registros neste ano.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Sem histórico para este casal.</p>
   {% endif %}
-
-  <!-- Grade Ano x (Trabalhos | Palestras) -->
-  <div class="card">
-    <h3 style="margin:0 0 12px">Histórico por Ano</h3>
-    <p class="muted" style="margin:0 0 10px">À esquerda: equipes em que trabalhou. À direita: palestras dadas no mesmo ano.</p>
-
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width:80px">Ano</th>
-          <th>Equipes Trabalhadas</th>
-          <th>Palestras Proferidas</th>
-        </tr>
-      </thead>
-      <tbody>
-        {# =========================
-           MODO 1 (recomendado): usar 'anos', 'por_ano_trabalhos', 'por_ano_palestras'
-           ========================= #}
-        {% if anos is defined and por_ano_trabalhos is defined and por_ano_palestras is defined %}
-          {% for ano in anos %}
-            {% set trabs = por_ano_trabalhos.get(ano, []) %}
-            {% set talks = por_ano_palestras.get(ano, []) %}
-            <tr>
-              <td>{{ ano }}</td>
-              <td>
-                {% if trabs %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for t in trabs %}
-                      {% if t is string %}
-                        <li>{{ t }}</li>
-                      {% else %}
-                        <li>
-                          {{ t.equipe or '' }}
-                          {% if (t.coordenador or '')|lower == 'sim' %}
-                            <span class="pill">Coord.</span>
-                          {% endif %}
-                        </li>
-                      {% endif %}
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-              <td>
-                {% if talks %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for p in talks %}
-                      {% if p is string %}
-                        <li>{{ p }}</li>
-                      {% else %}
-                        <li>{{ p.palestra or '' }}</li>
-                      {% endif %}
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-
-        {# =========================
-           MODO 2 (compatibilidade): usa 'dados_encontreiros' e (opcional) 'dados_palestras'
-           Agrupamento simples por ano (não perfeito).
-           ========================= #}
-        {% else %}
-          {% set trab_por_ano = {} %}
-          {% for r in (dados_encontreiros or []) %}
-            {% set a = r.ano %}
-            {% if trab_por_ano.update({a: (trab_por_ano.get(a, []) + [r])}) %}{% endif %}
-          {% endfor %}
-
-          {% set pal_por_ano = {} %}
-          {% for p in (dados_palestras or []) %}
-            {% set a = p.ano %}
-            {% if pal_por_ano.update({a: (pal_por_ano.get(a, []) + [p])}) %}{% endif %}
-          {% endfor %}
-
-          {% set anos_tmp = (trab_por_ano.keys() | list) + (pal_por_ano.keys() | list) %}
-          {% set anos_uniq = anos_tmp|unique|list %}
-          {% set anos_sorted = anos_uniq|sort(reverse=True) %}
-
-          {% for ano in anos_sorted %}
-            <tr>
-              <td>{{ ano }}</td>
-              <td>
-                {% set lst = trab_por_ano.get(ano, []) %}
-                {% if lst %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for r in lst %}
-                      <li>
-                        {{ r.equipe or '' }}
-                        {% if (r.coordenador or '')|lower == 'sim' %}
-                          <span class="pill">Coord.</span>
-                        {% endif %}
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-              <td>
-                {% set lst2 = pal_por_ano.get(ano, []) %}
-                {% if lst2 %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for p in lst2 %}
-                      <li>{{ p.palestra or '' }}</li>
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<script>
-  // Autocomplete dos nomes
-  const inputEle = document.getElementById('nome_ele');
-  const inputEla = document.getElementById('nome_ela');
-  const datalistEle = document.getElementById('sugestoes_ele');
-  const datalistEla = document.getElementById('sugestoes_ela');
-
-  function buscarNomes(input, datalist) {
-    const valor = input.value || "";
-    if (valor.length >= 3) {
-      fetch(`/autocomplete-nomes?q=${encodeURIComponent(valor)}`)
-        .then(res => res.json())
-        .then(data => {
-          datalist.innerHTML = "";
-          (data || []).forEach(nome => {
-            const opt = document.createElement("option");
-            opt.value = nome;
-            datalist.appendChild(opt);
-          });
-        })
-        .catch(()=>{});
-    }
-  }
-
-  inputEle.addEventListener("input", () => buscarNomes(inputEle, datalistEle));
-  inputEla.addEventListener("input", () => buscarNomes(inputEla, datalistEla));
-</script>
+{% endif %}
 {% endblock %}
