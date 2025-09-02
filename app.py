@@ -1724,7 +1724,6 @@ def equipe_montagem():
                           WHERE w.ano = %s
                             AND w.nome_ele = e.nome_usual_ele
                             AND w.nome_ela = e.nome_usual_ela
-                            AND (w.status IS NULL OR UPPER(TRIM(w.status)) NOT IN ('RECUSOU','DESISTIU'))
                        )
                  ORDER BY e.nome_usual_ele, e.nome_usual_ela
             """, (ano - 1, ano))
