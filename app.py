@@ -1533,7 +1533,7 @@ def visao_casal():
     for r in (dados_encontreiros or []):
         por_ano_trabalhos[r["ano"]].append({
             "equipe": r.get("equipe") or "",
-            "coordenador": r.get("coordenador") or ""
+            "coordenador": r.get("coordenador") or "",
             "status": r.get("status") or "",
             "observacao": r.get("observacao") or ""
         })
