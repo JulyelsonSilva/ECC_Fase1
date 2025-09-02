@@ -6,35 +6,6 @@
 <h2>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h2>
 <p class="muted">Coordenadores destacados.</p>
 
-{# ===== Helpers mínimos ===== #}
-{% macro proper_case(s) -%}
-  {%- if s %}
-    {%- set parts = s.strip().lower().split() %}
-    {%- set out = [] %}
-    {%- for p in parts %}
-      {%- if p in ['de','da','das','do','dos','e','d','di'] and not loop.first %}
-        {%- set out = out + [p] %}
-      {%- else %}
-        {%- set out = out + [p[:1].upper() + p[1:]] %}
-      {%- endif %}
-    {%- endfor %}
-    {{ out|join(' ') }}
-  {%- else -%}
-    {{ '' }}
-  {%- endif -%}
-{%- endmacro %}
-
-{% macro fmt_nome(r) -%}
-  {# usa o primeiro campo existente entre ele/nome_ele/nome_usual_ele e ela/nome_ela/nome_usual_ela #}
-  {% set ele = (r.ele if r.ele is defined and r.ele else
-                (r.nome_ele if r.nome_ele is defined and r.nome_ele else
-                 (r.nome_usual_ele if r.nome_usual_ele is defined else ''))) %}
-  {% set ela = (r.ela if r.ela is defined and r.ela else
-                (r.nome_ela if r.nome_ela is defined and r.nome_ela else
-                 (r.nome_usual_ela if r.nome_usual_ela is defined else ''))) %}
-  {{ proper_case(ele) }} &amp; {{ proper_case(ela) }}
-{%- endmacro %}
-
 {% set atual = None %}
 {% for r in rows %}
   {% if not equipe and (atual != r.equipe) %}
@@ -50,7 +21,9 @@
       {% if r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')) %}
         <span class="badge">Coordenador</span>
       {% endif %}
-      {{ fmt_nome(r) }}
+      {{ (r.ele or r.nome_ele or r.nome_usual_ele or '')|upper }}
+      &amp;
+      {{ (r.ela or r.nome_ela or r.nome_usual_ela or '')|upper }}
     </td>
     <td>{{ r.telefones or '' }}</td>
     <td>{{ r.endereco or '' }}</td>
