@@ -4,150 +4,61 @@
 {% set title = _title %}
 
 <h2>Equipes • {{ ano }}{% if equipe %} • {{ equipe }}{% endif %}</h2>
-<p class="muted">Coordenadores aparecem primeiro em cada equipe.</p>
+<p class="muted">Coordenadores destacados.</p>
 
-{# =============== Helpers =============== #}
+{# ===== Helpers mínimos ===== #}
 {% macro proper_case(s) -%}
   {%- if s %}
     {%- set parts = s.strip().lower().split() %}
-    {%- set words = [] %}
+    {%- set out = [] %}
     {%- for p in parts %}
       {%- if p in ['de','da','das','do','dos','e','d','di'] and not loop.first %}
-        {%- set words = words + [p] %}
+        {%- set out = out + [p] %}
       {%- else %}
-        {%- set words = words + [p[:1].upper() + p[1:]] %}
+        {%- set out = out + [p[:1].upper() + p[1:]] %}
       {%- endif %}
     {%- endfor %}
-    {{ words | join(' ') }}
+    {{ out|join(' ') }}
   {%- else -%}
     {{ '' }}
   {%- endif -%}
 {%- endmacro %}
 
-{# Pega o primeiro valor não-vazio dentre várias chaves possíveis (sem usar break) #}
-{% macro pick(r, keys) -%}
-  {%- set v = '' -%}
-  {%- for k in keys %}
-    {%- set vv = (r.get(k) if r.get is defined else None) %}
-    {%- if not v and vv %}{%- set v = vv -%}{%- endif %}
-  {%- endfor %}
-  {{ v }}
-{%- endmacro %}
-
 {% macro fmt_nome(r) -%}
-  {# tenta: ele/ela → nome_ele/nome_ela → nome_usual_ele/nome_usual_ela #}
-  {% set ele = pick(r, ['ele','nome_ele','nome_usual_ele']) %}
-  {% set ela = pick(r, ['ela','nome_ela','nome_usual_ela']) %}
-  {{ proper_case(ele or '') }} &amp; {{ proper_case(ela or '') }}
+  {# usa o primeiro campo existente entre ele/nome_ele/nome_usual_ele e ela/nome_ela/nome_usual_ela #}
+  {% set ele = (r.ele if r.ele is defined and r.ele else
+                (r.nome_ele if r.nome_ele is defined and r.nome_ele else
+                 (r.nome_usual_ele if r.nome_usual_ele is defined else ''))) %}
+  {% set ela = (r.ela if r.ela is defined and r.ela else
+                (r.nome_ela if r.nome_ela is defined and r.nome_ela else
+                 (r.nome_usual_ela if r.nome_usual_ela is defined else ''))) %}
+  {{ proper_case(ele) }} &amp; {{ proper_case(ela) }}
 {%- endmacro %}
 
-{% macro badge_subfunc(r) -%}
-  {% set eq = (pick(r, ['equipe']) or '') %}
-  {% set up = eq|upper %}
-  {% if 'DIRIGENTE' in up and '-' in eq %}
-    {% set sub = eq.split('-', 1)[1].strip() %}
-    <span class="badge muted" style="margin-left:6pt">{{ sub }}</span>
-  {% elif 'SALA' in up and '-' in eq %}
-    {% set sub = eq.split('-', 1)[1].strip() %}
-    <span class="badge muted" style="margin-left:6pt">{{ sub }}</span>
-  {% endif %}
-{%- endmacro %}
-
-{# Separa coordenadores e demais e imprime como bloco com tabela #}
-{% macro render_bloco(titulo, lista) -%}
-  {% if lista|length %}
-    {% set ns = namespace(coords=[], outros=[]) %}
-    {% for r in lista %}
-      {% set coord = (r.is_coord if r.is_coord is defined else (pick(r, ['coordenador']) or '')|trim|lower == 'sim') %}
-      {% if coord %}{% set _ = ns.coords.append(r) %}{% else %}{% set _ = ns.outros.append(r) %}{% endif %}
-    {% endfor %}
-
-    <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
-    <table>
-      <thead>
-        <tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
-      </thead>
-      <tbody>
-        {% for r in ns.coords %}
-          <tr>
-            <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
-            <td>{{ pick(r, ['telefones']) or '' }}</td>
-            <td>{{ pick(r, ['endereco']) or '' }}</td>
-          </tr>
-        {% endfor %}
-        {% for r in ns.outros %}
-          <tr>
-            <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
-            <td>{{ pick(r, ['telefones']) or '' }}</td>
-            <td>{{ pick(r, ['endereco']) or '' }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% endif %}
-{%- endmacro %}
-
-{# =============== Agrupamento por equipes (sem repetir cabeçalho) =============== #}
-{% set up = namespace(
-  dirigente = [],
-  cg = [],
-  sala = [],
-  circulos = [],
-  cafe = [],
-  compras = [],
-  acolhida = [],
-  ordem = [],
-  liturgia = [],
-  secretaria = [],
-  cozinha = [],
-  visitacao = []
-) %}
-
+{% set atual = None %}
 {% for r in rows %}
-  {% set eq = (pick(r, ['equipe']) or '') %}
-  {% set E = eq|upper %}
-  {% if 'CASAL COORDENADOR GERAL' in E %}
-    {% set _ = up.cg.append(r) %}
-  {% elif 'DIRIGENTE' in E %}
-    {% set _ = up.dirigente.append(r) %}
-  {% elif 'SALA' in E %}
-    {% set _ = up.sala.append(r) %}
-  {% elif 'CÍRCULOS' in E or 'CIRCULOS' in E %}
-    {% set _ = up.circulos.append(r) %}
-  {% elif 'CAFÉ E MINIMERCADO' in E or 'CAFE E MINIMERCADO' in E %}
-    {% set _ = up.cafe.append(r) %}
-  {% elif 'COMPRAS' in E %}
-    {% set _ = up.compras.append(r) %}
-  {% elif 'ACOLHIDA' in E %}
-    {% set _ = up.acolhida.append(r) %}
-  {% elif 'ORDEM E LIMPEZA' in E %}
-    {% set _ = up.ordem.append(r) %}
-  {% elif 'LITURGIA E VIGILIA' in E or 'LITURGIA E VIGÍLIA' in E %}
-    {% set _ = up.liturgia.append(r) %}
-  {% elif 'SECRETARIA' in E %}
-    {% set _ = up.secretaria.append(r) %}
-  {% elif 'COZINHA' in E %}
-    {% set _ = up.cozinha.append(r) %}
-  {% elif 'VISITA' in E %}
-    {% set _ = up.visitacao.append(r) %}
+  {% if not equipe and (atual != r.equipe) %}
+    {% if not loop.first %}</tbody></table>{% endif %}
+    <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ r.equipe or '—' }}</h3>
+    <table>
+      <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
+      <tbody>
+    {% set atual = r.equipe %}
   {% endif %}
+  <tr>
+    <td>
+      {% if r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')) %}
+        <span class="badge">Coordenador</span>
+      {% endif %}
+      {{ fmt_nome(r) }}
+    </td>
+    <td>{{ r.telefones or '' }}</td>
+    <td>{{ r.endereco or '' }}</td>
+  </tr>
+  {% if loop.last %}</tbody></table>{% endif %}
 {% endfor %}
 
-{# =============== Ordem fixa de impressão =============== #}
-{{ render_bloco('Equipe Dirigente', up.dirigente) }}
-{{ render_bloco('Casal Coordenador Geral', up.cg) }}
-{{ render_bloco('Equipe Sala', up.sala) }}
-{{ render_bloco('Equipe Círculos', up.circulos) }}
-{{ render_bloco('Equipe Café e Minimercado', up.cafe) }}
-{{ render_bloco('Equipe Compras', up.compras) }}
-{{ render_bloco('Equipe Acolhida', up.acolhida) }}
-{{ render_bloco('Equipe Ordem e Limpeza', up.ordem) }}
-{{ render_bloco('Equipe Liturgia e Vigilia', up.liturgia) }}
-{{ render_bloco('Equipe Secretaria', up.secretaria) }}
-{{ render_bloco('Equipe Cozinha', up.cozinha) }}
-{{ render_bloco('Equipe Visitação', up.visitacao) }}
-
-{% if not rows or rows|length == 0 %}
-  <p class="muted">Nenhum integrante encontrado para {{ ano }}.</p>
+{% if equipe and not rows|length %}
+<p class="muted">Nenhum integrante encontrado para {{equipe}} em {{ano}}.</p>
 {% endif %}
 {% endblock %}
