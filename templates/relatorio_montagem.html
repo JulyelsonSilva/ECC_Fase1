@@ -51,6 +51,7 @@
 
 {# Bloco de equipe (coordenadores primeiro), ignorando Desistiu/Recusou #}
 {% macro render_bloco(titulo, lista) -%}
+  {% set lista = lista|default([]) %}
   {% if lista|length %}
     <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
     <table>
@@ -98,23 +99,18 @@
 ] %}
 
 {# ===== Buckets principais e de pendências usando a MESMA chave canônica ===== #}
-{% set grupos = dict() %}
-{% set pend   = dict() %}
-
-{% for key in ORDEM %}
-  {% if grupos.update({key: []}) %}{% endif %}
-  {% if pend.update({key: []}) %}{% endif %}
-{% endfor %}
+{% set grupos = {} %}
+{% set pend   = {} %}
 
 {% for r in rows %}
   {% set key = group_key(r.equipe) %}
   {% if key %}
     {% set status_norm = (r.status or '')|trim|lower %}
     {% if status_norm in ['desistiu','recusou'] %}
-      {% set lst = pend.get(key) + [r] %}
+      {% set lst = (pend.get(key)|default([])) + [r] %}
       {% if pend.update({key: lst}) %}{% endif %}
     {% else %}
-      {% set lst = grupos.get(key) + [r] %}
+      {% set lst = (grupos.get(key)|default([])) + [r] %}
       {% if grupos.update({key: lst}) %}{% endif %}
     {% endif %}
   {% endif %}
@@ -122,13 +118,13 @@
 
 {# ===== Parte 1: Equipes montadas ===== #}
 {% for titulo in ORDEM %}
-  {{ render_bloco(titulo, grupos.get(titulo)) }}
+  {{ render_bloco(titulo, grupos.get(titulo)|default([])) }}
 {% endfor %}
 
 {# ===== Parte 2: Apêndice — Desistiu/Recusou (com motivo) ===== #}
 {% set tem_pend = false %}
 {% for titulo in ORDEM %}
-  {% if pend.get(titulo)|length %}{% set tem_pend = true %}{% endif %}
+  {% if (pend.get(titulo)|default([]))|length %}{% set tem_pend = true %}{% endif %}
 {% endfor %}
 
 {% if tem_pend %}
@@ -137,8 +133,8 @@
   <p class="muted" style="margin:0 0 10pt;">Listagem por equipe com status e motivo informado.</p>
 
   {% for titulo in ORDEM %}
-    {% set lista = pend.get(titulo) %}
-    {% if lista and (lista|length) %}
+    {% set lista = pend.get(titulo)|default([]) %}
+    {% if lista|length %}
       <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
       <table>
         <thead><tr><th>Casal</th><th>Status</th><th>Motivo (Observação)</th></tr></thead>
