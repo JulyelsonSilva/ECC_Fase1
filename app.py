@@ -2843,8 +2843,8 @@ def imprimir_vigilia():
 @app.route("/imprimir/relatorio-montagem")
 def imprimir_relatorio_montagem():
     """
-    Gera o relatório de montagem das equipes de um ano específico,
-    incluindo listagem final de casais com status 'Desistiu' ou 'Recusou' (com motivo).
+    Relatório de montagem das equipes de um ano específico,
+    com apêndice de Desistiu/Recusou (com motivo).
     """
     ano = request.args.get("ano", type=int)
 
@@ -2852,15 +2852,13 @@ def imprimir_relatorio_montagem():
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
 
-        # Busca todos os integrantes do ano, incluindo status/observacao
+        # Somente colunas existentes em 'encontreiros'
         cur.execute("""
             SELECT 
                 ano,
                 equipe,
                 COALESCE(nome_ele, '')   AS nome_ele,
                 COALESCE(nome_ela, '')   AS nome_ela,
-                COALESCE(nome_usual_ele, '') AS nome_usual_ele,
-                COALESCE(nome_usual_ela, '') AS nome_usual_ela,
                 COALESCE(telefones, '')  AS telefones,
                 COALESCE(endereco, '')   AS endereco,
                 COALESCE(coordenador, '') AS coordenador,
@@ -2881,10 +2879,14 @@ def imprimir_relatorio_montagem():
     except Exception as e:
         try:
             cur.close()
+        except Exception:
+            pass
+        try:
             conn.close()
-        except:
+        except Exception:
             pass
         return f"Erro ao gerar relatório de montagem: {e}", 500
+
 
 
 # =========================
