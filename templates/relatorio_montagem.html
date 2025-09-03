@@ -6,7 +6,7 @@
 <h2>Relatório de Montagem • {{ ano }}</h2>
 <p class="muted">Coordenadores destacados. Nomes em maiúsculo. Ao final: “Desistiu/Recusou” por equipe com motivo.</p>
 
-{# ===== Helpers ===== #}
+{# ========== Helpers simples ========== #}
 {% macro fmt_nome(r) -%}
   {{ (r.nome_ele or r.ele or '')|upper }} &amp; {{ (r.nome_ela or r.ela or '')|upper }}
 {%- endmacro %}
@@ -17,60 +17,30 @@
   {% endif %}
 {%- endmacro %}
 
-{# Normaliza qualquer texto de equipe para um título canônico da ordem fixa #}
-{% macro group_key(eq_raw) -%}
-  {% set E = (eq_raw or '')|upper %}
-  {% if 'CASAL COORDENADOR GERAL' in E %}
-    {{ 'Casal Coordenador Geral' }}
-  {% elif 'DIRIGENTE' in E %}
-    {{ 'Equipe Dirigente' }}
-  {% elif 'SALA' in E %}
-    {{ 'Equipe Sala' }}
-  {% elif 'CÍRC' in E or 'CIRC' in E %}
-    {{ 'Equipe Círculos' }}
-  {% elif ('CAFÉ' in E or 'CAFE' in E) and 'MINI' in E %}
-    {{ 'Equipe Café e Minimercado' }}
-  {% elif 'COMPRAS' in E %}
-    {{ 'Equipe Compras' }}
-  {% elif 'ACOLHIDA' in E %}
-    {{ 'Equipe Acolhida' }}
-  {% elif 'ORDEM' in E and 'LIMPEZA' in E %}
-    {{ 'Equipe Ordem e Limpeza' }}
-  {% elif 'LITURGIA' in E or 'VIGIL' in E %}
-    {{ 'Equipe Liturgia e Vigilia' }}
-  {% elif 'SECRETARIA' in E %}
-    {{ 'Equipe Secretaria' }}
-  {% elif 'COZINHA' in E %}
-    {{ 'Equipe Cozinha' }}
-  {% elif 'VISITA' in E %}
-    {{ 'Equipe Visitação' }}
-  {% else %}
-    {{ '' }}
-  {% endif %}
+{% macro eh_coord(r) -%}
+  {{ (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) and true or false }}
 {%- endmacro %}
 
-{# Bloco de equipe (coordenadores primeiro), ignorando Desistiu/Recusou #}
+{% macro status_norm(s) -%}
+  {{ (s or '')|trim|lower }}
+{%- endmacro %}
+
 {% macro render_bloco(titulo, lista) -%}
-  {% set lista = lista|default([], true) %}
-  {% if lista|length %}
+  {% if lista and (lista|length) %}
     <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
     <table>
       <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
       <tbody>
-        {# Coordenadores #}
-        {% for r in lista
-             if (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
-             and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
+        {# Coordenadores primeiro (exclui Desistiu/Recusou) #}
+        {% for r in lista if status_norm(r.status) not in ['desistiu','recusou'] and eh_coord(r) %}
           <tr>
             <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
         {% endfor %}
-        {# Demais #}
-        {% for r in lista
-             if not (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
-             and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
+        {# Demais (exclui Desistiu/Recusou) #}
+        {% for r in lista if status_norm(r.status) not in ['desistiu','recusou'] and not eh_coord(r) %}
           <tr>
             <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
@@ -82,65 +52,86 @@
   {% endif %}
 {%- endmacro %}
 
-{# ===== Ordem fixa ===== #}
-{% set ORDEM = [
-  'Equipe Dirigente',
-  'Casal Coordenador Geral',
-  'Equipe Sala',
-  'Equipe Círculos',
-  'Equipe Café e Minimercado',
-  'Equipe Compras',
-  'Equipe Acolhida',
-  'Equipe Ordem e Limpeza',
-  'Equipe Liturgia e Vigilia',
-  'Equipe Secretaria',
-  'Equipe Cozinha',
-  'Equipe Visitação'
-] %}
+{# ========== Buckets com namespace (sem dict.update) ========== #}
+{% set up = namespace(
+  dirigente = [], cg = [], sala = [], circulos = [], cafe = [],
+  compras = [], acolhida = [], ordem = [], liturgia = [],
+  secretaria = [], cozinha = [], visitacao = []
+) %}
 
-{# ===== Buckets principais e de pendências usando a MESMA chave canônica ===== #}
-{% set grupos = {} %}
-{% set pend   = {} %}
+{% set pend = namespace(
+  dirigente = [], cg = [], sala = [], circulos = [], cafe = [],
+  compras = [], acolhida = [], ordem = [], liturgia = [],
+  secretaria = [], cozinha = [], visitacao = []
+) %}
 
+{# Classifica uma linha em um dos grupos, incluindo variações de texto #}
 {% for r in rows %}
-  {% set key = group_key(r.equipe) %}
-  {% if key %}
-    {% set status_norm = (r.status or '')|trim|lower %}
-    {% if status_norm in ['desistiu','recusou'] %}
-      {% set lst = (pend.get(key)|default([], true)) + [r] %}
-      {% if pend.update({key: lst}) %}{% endif %}
-    {% else %}
-      {% set lst = (grupos.get(key)|default([], true)) + [r] %}
-      {% if grupos.update({key: lst}) %}{% endif %}
-    {% endif %}
+  {% set E = (r.equipe or '')|upper %}
+  {% set st = status_norm(r.status) %}
+
+  {% if 'CASAL COORDENADOR GERAL' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.cg.append(r) %}{% else %}{% set _ = up.cg.append(r) %}{% endif %}
+  {% elif 'DIRIGENTE' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.dirigente.append(r) %}{% else %}{% set _ = up.dirigente.append(r) %}{% endif %}
+  {% elif 'SALA' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.sala.append(r) %}{% else %}{% set _ = up.sala.append(r) %}{% endif %}
+  {% elif 'CÍRC' in E or 'CIRC' in E %}
+    {# cobre "EQUIPE DE CIRCULOS", "CÍRCULOS", "CIRCULO", etc. #}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.circulos.append(r) %}{% else %}{% set _ = up.circulos.append(r) %}{% endif %}
+  {% elif ('CAFÉ' in E or 'CAFE' in E) and 'MINI' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.cafe.append(r) %}{% else %}{% set _ = up.cafe.append(r) %}{% endif %}
+  {% elif 'COMPRAS' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.compras.append(r) %}{% else %}{% set _ = up.compras.append(r) %}{% endif %}
+  {% elif 'ACOLHIDA' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.acolhida.append(r) %}{% else %}{% set _ = up.acolhida.append(r) %}{% endif %}
+  {% elif 'ORDEM' in E and 'LIMPEZA' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.ordem.append(r) %}{% else %}{% set _ = up.ordem.append(r) %}{% endif %}
+  {% elif 'LITURGIA' in E or 'VIGIL' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.liturgia.append(r) %}{% else %}{% set _ = up.liturgia.append(r) %}{% endif %}
+  {% elif 'SECRETARIA' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.secretaria.append(r) %}{% else %}{% set _ = up.secretaria.append(r) %}{% endif %}
+  {% elif 'COZINHA' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.cozinha.append(r) %}{% else %}{% set _ = up.cozinha.append(r) %}{% endif %}
+  {% elif 'VISITA' in E %}
+    {% if st in ['desistiu','recusou'] %}{% set _ = pend.visitacao.append(r) %}{% else %}{% set _ = up.visitacao.append(r) %}{% endif %}
   {% endif %}
 {% endfor %}
 
-{# ===== Parte 1: Equipes montadas ===== #}
-{% for titulo in ORDEM %}
-  {{ render_bloco(titulo, grupos.get(titulo)|default([], true)) }}
-{% endfor %}
+{# ========== Ordem fixa (mesma usada antes) ========== #}
+{{ render_bloco('Equipe Dirigente', up.dirigente) }}
+{{ render_bloco('Casal Coordenador Geral', up.cg) }}
+{{ render_bloco('Equipe Sala', up.sala) }}
+{{ render_bloco('Equipe Círculos', up.circulos) }}
+{{ render_bloco('Equipe Café e Minimercado', up.cafe) }}
+{{ render_bloco('Equipe Compras', up.compras) }}
+{{ render_bloco('Equipe Acolhida', up.acolhida) }}
+{{ render_bloco('Equipe Ordem e Limpeza', up.ordem) }}
+{{ render_bloco('Equipe Liturgia e Vigilia', up.liturgia) }}
+{{ render_bloco('Equipe Secretaria', up.secretaria) }}
+{{ render_bloco('Equipe Cozinha', up.cozinha) }}
+{{ render_bloco('Equipe Visitação', up.visitacao) }}
 
-{# ===== Parte 2: Apêndice — Desistiu/Recusou (com motivo) ===== #}
-{% set tem_pend = false %}
-{% for titulo in ORDEM %}
-  {% if (pend.get(titulo)|default([], true))|length %}{% set tem_pend = true %}{% endif %}
-{% endfor %}
+{# ========== Apêndice: Desistiu/Recusou (com motivo), por equipe ========== #}
+{% set tem_pend = (
+  pend.dirigente|length or pend.cg|length or pend.sala|length or pend.circulos|length or
+  pend.cafe|length or pend.compras|length or pend.acolhida|length or pend.ordem|length or
+  pend.liturgia|length or pend.secretaria|length or pend.cozinha|length or pend.visitacao|length
+) %}
 
 {% if tem_pend %}
   <hr style="margin:16pt 0; border:none; border-top:1px solid #e5e7eb;">
   <h2 style="margin:0 0 8pt;">Desistências e Recusas</h2>
   <p class="muted" style="margin:0 0 10pt;">Listagem por equipe com status e motivo informado.</p>
 
-  {% for titulo in ORDEM %}
-    {% set lista = pend.get(titulo)|default([], true) %}
-    {% if lista|length %}
+  {% macro bloco_pend(titulo, lista) -%}
+    {% if lista and (lista|length) %}
       <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
       <table>
         <thead><tr><th>Casal</th><th>Status</th><th>Motivo (Observação)</th></tr></thead>
         <tbody>
           {% for r in lista %}
-            {% set st = (r.status or '')|trim|lower %}
+            {% set st = status_norm(r.status) %}
             <tr>
               <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
               <td>
@@ -158,7 +149,20 @@
         </tbody>
       </table>
     {% endif %}
-  {% endfor %}
+  {%- endmacro %}
+
+  {{ bloco_pend('Equipe Dirigente', pend.dirigente) }}
+  {{ bloco_pend('Casal Coordenador Geral', pend.cg) }}
+  {{ bloco_pend('Equipe Sala', pend.sala) }}
+  {{ bloco_pend('Equipe Círculos', pend.circulos) }}
+  {{ bloco_pend('Equipe Café e Minimercado', pend.cafe) }}
+  {{ bloco_pend('Equipe Compras', pend.compras) }}
+  {{ bloco_pend('Equipe Acolhida', pend.acolhida) }}
+  {{ bloco_pend('Equipe Ordem e Limpeza', pend.ordem) }}
+  {{ bloco_pend('Equipe Liturgia e Vigilia', pend.liturgia) }}
+  {{ bloco_pend('Equipe Secretaria', pend.secretaria) }}
+  {{ bloco_pend('Equipe Cozinha', pend.cozinha) }}
+  {{ bloco_pend('Equipe Visitação', pend.visitacao) }}
 {% else %}
   <p class="muted" style="margin-top:12pt;">Sem registros de Desistiu/Recusou.</p>
 {% endif %}
