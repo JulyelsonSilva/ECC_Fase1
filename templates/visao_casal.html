@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2 style="text-align: center;">Visão por Casal</h2>
 <style>
   :root{
     --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
@@ -18,33 +17,13 @@
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
   .search{display:grid;gap:10px;grid-template-columns: 1fr 1fr auto}
   .search input{padding:10px 12px;border:1px solid var(--border);border-radius:10px}
-  .kards{display:grid;gap:14px;grid-template-columns:1fr}
-  .info-grid{display:grid;gap:16px;grid-template-columns:1fr}
   .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;margin-left:6px}
   .table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff}
   .table th,.table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;text-align:left}
   .table thead th{background:#f1f5f9;font-weight:600}
   .table tr:last-child td{border-bottom:none}
-  @media (min-width: 900px){
-    .info-grid{grid-template-columns:1fr 1fr}
-  }
 </style>
 
- <!-- Botão para voltar à página inicial -->
-  <a href="{{ url_for('index') }}">
-    <button type="button">Voltar para Página Inicial</button>
-  </a>
-  <br><br>
-
-  <form method="get" style="text-align: center; margin-bottom: 20px;">
-    <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome Ele" value="{{ nome_ele }}" list="sugestoes_ele" required>
-    <datalist id="sugestoes_ele"></datalist>
-
-    <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome Ela" value="{{ nome_ela }}" list="sugestoes_ela" required>
-    <datalist id="sugestoes_ela"></datalist>
-
-    <button type="submit">Buscar</button>
-  </form>
 <div class="vc-wrap">
   <div class="vc-head">
     <div class="vc-title">
@@ -59,76 +38,47 @@
     </div>
   </div>
 
-  {% if erro %}
-    <p style="color: red; text-align: center;">{{ erro }}</p>
-  {% endif %}
-  <!-- Busca -->
+  {# ===== Busca (APENAS UMA) ===== #}
   <div class="card" style="margin-bottom:12px">
-    <form method="get" class="search">
+    <form method="get" class="search" autocomplete="off">
       <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome (Ele)" value="{{ nome_ele }}" list="sugestoes_ele" required>
       <datalist id="sugestoes_ele"></datalist>
       <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome (Ela)" value="{{ nome_ela }}" list="sugestoes_ela" required>
       <datalist id="sugestoes_ela"></datalist>
       <button type="submit" class="btn primary">Buscar</button>
     </form>
-    {% if erro %}
-      <div class="muted" style="color:var(--err);margin-top:8px">{{ erro }}</div>
-    {% endif %}
+    {% if erro %}<div class="muted" style="color:var(--err);margin-top:8px">{{ erro }}</div>{% endif %}
   </div>
 
-  <!-- Bloco de dados do encontrista -->
+  {# ===== Dados do Encontro (encontristas) ===== #}
   {% if dados_encontrista %}
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h3>Dados do Encontro</h3>
-      <p><strong>Ano do Encontro:</strong> {{ dados_encontrista.ano_encontro }}</p>
-      <p><strong>Endereço:</strong> {{ dados_encontrista.endereco }}</p>
-      <p><strong>Telefones:</strong> {{ dados_encontrista.telefones }}</p>
     <div class="card" style="margin-bottom:12px">
       <h3 style="margin:0 0 8px">Dados do Encontro</h3>
-      <div class="kards">
-        <div><b>Ano do Encontro:</b> {{ dados_encontrista.ano_encontro }}</div>
-        <div><b>Endereço:</b> {{ dados_encontrista.endereco }}</div>
-        <div><b>Telefones:</b> {{ dados_encontrista.telefones }}</div>
-      </div>
+      <div><b>Ano do Encontro:</b> {{ dados_encontrista.ano_encontro }}</div>
+      <div><b>Endereço:</b> {{ dados_encontrista.endereco or '—' }}</div>
+      <div><b>Telefones:</b> {{ dados_encontrista.telefones or '—' }}</div>
     </div>
   {% elif nome_ele and nome_ela and not erro %}
     <div class="card" style="margin-bottom:12px">
       <div class="muted">Casal não encontrado.</div>
     </div>
-  {% elif nome_ele and nome_ela %}
-    <p style="text-align: center; color: red;">Casal não encontrado.</p>
   {% endif %}
 
-  {% if dados_encontreiros %}
-    <h3 style="text-align: center;">Histórico de Trabalho</h3>
-    <table border="1" style="margin: auto; border-collapse: collapse;">
-  <!-- Grade Ano x (Trabalhos | Palestras) -->
+  {# ===== Histórico por Ano (ÚNICO BLOCO) ===== #}
   <div class="card">
     <h3 style="margin:0 0 12px">Histórico por Ano</h3>
-    <p class="muted" style="margin:0 0 10px">À esquerda: equipes em que trabalhou. À direita: palestras dadas no mesmo ano.</p>
+    <p class="muted" style="margin:0 0 10px">Equipes trabalhadas e palestras realizadas por ano.</p>
 
     <table class="table">
       <thead>
         <tr>
-          <th>Ano</th>
-          <th>Equipe</th>
-          <th>Coordenador</th>
-          <th style="width:80px">Ano</th>
-          <th>Equipes Trabalhadas</th>
-          <th>Palestras Proferidas</th>
+          <th style="width:80px;">Ano</th>
+          <th>Equipes</th>
+          <th>Palestras</th>
         </tr>
       </thead>
       <tbody>
-        {% for linha in dados_encontreiros %}
-          <tr>
-            <td>{{ linha.ano }}</td>
-            <td>{{ linha.equipe }}</td>
-            <td>{{ linha.coordenador }}</td>
-          </tr>
-        {% endfor %}
-        {# =========================
-           MODO 1 (recomendado): usar 'anos', 'por_ano_trabalhos', 'por_ano_palestras'
-           ========================= #}
+        {# ===== Modo 1: usa anos + dicionários (preferido) ===== #}
         {% if anos is defined and por_ano_trabalhos is defined and por_ano_palestras is defined %}
           {% for ano in anos %}
             {% set trabs = por_ano_trabalhos.get(ano, []) %}
@@ -139,16 +89,18 @@
                 {% if trabs %}
                   <ul style="margin:0;padding-left:16px">
                     {% for t in trabs %}
-                      {% if t is string %}
-                        <li>{{ t }}</li>
-                      {% else %}
-                        <li>
-                          {{ t.equipe or '' }}
-                          {% if (t.coordenador or '')|lower == 'sim' %}
-                            <span class="pill">Coord.</span>
-                          {% endif %}
-                        </li>
-                      {% endif %}
+                      {% set st = (t.status or '')|trim|lower %}
+                      <li>
+                        {{ t.equipe or '—' }}
+                        {% if (t.coordenador or '')|trim|lower == 'sim' %}
+                          <span class="pill">Coord.</span>
+                        {% endif %}
+                        {# Exibe STATUS e MOTIVO somente para Recusou/Desistiu #}
+                        {% if st in ['recusou','desistiu'] %}
+                          <span class="pill" style="border-color:#fecaca;background:#fee2e2;color:#991b1b;margin-left:6px">{{ st|capitalize }}</span>
+                          {% if t.observacao %}<span class="pill" style="margin-left:6px">{{ t.observacao }}</span>{% endif %}
+                        {% endif %}
+                      </li>
                     {% endfor %}
                   </ul>
                 {% else %} — {% endif %}
@@ -157,39 +109,30 @@
                 {% if talks %}
                   <ul style="margin:0;padding-left:16px">
                     {% for p in talks %}
-                      {% if p is string %}
-                        <li>{{ p }}</li>
-                      {% else %}
-                        <li>{{ p.palestra or '' }}</li>
-                      {% endif %}
+                      <li>{{ p.palestra or '' }}</li>
                     {% endfor %}
                   </ul>
                 {% else %} — {% endif %}
               </td>
             </tr>
           {% endfor %}
-
-        {# =========================
-           MODO 2 (compatibilidade): usa 'dados_encontreiros' e (opcional) 'dados_palestras'
-           Agrupamento simples por ano (não perfeito).
-           ========================= #}
+        {# ===== Modo 2: compatibilidade com listas cruas ===== #}
         {% else %}
+          {# Agrupa trabalhos por ano #}
           {% set trab_por_ano = {} %}
           {% for r in (dados_encontreiros or []) %}
-            {% set a = r.ano %}
-            {% if trab_por_ano.update({a: (trab_por_ano.get(a, []) + [r])}) %}{% endif %}
+            {% set lst = trab_por_ano.get(r.ano, []) + [r] %}
+            {% if trab_por_ano.update({r.ano: lst}) %}{% endif %}
           {% endfor %}
-
+          {# Agrupa palestras por ano #}
           {% set pal_por_ano = {} %}
           {% for p in (dados_palestras or []) %}
-            {% set a = p.ano %}
-            {% if pal_por_ano.update({a: (pal_por_ano.get(a, []) + [p])}) %}{% endif %}
+            {% set lst = pal_por_ano.get(p.ano, []) + [p] %}
+            {% if pal_por_ano.update({p.ano: lst}) %}{% endif %}
           {% endfor %}
-
           {% set anos_tmp = (trab_por_ano.keys() | list) + (pal_por_ano.keys() | list) %}
           {% set anos_uniq = anos_tmp|unique|list %}
-          {% set anos_sorted = anos_uniq|sort(reverse=True) %}
-
+          {% set anos_sorted = anos_uniq|sort %}
           {% for ano in anos_sorted %}
             <tr>
               <td>{{ ano }}</td>
@@ -198,10 +141,15 @@
                 {% if lst %}
                   <ul style="margin:0;padding-left:16px">
                     {% for r in lst %}
+                      {% set st = (r.status or '')|trim|lower %}
                       <li>
-                        {{ r.equipe or '' }}
-                        {% if (r.coordenador or '')|lower == 'sim' %}
+                        {{ r.equipe or '—' }}
+                        {% if (r.coordenador or '')|trim|lower == 'sim' %}
                           <span class="pill">Coord.</span>
+                        {% endif %}
+                        {% if st in ['recusou','desistiu'] %}
+                          <span class="pill" style="border-color:#fecaca;background:#fee2e2;color:#991b1b;margin-left:6px">{{ st|capitalize }}</span>
+                          {% if r.observacao %}<span class="pill" style="margin-left:6px">{{ r.observacao }}</span>{% endif %}
                         {% endif %}
                       </li>
                     {% endfor %}
@@ -223,59 +171,35 @@
         {% endif %}
       </tbody>
     </table>
-  {% endif %}
   </div>
 </div>
 
-  <script>
+<script>
+  // Autocomplete dos nomes (apenas uma vez)
+  (function(){
     const inputEle = document.getElementById('nome_ele');
     const inputEla = document.getElementById('nome_ela');
     const datalistEle = document.getElementById('sugestoes_ele');
     const datalistEla = document.getElementById('sugestoes_ela');
-<script>
-  // Autocomplete dos nomes
-  const inputEle = document.getElementById('nome_ele');
-  const inputEla = document.getElementById('nome_ela');
-  const datalistEle = document.getElementById('sugestoes_ele');
-  const datalistEla = document.getElementById('sugestoes_ela');
 
     function buscarNomes(input, datalist) {
-      const valor = input.value;
-      if (valor.length >= 3) {
-        fetch(`/autocomplete-nomes?q=${valor}`)
-          .then(res => res.json())
-          .then(data => {
-            datalist.innerHTML = "";
-            data.forEach(nome => {
-              const opt = document.createElement("option");
-              opt.value = nome;
-              datalist.appendChild(opt);
-            });
-  function buscarNomes(input, datalist) {
-    const valor = input.value || "";
-    if (valor.length >= 3) {
+      const valor = (input.value || '').trim();
+      if (valor.length < 3) { datalist.innerHTML = ''; return; }
       fetch(`/autocomplete-nomes?q=${encodeURIComponent(valor)}`)
         .then(res => res.json())
         .then(data => {
-          datalist.innerHTML = "";
+          datalist.innerHTML = '';
           (data || []).forEach(nome => {
-            const opt = document.createElement("option");
+            const opt = document.createElement('option');
             opt.value = nome;
             datalist.appendChild(opt);
           });
-      }
         })
-        .catch(()=>{});
+        .catch(() => {});
     }
-  }
 
-    inputEle.addEventListener("input", () => buscarNomes(inputEle, datalistEle));
-    inputEla.addEventListener("input", () => buscarNomes(inputEla, datalistEla));
-  </script>
-{% if erro %}
-  <p style="color: red; text-align: center;">{{ erro }}</p>
-{% endif %}
-  inputEle.addEventListener("input", () => buscarNomes(inputEle, datalistEle));
-  inputEla.addEventListener("input", () => buscarNomes(inputEla, datalistEla));
+    if (inputEle) inputEle.addEventListener('input', () => buscarNomes(inputEle, datalistEle));
+    if (inputEla) inputEla.addEventListener('input', () => buscarNomes(inputEla, datalistEla));
+  })();
 </script>
 {% endblock %}
