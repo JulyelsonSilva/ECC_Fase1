@@ -137,6 +137,18 @@
         </div>
         <a class="btn" target="_blank" id="btn3">Abrir</a>
       </section>
+
+      <!-- NOVO: Relatório de Montagem -->
+      <section class="card">
+        <h2>4) Relatório de Montagem</h2>
+        <div class="grid-2">
+          <div>
+            <label>Ano</label>
+            <select id="ano4">{% for a in anos %}<option value="{{a}}">{{a}}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <a class="btn" target="_blank" id="btn4">Abrir</a>
+      </section>
     </main>
   </div>
 
@@ -145,17 +157,23 @@ function link(el, href){ el.setAttribute("href", href); }
 const b1 = document.getElementById("btn1");
 const b2 = document.getElementById("btn2");
 const b3 = document.getElementById("btn3");
+const b4 = document.getElementById("btn4");
 
 function upd(){
   link(b1, `{{ url_for('imprimir_coordenadores') }}?ano=${document.getElementById("ano1").value}`);
+
   const ano2 = document.getElementById("ano2").value;
   const eq2  = document.getElementById("equipe2").value;
   link(b2, `{{ url_for('imprimir_equipes') }}?ano=${ano2}${eq2 ? `&equipe=${encodeURIComponent(eq2)}` : ""}`);
+
   const ano3 = document.getElementById("ano3").value;
   const qtd3 = document.getElementById("qtd3").value || 56;
   const seed3= document.getElementById("seed3").value || "vigilia";
   const ids3 = document.getElementById("ids3").value.trim();
   link(b3, `{{ url_for('imprimir_vigilia') }}?ano=${ano3}&qtd=${qtd3}${seed3?`&seed=${encodeURIComponent(seed3)}`:""}${ids3?`&ids=${encodeURIComponent(ids3)}`:""}`);
+
+  const ano4 = document.getElementById("ano4").value;
+  link(b4, `{{ url_for('imprimir_relatorio_montagem') }}?ano=${ano4}`);
 }
 document.querySelectorAll("select,input").forEach(x => x.addEventListener("input", upd));
 upd();
