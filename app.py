@@ -3912,6 +3912,73 @@ def api_encontristas_por_ano(ano):
         return jsonify({"ok": True, "lista": lista})
     finally:
         cur.close(); conn.close()
+# Rota para contagem de encontristas em um ano
+
+from flask import jsonify, request
+
+@app.route("/api/encontristas_por_ano", methods=["GET"])
+def api_encontristas_por_ano_count():
+    """
+    Conta ENCONTRISTAS por ano (tabela 'encontristas').
+    Mantém a rota antiga /api/encontristas/ano/<int:ano> intacta.
+
+    Parâmetros opcionais:
+      - ano_min: int (inclusive)
+      - ano_max: int (inclusive)
+
+    Resposta:
+      200 OK -> [{"ano": 2019, "qtd": 42}, ...]
+      500    -> {"ok": False, "error": "..."}
+    """
+    ano_min = request.args.get("ano_min", type=int)
+    ano_max = request.args.get("ano_max", type=int)
+
+    try:
+        conn = db_conn()
+        cur = conn.cursor(dictionary=True)
+
+        sql = """
+            SELECT ano, COUNT(*) AS qtd
+              FROM encontristas
+             WHERE ano IS NOT NULL
+        """
+        params = []
+        where = []
+        if ano_min is not None:
+            where.append("ano >= %s")
+            params.append(ano_min)
+        if ano_max is not None:
+            where.append("ano <= %s")
+            params.append(ano_max)
+        if where:
+            sql += " AND " + " AND ".join(where)
+
+        sql += " GROUP BY ano ORDER BY ano ASC"
+
+        cur.execute(sql, params)
+        rows = cur.fetchall() or []
+
+        out = []
+        for r in rows:
+            a = r.get("ano")
+            q = r.get("qtd") or 0
+            if a is not None:
+                out.append({"ano": int(a), "qtd": int(q)})
+
+        cur.close()
+        conn.close()
+        return jsonify(out), 200
+
+    except Exception as e:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # Busca encontrista (por nome) validando ano do círculo
 @app.route("/api/encontristas/busca")
