@@ -54,20 +54,20 @@
     .btn{
       text-decoration:none; background:var(--brand); color:#fff; padding:10px 14px; border-radius:10px; border:1px solid var(--brand-600);
     }
-    /* Botão secundário discreto */
     .btn-outline{
       background:transparent; color:var(--brand-600); border:1px solid var(--brand-600);
     }
     .btn:hover{ filter:brightness(0.98); }
     .btn-outline:hover{ background:var(--brand-50); }
 
-    /* Pilha vertical: DONUT em cima; duas barras embaixo */
     .stack{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:18px; }
 
     .chart-card{
       background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px;
       min-height:340px; position:relative;
     }
+    /* 👇 menor só no donut */
+    .chart-sm{ min-height:260px; }
     .chart-card canvas{ height: 100%; width: 100%; }
     .msg{
       position:absolute; inset:0; display:grid; place-items:center;
@@ -121,18 +121,15 @@
           {% endfor %}
         </select>
 
-        <!-- existente -->
         <a class="btn" href="{{ url_for('docs_index') }}" target="_blank">🖨️ Documentos de impressão</a>
-
-        <!-- NOVOS: mapa e auditoria -->
         <a class="btn" href="{{ url_for('relatorio_mapa_encontristas') }}">🗺️ Mapa dos Encontristas</a>
         <a class="btn btn-outline" href="{{ url_for('auditoria_enderecos') }}">🔎 Auditoria de Endereços</a>
       </div>
     </section>
 
-    <!-- DONUT em cima -->
     <div class="stack" aria-label="Gráficos de Relatórios">
-      <div class="chart-card">
+      <!-- DONUT (menor) -->
+      <div class="chart-card chart-sm">
         <canvas id="distAnoEncontro"></canvas>
         <div id="msgDist" class="msg" style="display:none;"></div>
       </div>
@@ -143,16 +140,16 @@
         <div id="msgBar" class="msg" style="display:none;"></div>
       </div>
 
-      <!-- Barras — registros em 'encontreiros' por ano -->
+      <!-- Barras: ENCONTRISTAS por ano -->
       <div class="chart-card">
-        <canvas id="barEncontreiros"></canvas>
-        <div id="msgEnctr" class="msg" style="display:none;"></div>
+        <canvas id="barEncontristas"></canvas>
+        <div id="msgEncts" class="msg" style="display:none;"></div>
       </div>
     </div>
   </div>
 
 <script>
-let chBar, chDist, chEnctr;
+let chBar, chDist, chEncts;
 function destroyIf(c){ if(c) c.destroy(); }
 function showMsg(id, text){ const el = document.getElementById(id); if(!el) return; el.textContent = text; el.style.display = 'grid'; }
 function hideMsg(id){ const el = document.getElementById(id); if(!el) return; el.style.display = 'none'; }
@@ -184,21 +181,22 @@ async function carregaTrabalhosPorAno(){
   }
 }
 
-async function carregaEncontreirosPorAno(){
+/* 👇 agora busca ENCONTRISTAS por ano (tabela 'encontristas') */
+async function carregaEncontristasPorAno(){
   try{
-    hideMsg('msgEnctr');
-    const data = await safeFetchJson("/api/encontreiros_por_ano");
+    hideMsg('msgEncts');
+    const data = await safeFetchJson("/api/encontristas_por_ano");
     const labels = data.map(d => d.ano);
     const valores = data.map(d => d.qtd);
-    destroyIf(chEnctr);
-    chEnctr = new Chart(document.getElementById("barEncontreiros"), {
+    destroyIf(chEncts);
+    chEncts = new Chart(document.getElementById("barEncontristas"), {
       type: "bar",
-      data: { labels, datasets: [{ label: "Registros de encontreiros por ano", data: valores }] },
+      data: { labels, datasets: [{ label: "Encontristas por ano", data: valores }] },
       options: { responsive:true, maintainAspectRatio:false }
     });
   }catch(err){
     console.error(err);
-    showMsg('msgEnctr', "Erro ao carregar 'encontreiros por ano'. Verifique /api/encontreiros_por_ano.");
+    showMsg('msgEncts', "Erro ao carregar 'encontristas por ano'. Verifique /api/encontristas_por_ano.");
   }
 }
 
@@ -227,13 +225,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   if(!window.Chart){
     showMsg('msgDist', "Chart.js não carregou. Verifique a conexão com a CDN.");
     showMsg('msgBar', "Chart.js não carregou. Verifique a conexão com a CDN.");
-    showMsg('msgEnctr', "Chart.js não carregou. Verifique a conexão com a CDN.");
+    showMsg('msgEncts', "Chart.js não carregou. Verifique a conexão com a CDN.");
     return;
   }
   const anoIni = document.getElementById("anoSel")?.value;
   await carregaDistribuicaoAnoEncontro(anoIni);   // donut
   await carregaTrabalhosPorAno();                 // barras (dedup)
-  await carregaEncontreirosPorAno();              // barras (registros)
+  await carregaEncontristasPorAno();              // barras (encontristas)
 });
 </script>
 </body>
