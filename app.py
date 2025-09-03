@@ -2840,6 +2840,52 @@ def imprimir_vigilia():
     cur.close(); conn.close()
     return render_template("print_vigilia.html", ano=ano, qtd=qtd, seed=seed, rows=rows)
 
+@app.route("/imprimir/relatorio-montagem")
+def imprimir_relatorio_montagem():
+    """
+    Gera o relatório de montagem das equipes de um ano específico,
+    incluindo listagem final de casais com status 'Desistiu' ou 'Recusou' (com motivo).
+    """
+    ano = request.args.get("ano", type=int)
+
+    try:
+        conn = db_conn()
+        cur = conn.cursor(dictionary=True)
+
+        # Busca todos os integrantes do ano, incluindo status/observacao
+        cur.execute("""
+            SELECT 
+                ano,
+                equipe,
+                COALESCE(nome_ele, '')   AS nome_ele,
+                COALESCE(nome_ela, '')   AS nome_ela,
+                COALESCE(nome_usual_ele, '') AS nome_usual_ele,
+                COALESCE(nome_usual_ela, '') AS nome_usual_ela,
+                COALESCE(telefones, '')  AS telefones,
+                COALESCE(endereco, '')   AS endereco,
+                COALESCE(coordenador, '') AS coordenador,
+                COALESCE(status, '')     AS status,
+                COALESCE(observacao, '') AS observacao
+            FROM encontreiros
+            WHERE (%s IS NULL OR ano = %s)
+            ORDER BY equipe, nome_ele, nome_ela
+        """, (ano, ano))
+
+        rows = cur.fetchall() or []
+
+        cur.close()
+        conn.close()
+
+        return render_template("relatorio_montagem.html", ano=ano, rows=rows)
+
+    except Exception as e:
+        try:
+            cur.close()
+            conn.close()
+        except:
+            pass
+        return f"Erro ao gerar relatório de montagem: {e}", 500
+
 
 # =========================
 # Autocomplete simples (se você já tem outro, pode manter o seu)
