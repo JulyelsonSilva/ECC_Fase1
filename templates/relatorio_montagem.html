@@ -29,18 +29,33 @@
         <tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
       </thead>
       <tbody>
-        {# coordenadores primeiro #}
-        {% for r in lista if r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')) %}
+        {# coordenadores primeiro — ignora Desistiu/Recusou #}
+        {% for r in lista
+              if (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
+              and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
           <tr>
-            <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
+            <td><span class="badge">Coordenador</span>
+              {{ (r.nome_ele or '')|upper }} &amp; {{ (r.nome_ela or '')|upper }}
+              {% if r.equipe and '-' in r.equipe %}
+                <span class="badge muted" style="margin-left:6pt">{{ r.equipe.split('-', 1)[1].strip() }}</span>
+              {% endif %}
+            </td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
         {% endfor %}
-        {# demais #}
-        {% for r in lista if not (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) %}
+
+        {# demais — ignora Desistiu/Recusou #}
+        {% for r in lista
+              if not (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
+              and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
           <tr>
-            <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
+            <td>
+              {{ (r.nome_ele or '')|upper }} &amp; {{ (r.nome_ela or '')|upper }}
+              {% if r.equipe and '-' in r.equipe %}
+                <span class="badge muted" style="margin-left:6pt">{{ r.equipe.split('-', 1)[1].strip() }}</span>
+              {% endif %}
+            </td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
@@ -49,6 +64,7 @@
     </table>
   {% endif %}
 {%- endmacro %}
+
 
 {# ===== Buckets de equipes (ordem fixa) ===== #}
 {% set grupos = {
