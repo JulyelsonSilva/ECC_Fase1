@@ -4,58 +4,74 @@
 {% set title = _title %}
 
 <h2>Relatório de Montagem • {{ ano }}</h2>
-<p class="muted">Coordenadores destacados. Nomes em maiúsculo. Ao final, listagem de “Desistiu/Recusou” por equipe com motivo.</p>
+<p class="muted">Coordenadores destacados. Nomes em maiúsculo. Ao final: “Desistiu/Recusou” por equipe com motivo.</p>
 
-{# ===== Helper p/ exibir nomes em MAIÚSCULO (usa qualquer campo disponível) ===== #}
+{# ===== Helpers ===== #}
 {% macro fmt_nome(r) -%}
-  {{ (r.ele or r.nome_ele or r.nome_usual_ele or '')|upper }}
-  &amp;
-  {{ (r.ela or r.nome_ela or r.nome_usual_ela or '')|upper }}
+  {{ (r.nome_ele or r.ele or '')|upper }} &amp; {{ (r.nome_ela or r.ela or '')|upper }}
 {%- endmacro %}
 
-{# ===== Helper p/ subequipes (ex.: 'Sala - Canto', 'Dirigente - Fichas') ===== #}
 {% macro badge_subfunc(r) -%}
   {% if r.equipe and '-' in r.equipe %}
     <span class="badge muted" style="margin-left:6pt">{{ r.equipe.split('-', 1)[1].strip() }}</span>
   {% endif %}
 {%- endmacro %}
 
-{# ===== Helper p/ bloco de equipe (coordenadores primeiro) ===== #}
+{# Normaliza qualquer texto de equipe para um título canônico da ordem fixa #}
+{% macro group_key(eq_raw) -%}
+  {% set E = (eq_raw or '')|upper %}
+  {% if 'CASAL COORDENADOR GERAL' in E %}
+    {{ 'Casal Coordenador Geral' }}
+  {% elif 'DIRIGENTE' in E %}
+    {{ 'Equipe Dirigente' }}
+  {% elif 'SALA' in E %}
+    {{ 'Equipe Sala' }}
+  {% elif 'CÍRC' in E or 'CIRC' in E %}
+    {{ 'Equipe Círculos' }}
+  {% elif ('CAFÉ' in E or 'CAFE' in E) and 'MINI' in E %}
+    {{ 'Equipe Café e Minimercado' }}
+  {% elif 'COMPRAS' in E %}
+    {{ 'Equipe Compras' }}
+  {% elif 'ACOLHIDA' in E %}
+    {{ 'Equipe Acolhida' }}
+  {% elif 'ORDEM' in E and 'LIMPEZA' in E %}
+    {{ 'Equipe Ordem e Limpeza' }}
+  {% elif 'LITURGIA' in E or 'VIGIL' in E %}
+    {{ 'Equipe Liturgia e Vigilia' }}
+  {% elif 'SECRETARIA' in E %}
+    {{ 'Equipe Secretaria' }}
+  {% elif 'COZINHA' in E %}
+    {{ 'Equipe Cozinha' }}
+  {% elif 'VISITA' in E %}
+    {{ 'Equipe Visitação' }}
+  {% else %}
+    {{ '' }}
+  {% endif %}
+{%- endmacro %}
+
+{# Bloco de equipe (coordenadores primeiro), ignorando Desistiu/Recusou #}
 {% macro render_bloco(titulo, lista) -%}
   {% if lista|length %}
     <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
     <table>
-      <thead>
-        <tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr>
-      </thead>
+      <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
       <tbody>
-        {# coordenadores primeiro — ignora Desistiu/Recusou #}
+        {# Coordenadores #}
         {% for r in lista
-              if (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
-              and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
+             if (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
+             and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
           <tr>
-            <td><span class="badge">Coordenador</span>
-              {{ (r.nome_ele or '')|upper }} &amp; {{ (r.nome_ela or '')|upper }}
-              {% if r.equipe and '-' in r.equipe %}
-                <span class="badge muted" style="margin-left:6pt">{{ r.equipe.split('-', 1)[1].strip() }}</span>
-              {% endif %}
-            </td>
+            <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
         {% endfor %}
-
-        {# demais — ignora Desistiu/Recusou #}
+        {# Demais #}
         {% for r in lista
-              if not (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
-              and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
+             if not (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim')))
+             and ((r.status or '')|trim|lower not in ['desistiu','recusou']) %}
           <tr>
-            <td>
-              {{ (r.nome_ele or '')|upper }} &amp; {{ (r.nome_ela or '')|upper }}
-              {% if r.equipe and '-' in r.equipe %}
-                <span class="badge muted" style="margin-left:6pt">{{ r.equipe.split('-', 1)[1].strip() }}</span>
-              {% endif %}
-            </td>
+            <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
@@ -65,117 +81,67 @@
   {% endif %}
 {%- endmacro %}
 
+{# ===== Ordem fixa ===== #}
+{% set ORDEM = [
+  'Equipe Dirigente',
+  'Casal Coordenador Geral',
+  'Equipe Sala',
+  'Equipe Círculos',
+  'Equipe Café e Minimercado',
+  'Equipe Compras',
+  'Equipe Acolhida',
+  'Equipe Ordem e Limpeza',
+  'Equipe Liturgia e Vigilia',
+  'Equipe Secretaria',
+  'Equipe Cozinha',
+  'Equipe Visitação'
+] %}
 
-{# ===== Buckets de equipes (ordem fixa) ===== #}
-{% set grupos = {
-  'Equipe Dirigente': [],
-  'Casal Coordenador Geral': [],
-  'Equipe Sala': [],
-  'Equipe Círculos': [],
-  'Equipe Café e Minimercado': [],
-  'Equipe Compras': [],
-  'Equipe Acolhida': [],
-  'Equipe Ordem e Limpeza': [],
-  'Equipe Liturgia e Vigilia': [],
-  'Equipe Secretaria': [],
-  'Equipe Cozinha': [],
-  'Equipe Visitação': []
-} %}
+{# ===== Buckets principais e de pendências usando a MESMA chave canônica ===== #}
+{% set grupos = dict() %}
+{% set pend   = dict() %}
 
-{# normaliza 'equipe' recebida para detectar o bucket correto #}
+{% for key in ORDEM %}
+  {% if grupos.update({key: []}) %}{% endif %}
+  {% if pend.update({key: []}) %}{% endif %}
+{% endfor %}
+
 {% for r in rows %}
-  {% set eq_raw = (r.equipe or '') %}
-  {% set eq = eq_raw|upper %}
-  {% if 'CASAL COORDENADOR GERAL' in eq %}
-    {% set _ = grupos['Casal Coordenador Geral'].append(r) %}
-  {% elif 'DIRIGENTE' in eq %}
-    {% set _ = grupos['Equipe Dirigente'].append(r) %}
-  {% elif 'SALA' in eq %}
-    {% set _ = grupos['Equipe Sala'].append(r) %}
-  {% elif 'CÍRCULOS' in eq or 'CIRCULOS' in eq %}
-    {% set _ = grupos['Equipe Círculos'].append(r) %}
-  {% elif 'CAFÉ E MINIMERCADO' in eq or 'CAFE E MINIMERCADO' in eq %}
-    {% set _ = grupos['Equipe Café e Minimercado'].append(r) %}
-  {% elif 'COMPRAS' in eq %}
-    {% set _ = grupos['Equipe Compras'].append(r) %}
-  {% elif 'ACOLHIDA' in eq %}
-    {% set _ = grupos['Equipe Acolhida'].append(r) %}
-  {% elif 'ORDEM E LIMPEZA' in eq %}
-    {% set _ = grupos['Equipe Ordem e Limpeza'].append(r) %}
-  {% elif 'LITURGIA' in eq %}
-    {% set _ = grupos['Equipe Liturgia e Vigilia'].append(r) %}
-  {% elif 'SECRETARIA' in eq %}
-    {% set _ = grupos['Equipe Secretaria'].append(r) %}
-  {% elif 'COZINHA' in eq %}
-    {% set _ = grupos['Equipe Cozinha'].append(r) %}
-  {% elif 'VISITA' in eq %}
-    {% set _ = grupos['Equipe Visitação'].append(r) %}
+  {% set key = group_key(r.equipe) %}
+  {% if key %}
+    {% set status_norm = (r.status or '')|trim|lower %}
+    {% if status_norm in ['desistiu','recusou'] %}
+      {% set lst = pend.get(key) + [r] %}
+      {% if pend.update({key: lst}) %}{% endif %}
+    {% else %}
+      {% set lst = grupos.get(key) + [r] %}
+      {% if grupos.update({key: lst}) %}{% endif %}
+    {% endif %}
   {% endif %}
 {% endfor %}
 
-{# ===== Parte 1: Equipes montadas (por bloco, ordem fixa) ===== #}
-{{ render_bloco('Equipe Dirigente', grupos['Equipe Dirigente']) }}
-{{ render_bloco('Casal Coordenador Geral', grupos['Casal Coordenador Geral']) }}
-{{ render_bloco('Equipe Sala', grupos['Equipe Sala']) }}
-{{ render_bloco('Equipe Círculos', grupos['Equipe Círculos']) }}
-{{ render_bloco('Equipe Café e Minimercado', grupos['Equipe Café e Minimercado']) }}
-{{ render_bloco('Equipe Compras', grupos['Equipe Compras']) }}
-{{ render_bloco('Equipe Acolhida', grupos['Equipe Acolhida']) }}
-{{ render_bloco('Equipe Ordem e Limpeza', grupos['Equipe Ordem e Limpeza']) }}
-{{ render_bloco('Equipe Liturgia e Vigilia', grupos['Equipe Liturgia e Vigilia']) }}
-{{ render_bloco('Equipe Secretaria', grupos['Equipe Secretaria']) }}
-{{ render_bloco('Equipe Cozinha', grupos['Equipe Cozinha']) }}
-{{ render_bloco('Equipe Visitação', grupos['Equipe Visitação']) }}
-
-{# ===== Parte 2: Apêndice — Desistiu/Recusou por equipe (com motivo) ===== #}
-{% set pend = {} %}
-{% for r in rows %}
-  {% set st = (r.status or '')|trim|lower %}
-  {% if st in ['desistiu','recusou'] %}
-    {% set lst = pend.get(r.equipe, []) + [r] %}
-    {% if pend.update({ r.equipe: lst }) %}{% endif %}
-  {% endif %}
+{# ===== Parte 1: Equipes montadas ===== #}
+{% for titulo in ORDEM %}
+  {{ render_bloco(titulo, grupos.get(titulo)) }}
 {% endfor %}
 
-{% if pend and (pend|length > 0) %}
+{# ===== Parte 2: Apêndice — Desistiu/Recusou (com motivo) ===== #}
+{% set tem_pend = false %}
+{% for titulo in ORDEM %}
+  {% if pend.get(titulo)|length %}{% set tem_pend = true %}{% endif %}
+{% endfor %}
+
+{% if tem_pend %}
   <hr style="margin:16pt 0; border:none; border-top:1px solid #e5e7eb;">
   <h2 style="margin:0 0 8pt;">Desistências e Recusas</h2>
-  <p class="muted" style="margin:0 0 10pt;">Listagem final por equipe. Exibe o status (DESISTIU/RECUSOU) e o motivo informado.</p>
+  <p class="muted" style="margin:0 0 10pt;">Listagem por equipe com status e motivo informado.</p>
 
-  {% set ordem = [
-    'Equipe Dirigente',
-    'Casal Coordenador Geral',
-    'Equipe Sala',
-    'Equipe Círculos',
-    'Equipe Café e Minimercado',
-    'Equipe Compras',
-    'Equipe Acolhida',
-    'Equipe Ordem e Limpeza',
-    'Equipe Liturgia e Vigilia',
-    'Equipe Secretaria',
-    'Equipe Cozinha',
-    'Equipe Visitação'
-  ] %}
-
-  {% for titulo in ordem %}
+  {% for titulo in ORDEM %}
     {% set lista = pend.get(titulo) %}
-    {% if not lista %}
-      {# pode não haver entrada exatamente com o título formatado — tenta casar pela raiz #}
-      {% set candidatos = [] %}
-      {% for k,v in pend.items() %}
-        {% if k and (k|upper).startswith((titulo|upper).split(' - ')[0]) %}
-          {% set candidatos = candidatos + v %}
-        {% endif %}
-      {% endfor %}
-      {% set lista = candidatos %}
-    {% endif %}
-
     {% if lista and (lista|length) %}
       <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
       <table>
-        <thead>
-          <tr><th>Casal</th><th>Status</th><th>Motivo (Observação)</th></tr>
-        </thead>
+        <thead><tr><th>Casal</th><th>Status</th><th>Motivo (Observação)</th></tr></thead>
         <tbody>
           {% for r in lista %}
             {% set st = (r.status or '')|trim|lower %}
