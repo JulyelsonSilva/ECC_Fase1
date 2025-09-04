@@ -17,14 +17,11 @@
   {% endif %}
 {%- endmacro %}
 
-{% macro eh_coord(r) -%}
-  {{ (r.is_coord or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) and true or false }}
-{%- endmacro %}
-
 {% macro status_norm(s) -%}
   {{ (s or '')|trim|lower }}
 {%- endmacro %}
 
+{# Bloco de equipe (coordenadores primeiro), ignorando Desistiu/Recusou #}
 {% macro render_bloco(titulo, lista) -%}
   {% if lista and (lista|length) %}
     <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
@@ -32,15 +29,22 @@
       <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
       <tbody>
         {# Coordenadores primeiro (exclui Desistiu/Recusou) #}
-        {% for r in lista if status_norm(r.status) not in ['desistiu','recusou'] and eh_coord(r) %}
+        {% for r in lista
+             if (status_norm(r.status) not in ['desistiu','recusou'])
+             and (r.is_coord
+                  or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) %}
           <tr>
             <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
         {% endfor %}
+
         {# Demais (exclui Desistiu/Recusou) #}
-        {% for r in lista if status_norm(r.status) not in ['desistiu','recusou'] and not eh_coord(r) %}
+        {% for r in lista
+             if (status_norm(r.status) not in ['desistiu','recusou'])
+             and not (r.is_coord
+                      or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) %}
           <tr>
             <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
             <td>{{ r.telefones or '' }}</td>
@@ -77,7 +81,7 @@
   {% elif 'SALA' in E %}
     {% if st in ['desistiu','recusou'] %}{% set _ = pend.sala.append(r) %}{% else %}{% set _ = up.sala.append(r) %}{% endif %}
   {% elif 'CÍRC' in E or 'CIRC' in E %}
-    {# cobre "EQUIPE DE CIRCULOS", "CÍRCULOS", "CIRCULO", etc. #}
+    {# cobre "EQUIPE DE CIRCULOS", "CÍRCULOS", etc. #}
     {% if st in ['desistiu','recusou'] %}{% set _ = pend.circulos.append(r) %}{% else %}{% set _ = up.circulos.append(r) %}{% endif %}
   {% elif ('CAFÉ' in E or 'CAFE' in E) and 'MINI' in E %}
     {% if st in ['desistiu','recusou'] %}{% set _ = pend.cafe.append(r) %}{% else %}{% set _ = up.cafe.append(r) %}{% endif %}
