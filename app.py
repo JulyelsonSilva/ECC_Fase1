@@ -2844,7 +2844,7 @@ def imprimir_vigilia():
 def imprimir_relatorio_montagem():
     """
     Relatório de montagem das equipes de um ano específico,
-    com apêndice de Desistiu/Recusou (com motivo).
+    com apêndice de Desistiu/Recusou (com motivo) e 'Ano do Encontro' (tabela encontristas).
     """
     ano = request.args.get("ano", type=int)
 
@@ -2852,21 +2852,24 @@ def imprimir_relatorio_montagem():
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
 
-        # Somente colunas existentes em 'encontreiros'
         cur.execute("""
             SELECT 
-                ano,
-                equipe,
-                COALESCE(nome_ele, '')   AS nome_ele,
-                COALESCE(nome_ela, '')   AS nome_ela,
-                COALESCE(telefones, '')  AS telefones,
-                COALESCE(endereco, '')   AS endereco,
-                COALESCE(coordenador, '') AS coordenador,
-                COALESCE(status, '')     AS status,
-                COALESCE(observacao, '') AS observacao
-            FROM encontreiros
-            WHERE (%s IS NULL OR ano = %s)
-            ORDER BY equipe, nome_ele, nome_ela
+                e.ano,
+                e.equipe,
+                COALESCE(e.nome_ele, '')        AS nome_ele,
+                COALESCE(e.nome_ela, '')        AS nome_ela,
+                COALESCE(e.telefones, '')       AS telefones,
+                COALESCE(e.endereco, '')        AS endereco,
+                COALESCE(e.coordenador, '')     AS coordenador,
+                COALESCE(e.status, '')          AS status,
+                COALESCE(e.observacao, '')      AS observacao,
+                COALESCE(i.ano, NULL)           AS ano_encontro
+            FROM encontreiros e
+            LEFT JOIN encontristas i
+              ON UPPER(TRIM(i.nome_ele)) = UPPER(TRIM(e.nome_ele))
+             AND UPPER(TRIM(i.nome_ela)) = UPPER(TRIM(e.nome_ela))
+            WHERE (%s IS NULL OR e.ano = %s)
+            ORDER BY e.equipe, (COALESCE(e.coordenador,'')='Sim') DESC, e.nome_ele, e.nome_ela
         """, (ano, ano))
 
         rows = cur.fetchall() or []
@@ -2886,7 +2889,6 @@ def imprimir_relatorio_montagem():
         except Exception:
             pass
         return f"Erro ao gerar relatório de montagem: {e}", 500
-
 
 
 # =========================
