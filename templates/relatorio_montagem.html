@@ -26,7 +26,14 @@
   {% if lista and (lista|length) %}
     <h3 style="margin:12pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
     <table>
-      <thead><tr><th>Casal</th><th>Telefone(s)</th><th>Endereço</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Casal</th>
+          <th>Ano do Encontro</th>
+          <th>Telefone(s)</th>
+          <th>Endereço</th>
+        </tr>
+      </thead>
       <tbody>
         {# Coordenadores primeiro (exclui Desistiu/Recusou) #}
         {% for r in lista
@@ -35,6 +42,7 @@
                   or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) %}
           <tr>
             <td><span class="badge">Coordenador</span> {{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
+            <td>{{ r.ano_encontro if r.ano_encontro is not none else '—' }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
@@ -47,6 +55,7 @@
                       or ((r.coordenador is defined) and (r.coordenador|string|trim|lower == 'sim'))) %}
           <tr>
             <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
+            <td>{{ r.ano_encontro if r.ano_encontro is not none else '—' }}</td>
             <td>{{ r.telefones or '' }}</td>
             <td>{{ r.endereco or '' }}</td>
           </tr>
@@ -132,12 +141,20 @@
     {% if lista and (lista|length) %}
       <h3 style="margin:10pt 0 6pt; font-size:12.5pt;">{{ titulo }}</h3>
       <table>
-        <thead><tr><th>Casal</th><th>Status</th><th>Motivo (Observação)</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Casal</th>
+            <th>Ano do Encontro</th>
+            <th>Status</th>
+            <th>Motivo (Observação)</th>
+          </tr>
+        </thead>
         <tbody>
           {% for r in lista %}
             {% set st = status_norm(r.status) %}
             <tr>
               <td>{{ fmt_nome(r) }} {{ badge_subfunc(r) }}</td>
+              <td>{{ r.ano_encontro if r.ano_encontro is not none else '—' }}</td>
               <td>
                 {% if st == 'recusou' %}
                   <span class="badge" style="background:#fee2e2; border-color:#fecaca; color:#991b1b;">RECUSOU</span>
