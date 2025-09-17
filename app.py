@@ -2866,8 +2866,8 @@ def imprimir_relatorio_montagem():
                 COALESCE(i.ano, NULL)           AS ano_encontro
             FROM encontreiros e
             LEFT JOIN encontristas i
-              ON UPPER(TRIM(i.nome_ele)) = UPPER(TRIM(e.nome_ele))
-             AND UPPER(TRIM(i.nome_ela)) = UPPER(TRIM(e.nome_ela))
+              ON UPPER(TRIM(i.nome_usual_ele)) = UPPER(TRIM(e.nome_ele))
+             AND UPPER(TRIM(i.nome_usual_ela)) = UPPER(TRIM(e.nome_ela))
             WHERE (%s IS NULL OR e.ano = %s)
             ORDER BY e.equipe, (COALESCE(e.coordenador,'')='Sim') DESC, e.nome_ele, e.nome_ela
         """, (ano, ano))
