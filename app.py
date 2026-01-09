@@ -1907,16 +1907,57 @@ def equipe_montagem():
     )
 
 
-def _casal_ja_no_ano(conn, ano:int, nome_ele:str, nome_ela:str) -> bool:
+def _equipe_eh_dirigente(equipe: str) -> bool:
+    """
+    Retorna True se a equipe for uma das equipes dirigentes.
+    Ex.: "Equipe Dirigente - MONTAGEM", "Equipe Dirigente - FINANÇAS", etc.
+    """
+    e = (equipe or "").strip().upper()
+    return e.startswith("EQUIPE DIRIGENTE") or "EQUIPE DIRIGENTE" in e
+
+
+def _casal_ja_no_ano(conn, ano: int, nome_ele: str, nome_ela: str, equipe_final: str = "") -> bool:
+    """
+    Regra de 'dupla montagem' com exceção para Dirigentes:
+
+    - Se estiver tentando montar em equipe DIRIGENTE:
+        bloqueia somente se o casal já estiver montado em OUTRA equipe dirigente no mesmo ano.
+        (ou seja, permite: dirigente + equipe normal)
+
+    - Se estiver tentando montar em equipe NORMAL:
+        bloqueia somente se o casal já estiver montado em OUTRA equipe normal no mesmo ano.
+        (ou seja, não bloqueia se ele estiver apenas como dirigente)
+    """
+    equipe_final = (equipe_final or "").strip()
+
     cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE ano = %s AND nome_ele = %s AND nome_ela = %s
-               AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
-             LIMIT 1
-        """, (ano, nome_ele, nome_ela))
-        return cur.fetchone() is not None
+        if _equipe_eh_dirigente(equipe_final):
+            # Destino é dirigente -> só bloqueia se já existir alguma montagem dirigente no ano
+            cur.execute("""
+                SELECT 1
+                  FROM encontreiros
+                 WHERE ano = %s
+                   AND nome_ele = %s AND nome_ela = %s
+                   AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
+                   AND UPPER(equipe) LIKE 'EQUIPE DIRIGENTE%%'
+                 LIMIT 1
+            """, (ano, nome_ele, nome_ela))
+            return cur.fetchone() is not None
+
+        else:
+            # Destino é normal -> só bloqueia se já existir alguma montagem normal no ano
+            cur.execute("""
+                SELECT 1
+                  FROM encontreiros
+                 WHERE ano = %s
+                   AND nome_ele = %s AND nome_ela = %s
+                   AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
+                   AND UPPER(equipe) NOT LIKE 'EQUIPE DIRIGENTE%%'
+                 LIMIT 1
+            """, (ano, nome_ele, nome_ela))
+            return cur.fetchone() is not None
+
     finally:
         cur.close()
 
@@ -1950,7 +1991,7 @@ def api_check_casal_equipe():
         """, (nome_ele, nome_ela, equipe_final))
         trabalhou_antes = cur.fetchone() is not None
 
-        ja_no_ano = _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela)
+       ja_no_ano = _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela, equipe_final)
 
         cur.execute("""
             SELECT telefones, endereco
@@ -2021,7 +2062,7 @@ def api_add_membro_equipe():
         if cur.fetchone():
             return jsonify({"ok": False, "msg": "Casal já foi coordenador desta equipe."}), 409
 
-        if _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela):
+       if _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela, equipe_final):
             return jsonify({"ok": False, "msg": "Casal já está montado neste ano."}), 409
 
         cur.execute("""
