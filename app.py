@@ -1991,7 +1991,7 @@ def api_check_casal_equipe():
         """, (nome_ele, nome_ela, equipe_final))
         trabalhou_antes = cur.fetchone() is not None
 
-       ja_no_ano = _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela, equipe_final)
+        ja_no_ano = _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela, equipe_final)
 
         cur.execute("""
             SELECT telefones, endereco
