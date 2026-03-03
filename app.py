@@ -4466,63 +4466,160 @@ def api_team_limits():
 # ----- Inicia o BD -----
 @app.route("/__init_db__")
 def __init_db__():
-    schema_sql = """
-    CREATE TABLE IF NOT EXISTS encontristas (
-      id INT NOT NULL AUTO_INCREMENT,
-      ano INT NOT NULL,
-      nome_usual_ele VARCHAR(120) NOT NULL,
-      nome_usual_ela VARCHAR(120) NOT NULL,
-      telefone_ele VARCHAR(40) NULL,
-      telefone_ela VARCHAR(40) NULL,
-      endereco VARCHAR(255) NULL,
-      PRIMARY KEY (id)
-    );
+    stmts = [
+        """
+        CREATE TABLE IF NOT EXISTS encontristas (
+          id INT NOT NULL AUTO_INCREMENT,
+          ano INT NOT NULL,
+          nome_usual_ele VARCHAR(120) NOT NULL,
+          nome_usual_ela VARCHAR(120) NOT NULL,
+          telefone_ele VARCHAR(40) NULL,
+          telefone_ela VARCHAR(40) NULL,
+          endereco VARCHAR(255) NULL,
+          PRIMARY KEY (id),
+          INDEX idx_encontristas_ano (ano),
+          INDEX idx_encontristas_nome (nome_usual_ele, nome_usual_ela)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS encontreiros (
+          id INT NOT NULL AUTO_INCREMENT,
+          ano INT NOT NULL,
+          equipe VARCHAR(120) NOT NULL,
+          casal VARCHAR(255) NULL,
+          nome_ele VARCHAR(120) NOT NULL,
+          nome_ela VARCHAR(120) NOT NULL,
+          coordenador TINYINT(1) NOT NULL DEFAULT 0,
+          telefones VARCHAR(120) NULL,
+          endereco VARCHAR(255) NULL,
+          observacao TEXT NULL,
+          status VARCHAR(40) NULL,
+          PRIMARY KEY (id),
+          INDEX idx_encontreiros_ano (ano),
+          INDEX idx_encontreiros_equipe (equipe),
+          INDEX idx_encontreiros_nome (nome_ele, nome_ela)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS implantacao (
+          id INT NOT NULL AUTO_INCREMENT,
+          ano INT NOT NULL,
+          equipe VARCHAR(120) NOT NULL,
+          nome_ele VARCHAR(120) NOT NULL,
+          nome_ela VARCHAR(120) NOT NULL,
+          coordenador TINYINT(1) NOT NULL DEFAULT 0,
+          telefones VARCHAR(120) NULL,
+          endereco VARCHAR(255) NULL,
+          observacao TEXT NULL,
+          status VARCHAR(40) NULL,
+          PRIMARY KEY (id),
+          INDEX idx_implantacao_ano (ano),
+          INDEX idx_implantacao_equipe (equipe),
+          INDEX idx_implantacao_nome (nome_ele, nome_ela)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS palestras (
+          id INT NOT NULL AUTO_INCREMENT,
+          ano INT NOT NULL,
+          palestra VARCHAR(255) NOT NULL,
+          nome_ele VARCHAR(120) NOT NULL,
+          nome_ela VARCHAR(120) NOT NULL,
+          observacao TEXT NULL,
+          status VARCHAR(40) NULL,
+          PRIMARY KEY (id),
+          INDEX idx_palestras_ano (ano),
+          INDEX idx_palestras_palestra (palestra)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS circulos (
+          id INT NOT NULL AUTO_INCREMENT,
+          ano INT NOT NULL,
+          nome_circulo VARCHAR(120) NULL,
+          cor_circulo VARCHAR(60) NULL,
+          integrantes_original TEXT NULL,
+          integrantes_atual TEXT NULL,
+          coord_atual_ele VARCHAR(120) NULL,
+          coord_atual_ela VARCHAR(120) NULL,
+          PRIMARY KEY (id),
+          INDEX idx_circulos_ano (ano)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS pendencias_encontreiros (
+          id INT NOT NULL AUTO_INCREMENT,
+          encontreiros_id INT NOT NULL,
+          nome_ele VARCHAR(120) NOT NULL,
+          nome_ela VARCHAR(120) NOT NULL,
+          candidato_id INT NULL,
+          candidato_nome_usual_ele VARCHAR(120) NULL,
+          candidato_nome_usual_ela VARCHAR(120) NULL,
+          score_ele DECIMAL(10,6) NULL,
+          score_ela DECIMAL(10,6) NULL,
+          score_medio DECIMAL(10,6) NULL,
+          PRIMARY KEY (id),
+          INDEX idx_pend_encontreiros_id (encontreiros_id),
+          INDEX idx_pend_candidato_id (candidato_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS geocoding_cache (
+          id INT NOT NULL AUTO_INCREMENT,
+          endereco_hash VARCHAR(64) NOT NULL,
+          query VARCHAR(255) NULL,
+          status VARCHAR(40) NULL,
+          provider VARCHAR(40) NULL,
+          lat DECIMAL(10,7) NULL,
+          lng DECIMAL(10,7) NULL,
+          formatted_address VARCHAR(255) NULL,
+          updated_at DATETIME NULL,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_geocoding_cache_hash (endereco_hash),
+          INDEX idx_geocoding_cache_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS encontristas_geo (
+          id INT NOT NULL AUTO_INCREMENT,
+          encontrista_id INT NOT NULL,
+          endereco_original VARCHAR(255) NULL,
+          endereco_normalizado VARCHAR(255) NULL,
+          endereco_hash VARCHAR(64) NULL,
+          formatted_address VARCHAR(255) NULL,
+          geo_lat DECIMAL(10,7) NULL,
+          geo_lng DECIMAL(10,7) NULL,
+          geocode_status VARCHAR(40) NULL,
+          geocode_source VARCHAR(40) NULL,
+          geocode_updated_at DATETIME NULL,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_encontristas_geo_encontrista (encontrista_id),
+          INDEX idx_encontristas_geo_hash (endereco_hash),
+          CONSTRAINT fk_encontristas_geo_encontrista
+            FOREIGN KEY (encontrista_id) REFERENCES encontristas(id)
+            ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """,
+    ]
 
-    CREATE TABLE IF NOT EXISTS encontreiros (
-      id INT NOT NULL AUTO_INCREMENT,
-      ano INT NOT NULL,
-      equipe VARCHAR(120) NOT NULL,
-      nome_ele VARCHAR(120) NOT NULL,
-      nome_ela VARCHAR(120) NOT NULL,
-      coordenador VARCHAR(10) NULL,
-      telefones VARCHAR(120) NULL,
-      endereco VARCHAR(255) NULL,
-      status VARCHAR(40) NULL,
-      PRIMARY KEY (id)
-    );
-
-    CREATE TABLE IF NOT EXISTS circulos (
-      id INT NOT NULL AUTO_INCREMENT,
-      ano INT NOT NULL,
-      integrantes_original TEXT NULL,
-      integrantes_atual TEXT NULL,
-      PRIMARY KEY (id)
-    );
-
-    CREATE TABLE IF NOT EXISTS implantacao (
-      id INT NOT NULL AUTO_INCREMENT,
-      ano INT NOT NULL,
-      equipe VARCHAR(120) NOT NULL,
-      nome_ele VARCHAR(120) NOT NULL,
-      nome_ela VARCHAR(120) NOT NULL,
-      coordenador VARCHAR(10) NULL,
-      telefones VARCHAR(120) NULL,
-      endereco VARCHAR(255) NULL,
-      status VARCHAR(40) NULL,
-      PRIMARY KEY (id)
-    );
-    """
-
-    conn = db_conn()
-    cur = conn.cursor()
-    for stmt in schema_sql.split(";"):
-        if stmt.strip():
-            cur.execute(stmt)
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return "Tabelas criadas com sucesso!"
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        for s in stmts:
+            cur.execute(s)
+        conn.commit()
+        return "OK: tabelas criadas"
+    except Exception as e:
+        return f"ERRO ao criar tabelas: {type(e).__name__}: {e}", 500
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 # =========================
 # Main
