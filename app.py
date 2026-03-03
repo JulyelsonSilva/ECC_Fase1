@@ -4463,6 +4463,67 @@ def api_team_limits():
     return jsonify({"ok": True, "limits": TEAM_LIMITS})
 
 
+# ----- Inicia o BD -----
+@app.route("/__init_db__")
+def __init_db__():
+    schema_sql = """
+    CREATE TABLE IF NOT EXISTS encontristas (
+      id INT NOT NULL AUTO_INCREMENT,
+      ano INT NOT NULL,
+      nome_usual_ele VARCHAR(120) NOT NULL,
+      nome_usual_ela VARCHAR(120) NOT NULL,
+      telefone_ele VARCHAR(40) NULL,
+      telefone_ela VARCHAR(40) NULL,
+      endereco VARCHAR(255) NULL,
+      PRIMARY KEY (id)
+    );
+
+    CREATE TABLE IF NOT EXISTS encontreiros (
+      id INT NOT NULL AUTO_INCREMENT,
+      ano INT NOT NULL,
+      equipe VARCHAR(120) NOT NULL,
+      nome_ele VARCHAR(120) NOT NULL,
+      nome_ela VARCHAR(120) NOT NULL,
+      coordenador VARCHAR(10) NULL,
+      telefones VARCHAR(120) NULL,
+      endereco VARCHAR(255) NULL,
+      status VARCHAR(40) NULL,
+      PRIMARY KEY (id)
+    );
+
+    CREATE TABLE IF NOT EXISTS circulos (
+      id INT NOT NULL AUTO_INCREMENT,
+      ano INT NOT NULL,
+      integrantes_original TEXT NULL,
+      integrantes_atual TEXT NULL,
+      PRIMARY KEY (id)
+    );
+
+    CREATE TABLE IF NOT EXISTS implantacao (
+      id INT NOT NULL AUTO_INCREMENT,
+      ano INT NOT NULL,
+      equipe VARCHAR(120) NOT NULL,
+      nome_ele VARCHAR(120) NOT NULL,
+      nome_ela VARCHAR(120) NOT NULL,
+      coordenador VARCHAR(10) NULL,
+      telefones VARCHAR(120) NULL,
+      endereco VARCHAR(255) NULL,
+      status VARCHAR(40) NULL,
+      PRIMARY KEY (id)
+    );
+    """
+
+    conn = db_conn()
+    cur = conn.cursor()
+    for stmt in schema_sql.split(";"):
+        if stmt.strip():
+            cur.execute(stmt)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return "Tabelas criadas com sucesso!"
+
 # =========================
 # Main
 # =========================
