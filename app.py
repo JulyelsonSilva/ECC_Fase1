@@ -2062,7 +2062,7 @@ def api_add_membro_equipe():
         if cur.fetchone():
             return jsonify({"ok": False, "msg": "Casal já foi coordenador desta equipe."}), 409
 
-       if _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela, equipe_final):
+        if _casal_ja_no_ano(conn, int(ano), nome_ele, nome_ela, equipe_final):
             return jsonify({"ok": False, "msg": "Casal já está montado neste ano."}), 409
 
         cur.execute("""
