@@ -179,12 +179,13 @@ PALESTRAS_SOLO = {"Penitência", "Testem. Jovem", "Ceia Eucarística"}
 def index():
     return render_template('index.html')
 
-# =========================
-# ENCONTRISTAS (inclusão + listagem + edição)
-# =========================
+
 @app.route('/fichas', methods=['GET', 'POST'])
 def fichas():
     form = {
+        "ano": "",
+        "num_ecc": "",
+        "data_casamento": "",
         "nome_completo_ele": "",
         "nome_completo_ela": "",
         "nome_usual_ele": "",
@@ -192,9 +193,6 @@ def fichas():
         "telefone_ele": "",
         "telefone_ela": "",
         "endereco": "",
-        "ecc_num": "",
-        "ano": "",
-        "anos_casados": "",
         "cor_circulo": "",
         "casal_visitacao": "",
         "ficha_num": "",
@@ -209,75 +207,73 @@ def fichas():
         for k in form.keys():
             form[k] = (request.form.get(k) or "").strip()
 
-        nome_usual_ele = form["nome_usual_ele"]
-        nome_usual_ela = form["nome_usual_ela"]
-        ano_raw = form["ano"]
-
-        if not nome_usual_ele or not nome_usual_ela or not ano_raw:
-            error = "Preencha pelo menos Nome usual (Ele), Nome usual (Ela) e Ano do encontro."
+        if not form["ano"]:
+            error = "Informe o ano do encontro."
         else:
             try:
-                ano = int(ano_raw)
+                ano = int(form["ano"])
             except ValueError:
                 ano = None
-                error = "Ano do encontro inválido."
+                error = "Ano inválido."
 
-            if not error:
-                conn = db_conn()
-                cur = conn.cursor()
-                try:
-                    cur.execute("""
-                        INSERT INTO encontristas (
-                            nome_completo_ele,
-                            nome_completo_ela,
-                            nome_usual_ele,
-                            nome_usual_ela,
-                            telefone_ele,
-                            telefone_ela,
-                            endereco,
-                            ecc_num,
-                            ano,
-                            anos_casados,
-                            cor_circulo,
-                            casal_visitacao,
-                            ficha_num,
-                            aceitou,
-                            observacao,
-                            observacao_extra
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (
-                        form["nome_completo_ele"],
-                        form["nome_completo_ela"],
-                        form["nome_usual_ele"],
-                        form["nome_usual_ela"],
-                        form["telefone_ele"],
-                        form["telefone_ela"],
-                        form["endereco"],
-                        form["ecc_num"],
+        data_casamento = form["data_casamento"] or None
+
+        if not error:
+            conn = db_conn()
+            cur = conn.cursor()
+            try:
+                cur.execute("""
+                    INSERT INTO encontristas (
                         ano,
-                        form["anos_casados"] or None,
-                        form["cor_circulo"],
-                        form["casal_visitacao"],
-                        form["ficha_num"],
-                        form["aceitou"],
-                        form["observacao"],
-                        form["observacao_extra"],
-                    ))
-                    conn.commit()
-                finally:
-                    try:
-                        cur.close()
-                        conn.close()
-                    except Exception:
-                        pass
+                        num_ecc,
+                        data_casamento,
+                        nome_completo_ele,
+                        nome_completo_ela,
+                        nome_usual_ele,
+                        nome_usual_ela,
+                        telefone_ele,
+                        telefone_ela,
+                        endereco,
+                        cor_circulo,
+                        casal_visitacao,
+                        ficha_num,
+                        aceitou,
+                        observacao,
+                        observacao_extra
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    ano,
+                    form["num_ecc"],
+                    data_casamento,
+                    form["nome_completo_ele"],
+                    form["nome_completo_ela"],
+                    form["nome_usual_ele"],
+                    form["nome_usual_ela"],
+                    form["telefone_ele"],
+                    form["telefone_ela"],
+                    form["endereco"],
+                    form["cor_circulo"],
+                    form["casal_visitacao"],
+                    form["ficha_num"],
+                    form["aceitou"],
+                    form["observacao"],
+                    form["observacao_extra"],
+                ))
+                conn.commit()
+            finally:
+                try:
+                    cur.close()
+                    conn.close()
+                except Exception:
+                    pass
 
-                return redirect(url_for('fichas', saved=1))
+            return redirect(url_for('fichas', saved=1))
 
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
-            SELECT id, ano, nome_usual_ele, nome_usual_ela
+            SELECT id, ano, num_ecc, nome_usual_ele, nome_usual_ela
             FROM encontristas
             ORDER BY id DESC
             LIMIT 15
@@ -300,6 +296,10 @@ def fichas():
         ultimos=ultimos
     )
 
+
+# =========================
+# ENCONTRISTAS (listagem + edição)
+# =========================
 @app.route('/encontristas')
 def encontristas():
     conn = db_conn()
