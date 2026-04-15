@@ -1505,19 +1505,19 @@ def equipe_montagem():
             conn = db_conn()
             cur = conn.cursor(dictionary=True)
             try:
-               cur.execute("""
-                   SELECT e.nome_usual_ele, e.nome_usual_ela, e.telefone_ele, e.telefone_ela, e.endereco
-                       FROM encontristas e
-                   WHERE e.ano = %s
+                cur.execute("""
+                    SELECT e.nome_usual_ele, e.nome_usual_ela, e.telefone_ele, e.telefone_ela, e.endereco
+                      FROM encontristas e
+                     WHERE e.ano = %s
                        AND NOT EXISTS (
                            SELECT 1
-                               FROM encontreiros w
-                           WHERE w.ano = %s
-                               AND LOWER(TRIM(w.nome_ele)) = LOWER(TRIM(e.nome_usual_ele))
-                               AND LOWER(TRIM(w.nome_ela)) = LOWER(TRIM(e.nome_usual_ela))
-                           )
-                   ORDER BY e.nome_usual_ele, e.nome_usual_ela
-            """, (ano - 1, ano))
+                             FROM encontreiros w
+                            WHERE w.ano = %s
+                              AND LOWER(TRIM(w.nome_ele)) = LOWER(TRIM(e.nome_usual_ele))
+                              AND LOWER(TRIM(w.nome_ela)) = LOWER(TRIM(e.nome_usual_ela))
+                       )
+                     ORDER BY e.nome_usual_ele, e.nome_usual_ela
+                """, (ano - 1, ano))
                 for r in cur.fetchall():
                     tel_ele = (r.get('telefone_ele') or '').strip()
                     tel_ela = (r.get('telefone_ela') or '').strip()
