@@ -20,7 +20,6 @@
       --err-bg:#fef2f2;
       --err-bd:#fecaca;
       --err-tx:#991b1b;
-      --warn:#f59e0b;
       --shadow:0 10px 30px rgba(15,23,42,.06);
       --radius:18px;
     }
@@ -141,7 +140,6 @@
     .card-head h2{
       margin:0;
       font-size:20px;
-      letter-spacing:-0.01em;
     }
 
     .card-head p{
@@ -169,30 +167,21 @@
       gap:14px;
     }
 
-    .field{
-      grid-column: span 12;
-    }
-
+    .field{ grid-column: span 12; }
     .col-6{ grid-column: span 6; }
     .col-4{ grid-column: span 4; }
     .col-3{ grid-column: span 3; }
-    .col-8{ grid-column: span 8; }
 
     label{
       display:block;
       margin:0 0 6px;
       font-size:13px;
       font-weight:700;
-      color:var(--ink);
     }
 
-    .req{
-      color:#dc2626;
-    }
+    .req{ color:#dc2626; }
 
-    input,
-    textarea,
-    select{
+    input, textarea, select{
       width:100%;
       border:1px solid #cbd5e1;
       background:#fff;
@@ -201,12 +190,9 @@
       padding:11px 12px;
       font:inherit;
       outline:none;
-      transition:border-color .15s ease, box-shadow .15s ease;
     }
 
-    input:focus,
-    textarea:focus,
-    select:focus{
+    input:focus, textarea:focus, select:focus{
       border-color:var(--brand);
       box-shadow:0 0 0 4px rgba(37,99,235,.10);
     }
@@ -214,12 +200,6 @@
     textarea{
       resize:vertical;
       min-height:110px;
-    }
-
-    .hint{
-      margin-top:6px;
-      font-size:12px;
-      color:var(--muted);
     }
 
     .divider{
@@ -265,49 +245,14 @@
       padding:8px 0;
     }
 
-    .stats{
-      display:grid;
-      grid-template-columns:repeat(2, 1fr);
-      gap:10px;
-      margin-bottom:14px;
-    }
-
-    .stat{
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px;
-      background:#f8fafc;
-    }
-
-    .stat .k{
-      font-size:12px;
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-
-    .stat .v{
-      margin-top:4px;
-      font-size:20px;
-      font-weight:800;
-    }
-
     @media (max-width: 1040px){
-      .layout{
-        grid-template-columns:1fr;
-      }
+      .layout{ grid-template-columns:1fr; }
     }
 
     @media (max-width: 820px){
-      .col-6, .col-4, .col-3, .col-8{
-        grid-column: span 12;
-      }
-      .page{
-        padding:18px 14px 40px;
-      }
-      .title-wrap h1{
-        font-size:26px;
-      }
+      .col-6, .col-4, .col-3{ grid-column: span 12; }
+      .page{ padding:18px 14px 40px; }
+      .title-wrap h1{ font-size:26px; }
     }
   </style>
 </head>
@@ -316,10 +261,7 @@
     <div class="topbar">
       <div class="title-wrap">
         <h1>Fichas</h1>
-        <p>
-          Cadastro manual de encontristas. Esta tela usa apenas os campos já existentes na tabela
-          <strong>encontristas</strong>, mantendo compatibilidade com o restante do sistema.
-        </p>
+        <p>Cadastro manual de encontristas com base na estrutura atual da tabela.</p>
       </div>
 
       <div class="top-actions">
@@ -340,12 +282,31 @@
       <section class="card">
         <div class="card-head">
           <h2>Nova ficha de encontrista</h2>
-          <p>Preencha os dados do casal com atenção. Os campos marcados com <span class="req">*</span> são obrigatórios.</p>
+          <p>Preencha os dados do casal conforme disponíveis na ficha.</p>
         </div>
 
         <div class="card-body">
           <form method="post" autocomplete="off">
-            <div class="section-title">Identificação do casal</div>
+            <div class="section-title">Dados do encontro</div>
+            <div class="form-grid">
+              <div class="field col-3">
+                <label for="ano">Ano <span class="req">*</span></label>
+                <input id="ano" name="ano" type="number" value="{{ form.ano }}" required>
+              </div>
+
+              <div class="field col-3">
+                <label for="num_ecc">Nº ECC</label>
+                <input id="num_ecc" name="num_ecc" value="{{ form.num_ecc }}">
+              </div>
+
+              <div class="field col-3">
+                <label for="data_casamento">Data de casamento</label>
+                <input id="data_casamento" name="data_casamento" type="date" value="{{ form.data_casamento }}">
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Identificação</div>
 
             <div class="form-grid">
               <div class="field col-6">
@@ -359,38 +320,18 @@
               </div>
 
               <div class="field col-6">
-                <label for="nome_usual_ele">Nome usual (Ele) <span class="req">*</span></label>
-                <input id="nome_usual_ele" name="nome_usual_ele" value="{{ form.nome_usual_ele }}" required>
+                <label for="nome_usual_ele">Nome usual (Ele)</label>
+                <input id="nome_usual_ele" name="nome_usual_ele" value="{{ form.nome_usual_ele }}">
               </div>
 
               <div class="field col-6">
-                <label for="nome_usual_ela">Nome usual (Ela) <span class="req">*</span></label>
-                <input id="nome_usual_ela" name="nome_usual_ela" value="{{ form.nome_usual_ela }}" required>
-              </div>
-
-              <div class="field col-3">
-                <label for="ano">Ano do encontro <span class="req">*</span></label>
-                <input id="ano" name="ano" type="number" inputmode="numeric" min="1980" max="2100" value="{{ form.ano }}" required>
-              </div>
-
-              <div class="field col-3">
-                <label for="ecc_num">ECC nº</label>
-                <input id="ecc_num" name="ecc_num" value="{{ form.ecc_num }}">
-              </div>
-
-              <div class="field col-3">
-                <label for="ficha_num">Ficha nº</label>
-                <input id="ficha_num" name="ficha_num" value="{{ form.ficha_num }}">
-              </div>
-
-              <div class="field col-3">
-                <label for="anos_casados">Anos de casados</label>
-                <input id="anos_casados" name="anos_casados" value="{{ form.anos_casados }}">
+                <label for="nome_usual_ela">Nome usual (Ela)</label>
+                <input id="nome_usual_ela" name="nome_usual_ela" value="{{ form.nome_usual_ela }}">
               </div>
             </div>
 
             <div class="divider"></div>
-            <div class="section-title">Contato e localização</div>
+            <div class="section-title">Contato</div>
 
             <div class="form-grid">
               <div class="field col-6">
@@ -403,15 +344,14 @@
                 <input id="telefone_ela" name="telefone_ela" value="{{ form.telefone_ela }}">
               </div>
 
-              <div class="field col-12">
+              <div class="field">
                 <label for="endereco">Endereço</label>
                 <input id="endereco" name="endereco" value="{{ form.endereco }}">
-                <div class="hint">Use o endereço mais completo possível para facilitar consultas e georreferenciamento futuro.</div>
               </div>
             </div>
 
             <div class="divider"></div>
-            <div class="section-title">Informações do encontro</div>
+            <div class="section-title">Informações complementares</div>
 
             <div class="form-grid">
               <div class="field col-4">
@@ -425,6 +365,11 @@
               </div>
 
               <div class="field col-4">
+                <label for="ficha_num">Ficha nº</label>
+                <input id="ficha_num" name="ficha_num" value="{{ form.ficha_num }}">
+              </div>
+
+              <div class="field col-4">
                 <label for="aceitou">Aceitou</label>
                 <select id="aceitou" name="aceitou">
                   <option value="" {% if not form.aceitou %}selected{% endif %}>Selecione</option>
@@ -433,12 +378,12 @@
                 </select>
               </div>
 
-              <div class="field col-12">
+              <div class="field">
                 <label for="observacao_extra">Observação extra</label>
                 <input id="observacao_extra" name="observacao_extra" value="{{ form.observacao_extra }}">
               </div>
 
-              <div class="field col-12">
+              <div class="field">
                 <label for="observacao">Observação</label>
                 <textarea id="observacao" name="observacao">{{ form.observacao }}</textarea>
               </div>
@@ -454,30 +399,17 @@
 
       <aside class="card">
         <div class="card-head">
-          <h2>Painel rápido</h2>
-          <p>Resumo e últimos cadastros lançados manualmente.</p>
+          <h2>Últimos cadastrados</h2>
+          <p>Últimos registros inseridos na tabela de encontristas.</p>
         </div>
 
         <div class="card-body">
-          <div class="stats">
-            <div class="stat">
-              <div class="k">Últimos exibidos</div>
-              <div class="v">{{ ultimos|length }}</div>
-            </div>
-            <div class="stat">
-              <div class="k">Módulo</div>
-              <div class="v" style="font-size:16px;">Cadastro manual</div>
-            </div>
-          </div>
-
-          <div class="section-title">Últimos cadastrados</div>
-
           <div class="mini-list">
             {% for r in ultimos %}
               <div class="mini-item">
                 <div class="name">{{ r.nome_usual_ele }} e {{ r.nome_usual_ela }}</div>
                 <div class="meta">
-                  ID {{ r.id }} • Ano {{ r.ano }}
+                  ID {{ r.id }} • Ano {{ r.ano }}{% if r.num_ecc %} • ECC {{ r.num_ecc }}{% endif %}
                 </div>
               </div>
             {% else %}
