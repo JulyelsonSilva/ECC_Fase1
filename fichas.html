@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Fichas • ECC Divino</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --brand:#2563eb;
+      --brand-600:#1d4ed8;
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+      --ok-bg:#ecfdf5;
+      --ok-bd:#a7f3d0;
+      --ok-tx:#065f46;
+      --err-bg:#fef2f2;
+      --err-bd:#fecaca;
+      --err-tx:#991b1b;
+      --warn:#f59e0b;
+      --shadow:0 10px 30px rgba(15,23,42,.06);
+      --radius:18px;
+    }
+
+    * { box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+    }
+
+    .page{
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 24px 18px 48px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+      margin-bottom:20px;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:30px;
+      line-height:1.1;
+      letter-spacing:-0.02em;
+    }
+
+    .title-wrap p{
+      margin:8px 0 0;
+      color:var(--muted);
+      max-width:840px;
+    }
+
+    .top-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      height:42px;
+      padding:0 14px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      text-decoration:none;
+      font-weight:600;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+
+    .btn:hover{
+      transform:translateY(-1px);
+      box-shadow:var(--shadow);
+    }
+
+    .btn-primary{
+      background:var(--brand);
+      color:#fff;
+      border-color:var(--brand);
+    }
+
+    .btn-primary:hover{
+      background:var(--brand-600);
+      border-color:var(--brand-600);
+    }
+
+    .flash{
+      border:1px solid;
+      border-radius:14px;
+      padding:12px 14px;
+      margin-bottom:16px;
+      font-weight:600;
+    }
+
+    .flash.ok{
+      background:var(--ok-bg);
+      border-color:var(--ok-bd);
+      color:var(--ok-tx);
+    }
+
+    .flash.err{
+      background:var(--err-bg);
+      border-color:var(--err-bd);
+      color:var(--err-tx);
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(320px, .9fr);
+      gap:18px;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+
+    .card-head{
+      padding:18px 20px 0;
+    }
+
+    .card-head h2{
+      margin:0;
+      font-size:20px;
+      letter-spacing:-0.01em;
+    }
+
+    .card-head p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .card-body{
+      padding:18px 20px 20px;
+    }
+
+    .section-title{
+      margin:0 0 10px;
+      font-size:14px;
+      font-weight:800;
+      color:var(--brand);
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:repeat(12, minmax(0,1fr));
+      gap:14px;
+    }
+
+    .field{
+      grid-column: span 12;
+    }
+
+    .col-6{ grid-column: span 6; }
+    .col-4{ grid-column: span 4; }
+    .col-3{ grid-column: span 3; }
+    .col-8{ grid-column: span 8; }
+
+    label{
+      display:block;
+      margin:0 0 6px;
+      font-size:13px;
+      font-weight:700;
+      color:var(--ink);
+    }
+
+    .req{
+      color:#dc2626;
+    }
+
+    input,
+    textarea,
+    select{
+      width:100%;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      color:var(--ink);
+      border-radius:12px;
+      padding:11px 12px;
+      font:inherit;
+      outline:none;
+      transition:border-color .15s ease, box-shadow .15s ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus{
+      border-color:var(--brand);
+      box-shadow:0 0 0 4px rgba(37,99,235,.10);
+    }
+
+    textarea{
+      resize:vertical;
+      min-height:110px;
+    }
+
+    .hint{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .divider{
+      height:1px;
+      background:var(--line);
+      margin:18px 0;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:18px;
+    }
+
+    .mini-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .mini-item{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px 12px;
+      background:#fff;
+    }
+
+    .mini-item .name{
+      font-weight:700;
+      margin-bottom:4px;
+    }
+
+    .mini-item .meta{
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .empty{
+      color:var(--muted);
+      font-size:14px;
+      padding:8px 0;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .stat{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+      background:#f8fafc;
+    }
+
+    .stat .k{
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.05em;
+    }
+
+    .stat .v{
+      margin-top:4px;
+      font-size:20px;
+      font-weight:800;
+    }
+
+    @media (max-width: 1040px){
+      .layout{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 820px){
+      .col-6, .col-4, .col-3, .col-8{
+        grid-column: span 12;
+      }
+      .page{
+        padding:18px 14px 40px;
+      }
+      .title-wrap h1{
+        font-size:26px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>Fichas</h1>
+        <p>
+          Cadastro manual de encontristas. Esta tela usa apenas os campos já existentes na tabela
+          <strong>encontristas</strong>, mantendo compatibilidade com o restante do sistema.
+        </p>
+      </div>
+
+      <div class="top-actions">
+        <a class="btn" href="{{ url_for('index') }}">🏠 Início</a>
+        <a class="btn" href="{{ url_for('encontristas') }}">👥 Encontristas</a>
+      </div>
+    </div>
+
+    {% if saved %}
+      <div class="flash ok">Ficha cadastrada com sucesso.</div>
+    {% endif %}
+
+    {% if error %}
+      <div class="flash err">{{ error }}</div>
+    {% endif %}
+
+    <div class="layout">
+      <section class="card">
+        <div class="card-head">
+          <h2>Nova ficha de encontrista</h2>
+          <p>Preencha os dados do casal com atenção. Os campos marcados com <span class="req">*</span> são obrigatórios.</p>
+        </div>
+
+        <div class="card-body">
+          <form method="post" autocomplete="off">
+            <div class="section-title">Identificação do casal</div>
+
+            <div class="form-grid">
+              <div class="field col-6">
+                <label for="nome_completo_ele">Nome completo (Ele)</label>
+                <input id="nome_completo_ele" name="nome_completo_ele" value="{{ form.nome_completo_ele }}">
+              </div>
+
+              <div class="field col-6">
+                <label for="nome_completo_ela">Nome completo (Ela)</label>
+                <input id="nome_completo_ela" name="nome_completo_ela" value="{{ form.nome_completo_ela }}">
+              </div>
+
+              <div class="field col-6">
+                <label for="nome_usual_ele">Nome usual (Ele) <span class="req">*</span></label>
+                <input id="nome_usual_ele" name="nome_usual_ele" value="{{ form.nome_usual_ele }}" required>
+              </div>
+
+              <div class="field col-6">
+                <label for="nome_usual_ela">Nome usual (Ela) <span class="req">*</span></label>
+                <input id="nome_usual_ela" name="nome_usual_ela" value="{{ form.nome_usual_ela }}" required>
+              </div>
+
+              <div class="field col-3">
+                <label for="ano">Ano do encontro <span class="req">*</span></label>
+                <input id="ano" name="ano" type="number" inputmode="numeric" min="1980" max="2100" value="{{ form.ano }}" required>
+              </div>
+
+              <div class="field col-3">
+                <label for="ecc_num">ECC nº</label>
+                <input id="ecc_num" name="ecc_num" value="{{ form.ecc_num }}">
+              </div>
+
+              <div class="field col-3">
+                <label for="ficha_num">Ficha nº</label>
+                <input id="ficha_num" name="ficha_num" value="{{ form.ficha_num }}">
+              </div>
+
+              <div class="field col-3">
+                <label for="anos_casados">Anos de casados</label>
+                <input id="anos_casados" name="anos_casados" value="{{ form.anos_casados }}">
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Contato e localização</div>
+
+            <div class="form-grid">
+              <div class="field col-6">
+                <label for="telefone_ele">Telefone (Ele)</label>
+                <input id="telefone_ele" name="telefone_ele" value="{{ form.telefone_ele }}">
+              </div>
+
+              <div class="field col-6">
+                <label for="telefone_ela">Telefone (Ela)</label>
+                <input id="telefone_ela" name="telefone_ela" value="{{ form.telefone_ela }}">
+              </div>
+
+              <div class="field col-12">
+                <label for="endereco">Endereço</label>
+                <input id="endereco" name="endereco" value="{{ form.endereco }}">
+                <div class="hint">Use o endereço mais completo possível para facilitar consultas e georreferenciamento futuro.</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Informações do encontro</div>
+
+            <div class="form-grid">
+              <div class="field col-4">
+                <label for="cor_circulo">Cor do círculo</label>
+                <input id="cor_circulo" name="cor_circulo" value="{{ form.cor_circulo }}">
+              </div>
+
+              <div class="field col-4">
+                <label for="casal_visitacao">Casal de visitação</label>
+                <input id="casal_visitacao" name="casal_visitacao" value="{{ form.casal_visitacao }}">
+              </div>
+
+              <div class="field col-4">
+                <label for="aceitou">Aceitou</label>
+                <select id="aceitou" name="aceitou">
+                  <option value="" {% if not form.aceitou %}selected{% endif %}>Selecione</option>
+                  <option value="Sim" {% if form.aceitou == 'Sim' %}selected{% endif %}>Sim</option>
+                  <option value="Não" {% if form.aceitou == 'Não' %}selected{% endif %}>Não</option>
+                </select>
+              </div>
+
+              <div class="field col-12">
+                <label for="observacao_extra">Observação extra</label>
+                <input id="observacao_extra" name="observacao_extra" value="{{ form.observacao_extra }}">
+              </div>
+
+              <div class="field col-12">
+                <label for="observacao">Observação</label>
+                <textarea id="observacao" name="observacao">{{ form.observacao }}</textarea>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">💾 Salvar ficha</button>
+              <a class="btn" href="{{ url_for('fichas') }}">↺ Limpar formulário</a>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-head">
+          <h2>Painel rápido</h2>
+          <p>Resumo e últimos cadastros lançados manualmente.</p>
+        </div>
+
+        <div class="card-body">
+          <div class="stats">
+            <div class="stat">
+              <div class="k">Últimos exibidos</div>
+              <div class="v">{{ ultimos|length }}</div>
+            </div>
+            <div class="stat">
+              <div class="k">Módulo</div>
+              <div class="v" style="font-size:16px;">Cadastro manual</div>
+            </div>
+          </div>
+
+          <div class="section-title">Últimos cadastrados</div>
+
+          <div class="mini-list">
+            {% for r in ultimos %}
+              <div class="mini-item">
+                <div class="name">{{ r.nome_usual_ele }} e {{ r.nome_usual_ela }}</div>
+                <div class="meta">
+                  ID {{ r.id }} • Ano {{ r.ano }}
+                </div>
+              </div>
+            {% else %}
+              <div class="empty">Nenhum encontrista cadastrado ainda.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>
