@@ -356,9 +356,9 @@ def editar_encontrista(encontrista_id):
         telefone_ele       = request.form.get('telefone_ele', '').strip()
         telefone_ela       = request.form.get('telefone_ela', '').strip()
         endereco           = request.form.get('endereco', '').strip()
-        ecc_num            = request.form.get('ecc_num', '').strip()
+        num_ecc            = request.form.get('num_ecc', '').strip()
         ano_raw            = request.form.get('ano', '').strip()
-        anos_casados       = request.form.get('anos_casados', '').strip()
+        data_casamento     = request.form.get('data_casamento', '').strip() or None
         cor_circulo        = request.form.get('cor_circulo', '').strip()
         casal_visitacao    = request.form.get('casal_visitacao', '').strip()
         ficha_num          = request.form.get('ficha_num', '').strip()
@@ -380,9 +380,9 @@ def editar_encontrista(encontrista_id):
                 telefone_ele = %s,
                 telefone_ela = %s,
                 endereco = %s,
-                ecc_num = %s,
+                num_ecc = %s,
                 ano = %s,
-                anos_casados = %s,
+                data_casamento = %s,
                 cor_circulo = %s,
                 casal_visitacao = %s,
                 ficha_num = %s,
@@ -393,7 +393,7 @@ def editar_encontrista(encontrista_id):
         """
         cursor.execute(sql, (
             nome_completo_ele, nome_completo_ela, nome_usual_ele, nome_usual_ela,
-            telefone_ele, telefone_ela, endereco, ecc_num, ano, anos_casados,
+            telefone_ele, telefone_ela, endereco, num_ecc, ano, data_casamento,
             cor_circulo, casal_visitacao, ficha_num, aceitou, observacao,
             observacao_extra, encontrista_id
         ))
@@ -4461,11 +4461,21 @@ def __init_db__():
         CREATE TABLE IF NOT EXISTS encontristas (
           id INT NOT NULL AUTO_INCREMENT,
           ano INT NOT NULL,
-          nome_usual_ele VARCHAR(120) NOT NULL,
-          nome_usual_ela VARCHAR(120) NOT NULL,
+          num_ecc VARCHAR(100) NULL,
+          data_casamento DATE NULL,
+          nome_completo_ele VARCHAR(250) NULL,
+          nome_completo_ela VARCHAR(250) NULL,
+          nome_usual_ele VARCHAR(120) NULL,
+          nome_usual_ela VARCHAR(120) NULL,
           telefone_ele VARCHAR(40) NULL,
           telefone_ela VARCHAR(40) NULL,
           endereco VARCHAR(255) NULL,
+          cor_circulo VARCHAR(100) NULL,
+          casal_visitacao VARCHAR(255) NULL,
+          ficha_num VARCHAR(100) NULL,
+          aceitou VARCHAR(20) NULL,
+          observacao VARCHAR(255) NULL,
+          observacao_extra VARCHAR(255) NULL,
           PRIMARY KEY (id),
           INDEX idx_encontristas_ano (ano),
           INDEX idx_encontristas_nome (nome_usual_ele, nome_usual_ela)
