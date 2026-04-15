@@ -180,8 +180,126 @@ def index():
     return render_template('index.html')
 
 # =========================
-# ENCONTRISTAS (listagem + edição)
+# ENCONTRISTAS (inclusão + listagem + edição)
 # =========================
+@app.route('/fichas', methods=['GET', 'POST'])
+def fichas():
+    form = {
+        "nome_completo_ele": "",
+        "nome_completo_ela": "",
+        "nome_usual_ele": "",
+        "nome_usual_ela": "",
+        "telefone_ele": "",
+        "telefone_ela": "",
+        "endereco": "",
+        "ecc_num": "",
+        "ano": "",
+        "anos_casados": "",
+        "cor_circulo": "",
+        "casal_visitacao": "",
+        "ficha_num": "",
+        "aceitou": "",
+        "observacao": "",
+        "observacao_extra": "",
+    }
+
+    error = None
+
+    if request.method == 'POST':
+        for k in form.keys():
+            form[k] = (request.form.get(k) or "").strip()
+
+        nome_usual_ele = form["nome_usual_ele"]
+        nome_usual_ela = form["nome_usual_ela"]
+        ano_raw = form["ano"]
+
+        if not nome_usual_ele or not nome_usual_ela or not ano_raw:
+            error = "Preencha pelo menos Nome usual (Ele), Nome usual (Ela) e Ano do encontro."
+        else:
+            try:
+                ano = int(ano_raw)
+            except ValueError:
+                ano = None
+                error = "Ano do encontro inválido."
+
+            if not error:
+                conn = db_conn()
+                cur = conn.cursor()
+                try:
+                    cur.execute("""
+                        INSERT INTO encontristas (
+                            nome_completo_ele,
+                            nome_completo_ela,
+                            nome_usual_ele,
+                            nome_usual_ela,
+                            telefone_ele,
+                            telefone_ela,
+                            endereco,
+                            ecc_num,
+                            ano,
+                            anos_casados,
+                            cor_circulo,
+                            casal_visitacao,
+                            ficha_num,
+                            aceitou,
+                            observacao,
+                            observacao_extra
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        form["nome_completo_ele"],
+                        form["nome_completo_ela"],
+                        form["nome_usual_ele"],
+                        form["nome_usual_ela"],
+                        form["telefone_ele"],
+                        form["telefone_ela"],
+                        form["endereco"],
+                        form["ecc_num"],
+                        ano,
+                        form["anos_casados"] or None,
+                        form["cor_circulo"],
+                        form["casal_visitacao"],
+                        form["ficha_num"],
+                        form["aceitou"],
+                        form["observacao"],
+                        form["observacao_extra"],
+                    ))
+                    conn.commit()
+                finally:
+                    try:
+                        cur.close()
+                        conn.close()
+                    except Exception:
+                        pass
+
+                return redirect(url_for('fichas', saved=1))
+
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT id, ano, nome_usual_ele, nome_usual_ela
+            FROM encontristas
+            ORDER BY id DESC
+            LIMIT 15
+        """)
+        ultimos = cur.fetchall() or []
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    saved = request.args.get('saved')
+
+    return render_template(
+        'fichas.html',
+        form=form,
+        error=error,
+        saved=saved,
+        ultimos=ultimos
+    )
+
 @app.route('/encontristas')
 def encontristas():
     conn = db_conn()
