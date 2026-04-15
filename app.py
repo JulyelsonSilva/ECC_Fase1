@@ -95,6 +95,18 @@ def _encontrista_name_by_id(conn, _id):
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 
+
+def _team_label(value: str) -> str:
+    """Normaliza chave/filtro curto para o rótulo salvo no banco."""
+    v = (value or '').strip()
+    if not v:
+        return v
+    vl = v.lower()
+    for key, info in TEAM_MAP.items():
+        if vl == key.lower() or vl == (info.get('filtro') or '').lower() or vl == (info.get('rotulo') or '').lower():
+            return info['rotulo']
+    return v
+
 # --- KPI: contagem de integrantes por equipe (exclui Coordenador; exclui Recusou/Desistiu) ---
 @app.route('/api/team-kpis')
 def api_team_kpis():
@@ -108,7 +120,7 @@ def api_team_kpis():
         rotulo_to_filtro[v["rotulo"]] = v["filtro"]
 
     data = {}
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
@@ -378,16 +390,17 @@ def nova_montagem():
             # Coordenadores de Equipe existentes (status ABERTO)
             for key, info in TEAM_MAP.items():
                 rotulo = info["rotulo"]
+                filtro = info["filtro"]
                 cur.execute("""
                     SELECT nome_ele, nome_ela, telefones, endereco
                       FROM encontreiros
                      WHERE ano = %s
-                       AND equipe = %s
+                       AND equipe IN (%s, %s)
                        AND UPPER(coordenador) = 'SIM'
                        AND UPPER(status) = 'ABERTO'
                      ORDER BY id DESC
                      LIMIT 1
-                """, (ano_preselecionado, rotulo))
+                """, (ano_preselecionado, rotulo, filtro))
                 r_team = cur.fetchone()
                 if r_team:
                     initial_data["coord_teams"][key] = {
@@ -472,7 +485,7 @@ def api_buscar_casal():
 def api_adicionar_dirigente():
     data = request.get_json(silent=True) or {}
     ano = (str(data.get('ano') or '')).strip()
-    equipe = (data.get('equipe') or '').strip()
+    equipe = _team_label((data.get('equipe') or '').strip())
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
     telefones = (data.get('telefones') or '').strip()
@@ -612,7 +625,7 @@ def api_equipe_counts():
     # Vamos carregar todas as linhas do ano, ativas,
     # e agrupar no Python para mapear corretamente a equipe "Sala"
     # (que possui subfunções como Canto, Boa Vontade etc).
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
@@ -772,7 +785,7 @@ def api_implantacao_equipe_counts():
 def api_implantacao_check_casal():
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
-    equipe = (data.get('equipe') or '').strip()
+    equipe = _team_label((data.get('equipe') or '').strip())
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
     if not (ano and equipe and nome_ele and nome_ela):
@@ -861,7 +874,7 @@ def api_implantacao_check_casal():
 def api_implantacao_add_membro():
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
-    equipe = (data.get('equipe') or '').strip()
+    equipe = _team_label((data.get('equipe') or '').strip())
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
     telefones = (data.get('telefones') or '').strip()
@@ -1425,7 +1438,7 @@ def equipe_montagem():
         ]
 
         # Carrega existentes do ano para QUALQUER subequipe de Sala (exceto coordenador e Recusou/Desistiu)
-        conn = mysql.connector.connect(**DB_CONFIG)
+        conn = db_conn()
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute(f"""
@@ -1489,7 +1502,7 @@ def equipe_montagem():
         # Sugestões do ano anterior (igual às outras equipes)
         sugestoes_prev_ano = []
         if ano:
-            conn = mysql.connector.connect(**DB_CONFIG)
+            conn = db_conn()
             cur = conn.cursor(dictionary=True)
             try:
                 cur.execute("""
@@ -1542,7 +1555,7 @@ def equipe_montagem():
         "max": int(limites_cfg.get('max', 8)),
     }
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     membros_existentes = []
     try:
@@ -1565,7 +1578,7 @@ def equipe_montagem():
     # Sugestões do ano anterior (idem de antes)
     sugestoes_prev_ano = []
     if ano:
-        conn = mysql.connector.connect(**DB_CONFIG)
+        conn = db_conn()
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute("""
@@ -1666,7 +1679,7 @@ def _casal_ja_no_ano(conn, ano: int, nome_ele: str, nome_ela: str, equipe_final:
 def api_check_casal_equipe():
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
-    equipe_final = (data.get('equipe_final') or '').strip()
+    equipe_final = _team_label((data.get('equipe_final') or '').strip())
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
     if not (ano and equipe_final and nome_ele and nome_ela):
@@ -1739,7 +1752,7 @@ def api_check_casal_equipe():
 def api_add_membro_equipe():
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
-    equipe_final = (data.get('equipe_final') or '').strip()
+    equipe_final = _team_label((data.get('equipe_final') or '').strip())
     nome_ele = (data.get('nome_ele') or '').strip()
     nome_ela = (data.get('nome_ela') or '').strip()
     telefones = (data.get('telefones') or '').strip()
@@ -1802,14 +1815,14 @@ def api_marcar_status_dirigente():
     """
     data = request.get_json(silent=True) or {}
     ano = data.get('ano')
-    equipe = (data.get('equipe') or '').strip()
+    equipe = _team_label((data.get('equipe') or '').strip())
     novo_status = (data.get('novo_status') or '').strip()
     observacao = (data.get('observacao') or '').strip()
 
     if not (ano and equipe and novo_status in ('Recusou', 'Desistiu') and observacao):
         return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor()
     try:
         # Atualiza o registro mais recente ABERTO daquele ano/equipe
@@ -1972,7 +1985,7 @@ def palestras_nova():
     tem_abertos = False
 
     if ano_preselecionado:
-        conn = mysql.connector.connect(**DB_CONFIG)
+        conn = db_conn()
         cur = conn.cursor(dictionary=True)
         try:
             # Carrega registros do ano; OBS: a coluna é 'palestra' (não 'titulo')
@@ -2032,7 +2045,7 @@ def api_palestras_validate_compat():
     if (not solo) and not nome_ela:
         return jsonify({"ok": False, "msg": "Informe Nome (Ela)."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         eligible = False
@@ -2157,7 +2170,7 @@ def api_palestras_save_compat():
     if (not solo) and not nome_ela:
         return jsonify({"ok": False, "msg": "Informe Nome (Ela)."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         if solo:
@@ -2266,7 +2279,7 @@ def api_palestras_buscar():
     if not (palestra and nome_ele and nome_ela):
         return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         # 1) Verifica se é (encontrista OU encontreiros)
@@ -2366,7 +2379,7 @@ def api_palestras_adicionar():
     if (not solo) and not nome_ela:
         return jsonify({"ok": False, "msg": "Informe Nome (Ela)."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         # bloqueio repetição >=5
@@ -2413,7 +2426,7 @@ def api_palestras_encerrar():
     if not ano:
         return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor()
     try:
         cur.execute("""
@@ -2468,7 +2481,7 @@ def api_palestras_marcar_status():
     if not observacao:
         return jsonify({"ok": False, "msg": "Observação é obrigatória."}), 400
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = db_conn()
     cur = conn.cursor()
     try:
         if _id:
