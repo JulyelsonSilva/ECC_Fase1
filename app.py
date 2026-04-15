@@ -987,7 +987,7 @@ def implantacao_painel():
         else:
             anos_aberto.append(item)
 
-    return render_template('implantacao_painel.html',
+    return render_template('implantacao.html',
                            anos_aberto=anos_aberto,
                            anos_concluidos=anos_concluidos)
 @app.route('/implantacao/nova')
@@ -2311,6 +2311,241 @@ def palestras_nova():
         existentes=existentes,
         tem_abertos=tem_abertos
     )
+
+
+# Compatibilidade com templates antigos que usam url_for('nova_palestra')
+app.add_url_rule('/palestras/nova', endpoint='nova_palestra', view_func=palestras_nova)
+
+
+@app.route('/api/palestras/validate', methods=['POST'], endpoint='api_palestras_validate')
+def api_palestras_validate_compat():
+    """Compatibilidade com templates antigos que enviam {ano, titulo, nome_ele, nome_ela}."""
+    data = request.get_json(silent=True) or {}
+    palestra = (data.get('titulo') or data.get('palestra') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+
+    if not (palestra and nome_ele):
+        return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+
+    solo = palestra in PALESTRAS_SOLO
+    if (not solo) and not nome_ela:
+        return jsonify({"ok": False, "msg": "Informe Nome (Ela)."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        eligible = False
+        cur.execute(
+            """
+            SELECT 1 FROM encontristas
+             WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+             LIMIT 1
+            """,
+            (nome_ele, nome_ela if not solo else '')
+        )
+        if cur.fetchone():
+            eligible = True
+        else:
+            cur.execute(
+                """
+                SELECT 1 FROM encontreiros
+                 WHERE nome_ele = %s AND nome_ela = %s
+                 LIMIT 1
+                """,
+                (nome_ele, nome_ela if not solo else '')
+            )
+            eligible = cur.fetchone() is not None
+
+        if solo:
+            eligible = True
+
+        telefones, endereco = '', ''
+        if not solo:
+            cur.execute(
+                """
+                SELECT telefones, endereco
+                  FROM encontreiros
+                 WHERE nome_ele = %s AND nome_ela = %s
+                 ORDER BY ano DESC
+                 LIMIT 1
+                """,
+                (nome_ele, nome_ela)
+            )
+            r = cur.fetchone()
+            if r:
+                telefones = (r.get('telefones') or '').strip()
+                endereco = r.get('endereco') or ''
+            else:
+                cur.execute(
+                    """
+                    SELECT telefone_ele, telefone_ela, endereco
+                      FROM encontristas
+                     WHERE nome_usual_ele = %s AND nome_usual_ela = %s
+                     ORDER BY ano DESC
+                     LIMIT 1
+                    """,
+                    (nome_ele, nome_ela)
+                )
+                r2 = cur.fetchone()
+                if r2:
+                    tel_ele = (r2.get('telefone_ele') or '').strip()
+                    tel_ela = (r2.get('telefone_ela') or '').strip()
+                    telefones = " / ".join([t for t in [tel_ele, tel_ela] if t])
+                    endereco = r2.get('endereco') or ''
+
+        if solo:
+            cur.execute(
+                """
+                SELECT COUNT(*) AS n
+                  FROM palestras
+                 WHERE palestra = %s AND nome_ele = %s
+                """,
+                (palestra, nome_ele)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT COUNT(*) AS n
+                  FROM palestras
+                 WHERE palestra = %s AND nome_ele = %s AND nome_ela = %s
+                """,
+                (palestra, nome_ele, nome_ela)
+            )
+        n = int(((cur.fetchone() or {}).get('n', 0) or 0))
+
+        if not eligible:
+            return jsonify({
+                "ok": False,
+                "eligible": False,
+                "cap": 5,
+                "repeticoes": n,
+                "telefones": telefones,
+                "endereco": endereco,
+                "msg": "Casal precisa ser encontrista ou já ter trabalhado no ECC."
+            }), 403
+
+        return jsonify({
+            "ok": True,
+            "eligible": True,
+            "cap": 5,
+            "repeticoes": n,
+            "telefones": telefones,
+            "endereco": endereco
+        })
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/api/palestras/save', methods=['POST'], endpoint='api_palestras_save')
+def api_palestras_save_compat():
+    """Compatibilidade com templates antigos; faz update do título/ano se já existir."""
+    data = request.get_json(silent=True) or {}
+    ano = data.get('ano')
+    palestra = (data.get('titulo') or data.get('palestra') or '').strip()
+    nome_ele = (data.get('nome_ele') or '').strip()
+    nome_ela = (data.get('nome_ela') or '').strip()
+
+    if not (ano and palestra and nome_ele):
+        return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+
+    solo = palestra in PALESTRAS_SOLO
+    if (not solo) and not nome_ela:
+        return jsonify({"ok": False, "msg": "Informe Nome (Ela)."}), 400
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor(dictionary=True)
+    try:
+        if solo:
+            cur.execute(
+                """
+                SELECT COUNT(*) AS n
+                  FROM palestras
+                 WHERE palestra = %s AND nome_ele = %s
+                """,
+                (palestra, nome_ele)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT COUNT(*) AS n
+                  FROM palestras
+                 WHERE palestra = %s AND nome_ele = %s AND nome_ela = %s
+                """,
+                (palestra, nome_ele, nome_ela)
+            )
+        repeticoes = int(((cur.fetchone() or {}).get('n', 0) or 0))
+        if repeticoes >= 5:
+            return jsonify({"ok": False, "msg": "Limite de 5 repetições atingido para esta palestra."}), 409
+
+        cur.execute(
+            """
+            SELECT id
+              FROM palestras
+             WHERE ano = %s AND palestra = %s
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (int(ano), palestra)
+        )
+        existing = cur.fetchone()
+
+        cur2 = conn.cursor()
+        if existing:
+            if solo:
+                cur2.execute(
+                    """
+                    UPDATE palestras
+                       SET nome_ele = %s,
+                           nome_ela = '',
+                           status = 'Aberto'
+                     WHERE id = %s
+                    """,
+                    (nome_ele, existing['id'])
+                )
+            else:
+                cur2.execute(
+                    """
+                    UPDATE palestras
+                       SET nome_ele = %s,
+                           nome_ela = %s,
+                           status = 'Aberto'
+                     WHERE id = %s
+                    """,
+                    (nome_ele, nome_ela, existing['id'])
+                )
+            action = 'update'
+        else:
+            if solo:
+                cur2.execute(
+                    """
+                    INSERT INTO palestras (ano, palestra, nome_ele, nome_ela, status, observacao)
+                    VALUES (%s, %s, %s, '', 'Aberto', NULL)
+                    """,
+                    (int(ano), palestra, nome_ele)
+                )
+            else:
+                cur2.execute(
+                    """
+                    INSERT INTO palestras (ano, palestra, nome_ele, nome_ela, status, observacao)
+                    VALUES (%s, %s, %s, %s, 'Aberto', NULL)
+                    """,
+                    (int(ano), palestra, nome_ele, nome_ela)
+                )
+            action = 'insert'
+        conn.commit()
+        cur2.close()
+        return jsonify({"ok": True, "action": action})
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
 
 @app.route('/api/palestras/buscar', methods=['POST'])
@@ -4489,7 +4724,7 @@ def __init_db__():
           casal VARCHAR(255) NULL,
           nome_ele VARCHAR(120) NOT NULL,
           nome_ela VARCHAR(120) NOT NULL,
-          coordenador TINYINT(1) NOT NULL DEFAULT 0,
+          coordenador VARCHAR(10) NOT NULL DEFAULT 'Não',
           telefones VARCHAR(120) NULL,
           endereco VARCHAR(255) NULL,
           observacao TEXT NULL,
@@ -4507,7 +4742,7 @@ def __init_db__():
           equipe VARCHAR(120) NOT NULL,
           nome_ele VARCHAR(120) NOT NULL,
           nome_ela VARCHAR(120) NOT NULL,
-          coordenador TINYINT(1) NOT NULL DEFAULT 0,
+          coordenador VARCHAR(10) NOT NULL DEFAULT 'Não',
           telefones VARCHAR(120) NULL,
           endereco VARCHAR(255) NULL,
           observacao TEXT NULL,
