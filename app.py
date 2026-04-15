@@ -2,291 +2,53 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 import mysql.connector
 from collections import defaultdict
 import math
-import os, re
-import hashlib, datetime, requests
-from difflib import SequenceMatcher
+import re
+import time
+
 from mysql.connector import errors as mysql_errors
 
-# =========================
-# Helpers para MAPAS
-# =========================
+from config import (
+    SECRET_KEY,
+    ADMIN_TOKEN,
+    DB_CONFIG,
+    TEAM_MAP,
+    TEAM_LIMITS,
+    TEAM_CHOICES,
+    PALESTRAS_TITULOS,
+    PALESTRAS_SOLO,
+)
 
-DEFAULT_CITY = os.getenv("DEFAULT_CITY", "Maceió")
-DEFAULT_STATE = os.getenv("DEFAULT_STATE", "AL")
-DEFAULT_COUNTRY = os.getenv("DEFAULT_COUNTRY", "Brasil")
-NOMINATIM_EMAIL = os.getenv("NOMINATIM_EMAIL", "julyelson@gmail.com")
+from db import db_conn, safe_fetch_one, _get_db
 
-def normalize_address(raw: str) -> str:
-    if not raw:
-        return ""
-    s = raw.strip()
-    s = re.sub(r'\s+', ' ', s)
-    s = s.replace(" ,", ",").replace(", ,", ",")
-    s = s.replace(" Apt®", " Apt").replace("Apt®", "Apt")
-    s = s.replace(" nº", " n.º").replace(" No ", " n.º ")
-    s = s.replace("Av:", "Av.").replace("Av :", "Av.").replace("Av ", "Av. ")
-    s = s.replace("Rua:", "Rua").replace("R:", "Rua ")
-    s = s.replace("Jatiuca", "Jatiúca")
+from auth import _admin_ok
 
-    lower = s.lower()
-    needs_city = (DEFAULT_CITY.lower() not in lower)
-    needs_state = (f"- {DEFAULT_STATE.lower()}" not in lower) and (f", {DEFAULT_STATE.lower()}" not in lower)
-    needs_country = (DEFAULT_COUNTRY.lower() not in lower)
+from utils import (
+    _norm,
+    _sim,
+    _q,
+    _yes_coord_vals,
+    _hex_to_rgb_triplet,
+    _color_to_rgb_triplet,
+    _hex_to_rgb,
+    _name_to_hex_pt,
+    _to_triplet,
+    _parse_id_list,
+    _ids_to_str,
+    _csv_ids_unique,
+    _ids_to_csv,
+    _parse_ids_csv,
+)
 
-    tail = []
-    if needs_city: tail.append(DEFAULT_CITY)
-    if needs_state: tail.append(DEFAULT_STATE)
-    if needs_country: tail.append(DEFAULT_COUNTRY)
-
-    if tail:
-        if not s.endswith(","):
-            if not s.endswith(" "): s += " "
-            s += ", "
-        s += " - ".join(tail) if len(tail) == 2 else ", ".join(tail)
-
-    s = re.sub(r'\s*,\s*,', ', ', s)
-    s = re.sub(r'\s*-\s*-', ' - ', s)
-    s = re.sub(r'\s*,\s*-\s*', ', ', s)
-    return s.strip(" ,")
-def addr_hash(s: str) -> str:
-    return hashlib.sha1(s.encode("utf-8")).hexdigest()
-
-def nominatim_geocode(query: str):
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": query, "format": "jsonv2", "addressdetails": 0, "limit": 1, "countrycodes": "br"}
-    headers = {"User-Agent": f"ECCDivino/1.0 ({NOMINATIM_EMAIL})"}
-    try:
-        r = requests.get(url, params=params, headers=headers, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        if not data:
-            return None, None, None, "not_found"
-        item = data[0]
-        return float(item["lat"]), float(item["lon"]), item.get("display_name"), "ok"
-    except requests.RequestException:
-        return None, None, None, "error"
-
-def save_cache(conn, h, query, lat, lng, display, status):
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO geocoding_cache (endereco_hash, query, formatted_address, lat, lng, status, provider, updated_at)
-        VALUES (%s,%s,%s,%s,%s,%s,'nominatim',NOW())
-        ON DUPLICATE KEY UPDATE
-          query=VALUES(query), formatted_address=VALUES(formatted_address),
-          lat=VALUES(lat), lng=VALUES(lng), status=VALUES(status), updated_at=NOW()
-    """, (h, query, display, lat, lng, status))
-    conn.commit(); cur.close()
-
-def get_cache(conn, h):
-    cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM geocoding_cache WHERE endereco_hash=%s", (h,))
-    row = cur.fetchone(); cur.close()
-    return row
-# =========================
-# Helpers adicionais p/ normalização & geocodificação "esperta"
-# =========================
-import re
-from difflib import SequenceMatcher
-import requests
-
-BAIRRO_FIX = {
-    "jatiuca": "Jatiúca", "jatiúca": "Jatiúca",
-    "ponta verde": "Ponta Verde",
-    "pajuçara": "Pajuçara", "pajucara": "Pajuçara",
-    "poço": "Poço", "poco": "Poço",
-    "pitanguinha": "Pitanguinha",
-}
-LOGR_FIX = {
-    r"^(av|av\.|avenida)\b": "Av.",
-    r"^(rua|r\.?)\b": "Rua",
-    r"^(trav|travessa)\b": "Travessa",
-    r"^(al|alameda)\b": "Alameda",
-}
-CEP_RE = re.compile(r"\b\d{5}-?\d{3}\b")
-NUM_RE = re.compile(r"\b(\d{1,5})(?:\s*[^\w\s]\s*[\w\-\/]+)?\b")
-
-def _apply_map_start(s: str, fmap: dict):
-    for pat, rep in fmap.items():
-        s = re.sub(pat, rep, s, flags=re.I)
-    return s
-
-def split_address_components(raw: str, default_city=DEFAULT_CITY, default_state=DEFAULT_STATE):
-    if not raw:
-        return {"logradouro":"", "numero":"", "bairro":"", "cep":"", "cidade": default_city, "uf": default_state}
-    s = re.sub(r"\s+", " ", raw.strip())
-
-    cep = CEP_RE.search(s)
-    cep = cep.group(0) if cep else ""
-    if cep:
-        s = s.replace(cep, "").strip(",; ")
-
-    partes = [p.strip() for p in re.split(r"[,\-•–;|]", s) if p.strip()]
-    logradouro = partes[0] if partes else ""
-    bairro = ""
-    if len(partes) >= 2:
-        poss = partes[-1]
-        low = poss.lower()
-        if "maceió" not in low and "al" != low and "brasil" not in low:
-            bairro = poss
-
-    logradouro = _apply_map_start(logradouro, LOGR_FIX).strip()
-
-    numero = ""
-    m = NUM_RE.search(logradouro)
-    if m:
-        numero = m.group(1)
-        logradouro = re.sub(r"\b" + re.escape(numero) + r"\b", "", logradouro).replace(" ,", ",").strip(" ,")
-
-    if bairro:
-        b_low = bairro.lower()
-        if b_low in BAIRRO_FIX:
-            bairro = BAIRRO_FIX[b_low]
-        else:
-            best = None; best_ratio = 0.0
-            for k in BAIRRO_FIX.keys():
-                r = SequenceMatcher(None, b_low, k).ratio()
-                if r > best_ratio:
-                    best_ratio, best = r, k
-            if best_ratio >= 0.84:
-                bairro = BAIRRO_FIX[best]
-
-    return {
-        "logradouro": logradouro.strip(),
-        "numero": numero.strip(),
-        "bairro": bairro.strip(),
-        "cep": cep.replace("-", ""),
-        "cidade": default_city,
-        "uf": default_state
-    }
-
-def viacep_busca_por_rua(cidade: str, uf: str, logradouro: str):
-    if not (cidade and uf and logradouro):
-        return []
-    try:
-        url = f"https://viacep.com.br/ws/{uf}/{cidade}/{logradouro}/json/"
-        r = requests.get(url, timeout=8)
-        r.raise_for_status()
-        data = r.json()
-        if isinstance(data, dict) and data.get("erro"):
-            return []
-        if isinstance(data, list):
-            return data
-        return []
-    except requests.RequestException:
-        return []
-
-def geocode_br_smart(raw: str):
-    norm = normalize_address(raw or "")
-    if not norm:
-        return None, None, None, "not_found"
-
-    lat, lng, display, status = nominatim_geocode(norm)
-    if status == "ok":
-        return lat, lng, display, "ok"
-
-    c = split_address_components(norm)
-    comp_full = ", ".join([p for p in [
-        f"{c['logradouro']} {c['numero']}".strip(),
-        c['bairro'] or None,
-        f"{c['cidade']} - {c['uf']}",
-        "Brasil"
-    ] if p])
-    lat, lng, display, status = nominatim_geocode(comp_full)
-    if status == "ok":
-        return lat, lng, display, "ok"
-
-    comp_sem_num = ", ".join([p for p in [
-        c['logradouro'],
-        c['bairro'] or None,
-        f"{c['cidade']} - {c['uf']}", "Brasil"
-    ] if p])
-    lat, lng, display, status = nominatim_geocode(comp_sem_num)
-    if status == "ok":
-        return lat, lng, display, "ok"
-
-    viacep_hits = viacep_busca_por_rua(c['cidade'], c['uf'], c['logradouro'])
-    if viacep_hits:
-        hit = viacep_hits[0]
-        cep = (hit.get("cep") or "").replace("-", "")
-        if cep:
-            lat, lng, display, status = nominatim_geocode(f"{cep}, Brasil")
-            if status == "ok":
-                return lat, lng, display, "ok"
-        alt_q = ", ".join([p for p in [
-            hit.get("logradouro") or c['logradouro'],
-            (hit.get("bairro") or c['bairro']) or None,
-            f"{hit.get('localidade') or c['cidade']} - {hit.get('uf') or c['uf']}",
-            "Brasil"
-        ] if p])
-        lat, lng, display, status = nominatim_geocode(alt_q)
-        if status == "ok":
-            return lat, lng, display, "ok"
-
-    if c['bairro']:
-        q_bairro = f"{c['bairro']}, {c['cidade']} - {c['uf']}, Brasil"
-        lat, lng, display, status = nominatim_geocode(q_bairro)
-        if status == "ok":
-            return lat, lng, f"{display} (centro do bairro)", "partial"
-
-    lat, lng, display, status = nominatim_geocode(f"{c['cidade']} - {c['uf']}, Brasil")
-    if status == "ok":
-        return lat, lng, f"{display} (centro da cidade)", "partial"
-
-    return None, None, None, "not_found"
-
-# =========================
-# Helpers para CÍRCULOS (com proteção anti-colisão)
-# =========================
-_COLOR_MAP = {
-    "azul": "#2563eb", "vermelho": "#ef4444", "amarelo": "#f59e0b", "verde": "#10b981",
-    "roxo": "#8b5cf6", "violeta": "#7c3aed", "laranja": "#fb923c", "rosa": "#ec4899",
-    "turquesa": "#14b8a6", "ciano": "#06b6d4", "magenta": "#d946ef", "marrom": "#92400e",
-    "preto": "#111827", "branco": "#ffffff", "cinza": "#9ca3af", "dourado": "#d4af37", "prata": "#c0c0c0",
-}
-
-_HEX_RE = re.compile(r"^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
-
-# Se outra definição de _hex_to_rgb_triplet aparecer depois no arquivo, ela a sobrescreverá
-if '_hex_to_rgb_triplet' not in globals():
-    def _hex_to_rgb_triplet(hexstr: str):
-        s = (hexstr or '').strip().lstrip("#")
-        if len(s) == 3:
-            s = "".join(c*2 for c in s)
-        try:
-            r = int(s[0:2], 16); g = int(s[2:4], 16); b = int(s[4:6], 16)
-            return f"{r}, {g}, {b}"
-        except Exception:
-            return None
-
-def _color_to_rgb_triplet(color: str):
-    """Aceita nome PT-BR (inclui substrings), ou #hex 3/6 dígitos."""
-    if not color:
-        return None
-    s = color.strip().lower()
-    if _HEX_RE.match(s):
-        return _hex_to_rgb_triplet(s)
-    if s in _COLOR_MAP:
-        return _hex_to_rgb_triplet(_COLOR_MAP[s])
-    for k, v in _COLOR_MAP.items():
-        if k in s:
-            return _hex_to_rgb_triplet(v)
-    return None
-
-def _parse_id_list(raw):
-    """Converte '1,2 3;4' -> [1,2,3,4] (únicos/preservando ordem)."""
-    if not raw:
-        return []
-    parts = re.split(r"[,\s;|]+", str(raw))
-    out, seen = [], set()
-    for p in parts:
-        if p.isdigit():
-            i = int(p)
-            if i not in seen:
-                seen.add(i); out.append(i)
-    return out
-
-def _ids_to_str(ids):
-    return ",".join(str(int(x)) for x in ids)
+from services.geocoding import (
+    normalize_address,
+    addr_hash,
+    nominatim_geocode,
+    save_cache,
+    get_cache,
+    split_address_components,
+    viacep_busca_por_rua,
+    geocode_br_smart,
+)
 
 def _fetch_encontristas_by_ids(conn, ids):
     """Retorna na mesma ordem: [{id, nome_ele, nome_ela, telefone_ele, telefone_ela, endereco, ano}]"""
@@ -331,69 +93,7 @@ def _encontrista_name_by_id(conn, _id):
 
 
 app = Flask(__name__)
-
-# =========================
-# Config do Banco
-# =========================
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "database": os.getenv("DB_NAME"),
-    "port": int(os.getenv("DB_PORT") or "3306"),
-}
-
-def db_conn():
-    return mysql.connector.connect(**DB_CONFIG)
-
-def safe_fetch_one(cur, sql, params):
-    """SELECT ... LIMIT 1 com tratamento; retorna dict ou None."""
-    try:
-        cur.execute(sql, params)
-        return cur.fetchone()
-    except (mysql_errors.ProgrammingError, mysql_errors.DatabaseError,
-            mysql_errors.InterfaceError, mysql_errors.OperationalError):
-        return None
-
-# =========================
-# Admin helpers
-# =========================
-def _get_db():
-    # Alias para reutilizar o que você já tem
-    return db_conn()
-
-def _admin_ok():
-    token = request.args.get("token") or request.form.get("token")
-    return bool(token) and token == os.environ.get("ADMIN_TOKEN", "")
-
-# =========================
-# Constantes de Equipes
-# =========================
-TEAM_MAP = {
-    "sala":      {"rotulo": "Equipe de Sala - Coordenador/Apresentador", "filtro": "Sala"},
-    "circulos":  {"rotulo": "Equipe de Círculos", "filtro": "Circulos"},
-    "cafe":      {"rotulo": "Equipe Café e Minimercado", "filtro": "Café e Minimercado"},
-    "compras":   {"rotulo": "Equipe Compras", "filtro": "Compras"},
-    "acolhida":  {"rotulo": "Equipe Acolhida", "filtro": "Acolhida"},
-    "ordem":     {"rotulo": "Equipe Ordem e Limpeza", "filtro": "Ordem e Limpeza"},
-    "liturgia":  {"rotulo": "Equipe Liturgia e Vigilia", "filtro": "Liturgia e Vigilia"},
-    "secretaria":{"rotulo": "Equipe Secretaria", "filtro": "Secretaria"},
-    "cozinha":   {"rotulo": "Equipe Cozinha", "filtro": "Cozinha"},
-    "visitacao": {"rotulo": "Equipe Visitação", "filtro": "Visitação"},
-}
-
-TEAM_LIMITS = {
-    "Sala": {"min": 4, "max": 6},
-    "Circulos": {"min": 5, "max": 5},
-    "Café e Minimercado": {"min": 3, "max": 7},
-    "Compras": {"min": 0, "max": 1},
-    "Acolhida": {"min": 4, "max": 6},
-    "Ordem e Limpeza": {"min": 3, "max": 7},
-    "Liturgia e Vigilia": {"min": 2, "max": 6},
-    "Secretaria": {"min": 3, "max": 5},
-    "Cozinha": {"min": 7, "max": 9},
-    "Visitação": {"min": 6, "max": 10},
-}
+app.config["SECRET_KEY"] = SECRET_KEY
 
 # --- KPI: contagem de integrantes por equipe (exclui Coordenador; exclui Recusou/Desistiu) ---
 @app.route('/api/team-kpis')
@@ -2878,16 +2578,6 @@ def palestrantes():
 # ============================================
 # RELATÓRIOS / IMPRESSÕES (ajustado para sua estrutura)
 # ============================================
-from flask import render_template, request, jsonify
-
-def _q(cur, sql, params=None):
-    cur.execute(sql, params or [])
-    return cur.fetchall()
-
-def _yes_coord_vals():
-    # variações comuns para sinalizar coordenador
-    return ('sim','s','coordenador','coordenadora','sim coordenador','sim - coordenador')
-
 @app.route("/relatorios")
 def relatorios():
     conn = db_conn(); cur = conn.cursor(dictionary=True)
@@ -3225,25 +2915,10 @@ def autocomplete_nomes():
 # =========================
 # Rotas para ligação entre as tabelas encontristas e encontreiros
 # =========================
-def _norm(s: str) -> str:
-    if s is None:
-        return ""
-    s = s.strip().lower()
-    s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
-    s = re.sub(r"\s+", " ", s)
-    return s
-
-def _sim(a: str, b: str) -> float:
-    return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
-
-def _get_db():
-    return mysql.connector.connect(**DB_CONFIG)
 
 @app.route("/admin/match-fuzzy")
 def admin_match_fuzzy():
-    # Segurança via token
-    token = request.args.get("token", "")
-    if token != os.environ.get("ADMIN_TOKEN", ""):
+    if not _admin_ok():
         return "Unauthorized", 401
 
     # Parâmetros de lote
@@ -3267,16 +2942,6 @@ def admin_match_fuzzy():
 
     # Bucket simples por 1ª letra
     from collections import defaultdict
-    def _norm(s: str) -> str:
-        if s is None:
-            return ""
-        s = s.strip().lower()
-        s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
-        s = re.sub(r"\s+", " ", s)
-        return s
-
-    def _sim(a: str, b: str) -> float:
-        return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
 
     bucket = defaultdict(list)
     for r in base:
@@ -3706,26 +3371,6 @@ def circulos_view(cid):
 # -----------------------------
 # Helpers Circulos (internos)
 # -----------------------------
-def _csv_ids_unique(raw: str):
-    raw = (raw or "").replace(";", ",")
-    out = []
-    seen = set()
-    for part in raw.split(","):
-        p = part.strip()
-        if not p:
-            continue
-        if not p.isdigit():
-            continue
-        val = int(p)
-        if val not in seen:
-            seen.add(val)
-            out.append(val)
-    return out
-
-def _ids_to_csv(ids):
-    ids = [str(int(x)) for x in ids if str(x).isdigit()]
-    return ",".join(ids)
-
 def _resolve_encontristas(cur, id_list):
     """Recebe lista de IDs (encontristas.id) e devolve na mesma ordem:
        [{id, nome_ele, nome_ela, telefone_ele, telefone_ela, endereco, ano}]"""
@@ -4019,21 +3664,6 @@ def _parse_ids_csv(raw: str):
             out.append(int(p))
     return out
 
-def _hex_to_rgb_triplet(s: str):
-    """Retorna 'r,g,b' ou None se não for #RRGGBB/#RGB válido."""
-    if not s:
-        return None
-    s = s.strip()
-    m = re.fullmatch(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})", s)
-    if not m:
-        return None
-    h = m.group(1)
-    if len(h) == 3:
-        r = int(h[0]*2, 16); g = int(h[1]*2, 16); b = int(h[2]*2, 16)
-    else:
-        r = int(h[0:2], 16); g = int(h[2:4], 16); b = int(h[4:6], 16)
-    return f"{r},{g},{b}"
-
 @app.route("/pesquisa-circulos")
 def pesquisa_circulos():
     """
@@ -4240,8 +3870,6 @@ def api_encontristas_por_ano(ano):
     finally:
         cur.close(); conn.close()
 # Rota para contagem de encontristas em um ano
-
-from flask import jsonify, request
 
 @app.route("/api/encontristas_por_ano", methods=["GET"])
 def api_encontristas_por_ano_count():
@@ -4537,8 +4165,6 @@ def normalizar_geocodificar():
     Normaliza + geocodifica em lotes curtos, sem manter cursor/tx abertos durante chamadas externas.
     Reprocessa 'not_found' apenas quando NÃO há endereco_normalizado.
     """
-    import time
-
     try:
         lote = max(1, int(request.args.get("lote", 50)))
     except ValueError:
