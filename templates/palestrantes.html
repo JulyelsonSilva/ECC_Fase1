@@ -1,73 +1,82 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Palestrantes</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background:#f8fafc; color:#0f172a; }
-    h1 { margin-top: 0; }
-    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-    .btn { border:1px solid #e5e7eb; background:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; color:inherit; cursor:pointer; }
-    .btn:hover { background:#f1f5f9; }
-    form { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
-    input { padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; }
-    table { width:100%; border-collapse: collapse; margin: 8px 0 24px; background:#fff; border:1px solid #e5e7eb; }
-    th, td { padding:8px 10px; border-bottom:1px solid #e5e7eb; text-align:left; vertical-align:top; }
-    thead th { background:#f1f5f9; font-weight:600; }
-    .year { margin: 12px 0 4px; }
-    .muted { color:#64748b; }
-  </style>
-</head>
-<body>
-  <h1>Palestrantes</h1>
+{% extends "base.html" %}
 
-  <div class="toolbar">
-    <a class="btn" href="{{ url_for('palestras_painel') }}">← Palestras</a>
-    <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+{% block title %}Palestrantes{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title"><i class="bi bi-megaphone"></i><span>Palestrantes</span></h1>
+      <p class="subtitle">Consulte os responsáveis pelas palestras por ano.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('palestras_painel') }}">
+        <i class="bi bi-arrow-left"></i><span>Palestras</span>
+      </a>
+    </div>
   </div>
 
-  <form method="get">
-    <label>Nome Ele:
-      <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele', '') }}">
-    </label>
-    <label>Nome Ela:
-      <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela', '') }}">
-    </label>
-    <label>Ano:
-      <input type="number" name="ano" inputmode="numeric" value="{{ request.args.get('ano', '') }}" style="width:100px;">
-    </label>
-    <button class="btn" type="submit">Filtrar</button>
-  </form>
+  <section class="card">
+    <div class="card-head">
+      <h2>Filtros</h2>
+      <p>Filtre por nome ou ano.</p>
+    </div>
+    <div class="card-body">
+      <form method="get">
+        <div class="filters">
+          <div class="field col-4">
+            <label for="nome_ele">Nome Ele</label>
+            <input id="nome_ele" type="text" name="nome_ele" value="{{ request.args.get('nome_ele', '') }}">
+          </div>
+          <div class="field col-4">
+            <label for="nome_ela">Nome Ela</label>
+            <input id="nome_ela" type="text" name="nome_ela" value="{{ request.args.get('nome_ela', '') }}">
+          </div>
+          <div class="field col-3">
+            <label for="ano">Ano</label>
+            <input id="ano" type="number" name="ano" inputmode="numeric" value="{{ request.args.get('ano', '') }}">
+          </div>
+          <div class="field col-12">
+            <div class="actions">
+              <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i><span>Filtrar</span></button>
+              <a class="btn" href="{{ url_for('palestrantes') }}"><i class="bi bi-arrow-counterclockwise"></i><span>Limpar</span></a>
+            </div>
+          </div>
+        </div>
+      </form>
 
-  {% if por_ano %}
-    {% for ano, registros in por_ano.items() %}
-      <h2 class="year">{{ ano }}</h2>
-
-      {% if registros %}
-        <table>
-          <thead>
-            <tr>
-              <th>Palestra</th>
-              <th>Nome Ele</th>
-              <th>Nome Ela</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in registros %}
-              <tr>
-                <td>{{ row.get('palestra','') }}</td>
-                <td>{{ row.get('nome_ele','') }}</td>
-                <td>{{ row.get('nome_ela','') }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      {% if por_ano %}
+        {% for ano, registros in por_ano.items() %}
+          <section class="card" style="margin-top:18px; box-shadow:none;">
+            <div class="card-head"><h2>{{ ano }}</h2></div>
+            <div class="card-body">
+              {% if registros %}
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Palestra</th><th>Nome Ele</th><th>Nome Ela</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for row in registros %}
+                        <tr>
+                          <td>{{ row.get('palestra','') }}</td>
+                          <td>{{ row.get('nome_ele','') }}</td>
+                          <td>{{ row.get('nome_ela','') }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <p class="small">Sem registros para este ano.</p>
+              {% endif %}
+            </div>
+          </section>
+        {% endfor %}
       {% else %}
-        <p class="muted">Sem registros para este ano.</p>
+        <p class="small">Nenhum resultado encontrado com os filtros informados.</p>
       {% endif %}
-    {% endfor %}
-  {% else %}
-    <p class="muted">Nenhum resultado encontrado com os filtros informados.</p>
-  {% endif %}
-</body>
-</html>
+    </div>
+  </section>
+</div>
+{% endblock %}
