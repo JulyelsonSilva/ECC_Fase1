@@ -9,6 +9,8 @@ from services.encontristas_service import (
     listar_encontristas,
     buscar_encontrista_por_id,
     atualizar_encontrista,
+    contar_encontristas_por_ano,
+    buscar_encontrista_por_nomes_e_ano,
 )
 
 
@@ -51,22 +53,22 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
     @app.route('/encontristas/<int:encontrista_id>/editar', methods=['GET', 'POST'])
     def editar_encontrista(encontrista_id):
         if request.method == 'POST':
-            nome_completo_ele  = request.form.get('nome_completo_ele', '').strip()
-            nome_completo_ela  = request.form.get('nome_completo_ela', '').strip()
-            nome_usual_ele     = request.form.get('nome_usual_ele', '').strip()
-            nome_usual_ela     = request.form.get('nome_usual_ela', '').strip()
-            telefone_ele       = request.form.get('telefone_ele', '').strip()
-            telefone_ela       = request.form.get('telefone_ela', '').strip()
-            endereco           = request.form.get('endereco', '').strip()
-            num_ecc            = request.form.get('num_ecc', '').strip()
-            ano_raw            = request.form.get('ano', '').strip()
-            data_casamento     = request.form.get('data_casamento', '').strip() or None
-            cor_circulo        = request.form.get('cor_circulo', '').strip()
-            casal_visitacao    = request.form.get('casal_visitacao', '').strip()
-            ficha_num          = request.form.get('ficha_num', '').strip()
-            aceitou            = request.form.get('aceitou', '').strip()
-            observacao         = request.form.get('observacao', '').strip()
-            observacao_extra   = request.form.get('observacao_extra', '').strip()
+            nome_completo_ele = request.form.get('nome_completo_ele', '').strip()
+            nome_completo_ela = request.form.get('nome_completo_ela', '').strip()
+            nome_usual_ele = request.form.get('nome_usual_ele', '').strip()
+            nome_usual_ela = request.form.get('nome_usual_ela', '').strip()
+            telefone_ele = request.form.get('telefone_ele', '').strip()
+            telefone_ela = request.form.get('telefone_ela', '').strip()
+            endereco = request.form.get('endereco', '').strip()
+            num_ecc = request.form.get('num_ecc', '').strip()
+            ano_raw = request.form.get('ano', '').strip()
+            data_casamento = request.form.get('data_casamento', '').strip() or None
+            cor_circulo = request.form.get('cor_circulo', '').strip()
+            casal_visitacao = request.form.get('casal_visitacao', '').strip()
+            ficha_num = request.form.get('ficha_num', '').strip()
+            aceitou = request.form.get('aceitou', '').strip()
+            observacao = request.form.get('observacao', '').strip()
+            observacao_extra = request.form.get('observacao_extra', '').strip()
 
             try:
                 ano = int(ano_raw) if ano_raw else None
@@ -142,66 +144,13 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
     # Rota para contagem de encontristas em um ano
     @app.route("/api/encontristas_por_ano", methods=["GET"])
     def api_encontristas_por_ano_count():
-        """
-        Conta ENCONTRISTAS por ano (tabela 'encontristas').
-        Mantém a rota antiga /api/encontristas/ano/<int:ano> intacta.
-
-        Parâmetros opcionais:
-          - ano_min: int (inclusive)
-          - ano_max: int (inclusive)
-
-        Resposta:
-          200 OK -> [{"ano": 2019, "qtd": 42}, ...]
-          500    -> {"ok": False, "error": "..."}
-        """
         ano_min = request.args.get("ano_min", type=int)
         ano_max = request.args.get("ano_max", type=int)
 
         try:
-            conn = db_conn()
-            cur = conn.cursor(dictionary=True)
-
-            sql = """
-                SELECT ano, COUNT(*) AS qtd
-                  FROM encontristas
-                 WHERE ano IS NOT NULL
-            """
-            params = []
-            where = []
-            if ano_min is not None:
-                where.append("ano >= %s")
-                params.append(ano_min)
-            if ano_max is not None:
-                where.append("ano <= %s")
-                params.append(ano_max)
-            if where:
-                sql += " AND " + " AND ".join(where)
-
-            sql += " GROUP BY ano ORDER BY ano ASC"
-
-            cur.execute(sql, params)
-            rows = cur.fetchall() or []
-
-            out = []
-            for r in rows:
-                a = r.get("ano")
-                q = r.get("qtd") or 0
-                if a is not None:
-                    out.append({"ano": int(a), "qtd": int(q)})
-
-            cur.close()
-            conn.close()
+            out = contar_encontristas_por_ano(ano_min=ano_min, ano_max=ano_max)
             return jsonify(out), 200
-
         except Exception as e:
-            try:
-                cur.close()
-            except Exception:
-                pass
-            try:
-                conn.close()
-            except Exception:
-                pass
             return jsonify({"ok": False, "error": str(e)}), 500
 
     # Busca encontrista (por nome) validando ano do círculo
@@ -210,41 +159,30 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
         ele = (request.args.get("ele") or "").strip()
         ela = (request.args.get("ela") or "").strip()
         ano = request.args.get("ano", type=int)
+
         if not (ele and ela and ano):
             return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
 
-        conn = db_conn()
-        cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("""
-                SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
-                FROM encontristas
-                WHERE ano=%s
-                  AND LOWER(TRIM(nome_usual_ele)) = LOWER(TRIM(%s))
-                  AND LOWER(TRIM(nome_usual_ela)) = LOWER(TRIM(%s))
-                LIMIT 1
-            """, (ano, ele, ela))
-            r = cur.fetchone()
-            if not r:
-                return jsonify({"ok": False, "msg": "Casal não encontrado para este ano."}), 404
+        r = buscar_encontrista_por_nomes_e_ano(ele, ela, ano)
 
-            tels = " / ".join([
-                t for t in [
-                    (r.get("telefone_ele") or "").strip(),
-                    (r.get("telefone_ela") or "").strip()
-                ] if t
-            ])
-            return jsonify({
-                "ok": True,
-                "id": r["id"],
-                "nome_ele": r["nome_usual_ele"],
-                "nome_ela": r["nome_usual_ela"],
-                "telefones": tels,
-                "endereco": r.get("endereco") or ""
-            })
-        finally:
-            cur.close()
-            conn.close()
+        if not r:
+            return jsonify({"ok": False, "msg": "Casal não encontrado para este ano."}), 404
+
+        tels = " / ".join([
+            t for t in [
+                (r.get("telefone_ele") or "").strip(),
+                (r.get("telefone_ela") or "").strip()
+            ] if t
+        ])
+
+        return jsonify({
+            "ok": True,
+            "id": r["id"],
+            "nome_ele": r["nome_usual_ele"],
+            "nome_ela": r["nome_usual_ela"],
+            "telefones": tels,
+            "endereco": r.get("endereco") or ""
+        })
 
     # --- Auditoria: contagens + pendentes (JOIN nova tabela) ---
     @app.route("/relatorios/auditoria-enderecos")
