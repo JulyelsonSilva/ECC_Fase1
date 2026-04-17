@@ -109,3 +109,73 @@ def atualizar_encontrista(encontrista_id, payload):
             conn.close()
         except Exception:
             pass
+
+
+def contar_encontristas_por_ano(ano_min=None, ano_max=None):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+
+    try:
+        sql = """
+            SELECT ano, COUNT(*) AS qtd
+              FROM encontristas
+             WHERE ano IS NOT NULL
+        """
+        params = []
+        where = []
+
+        if ano_min is not None:
+            where.append("ano >= %s")
+            params.append(ano_min)
+
+        if ano_max is not None:
+            where.append("ano <= %s")
+            params.append(ano_max)
+
+        if where:
+            sql += " AND " + " AND ".join(where)
+
+        sql += " GROUP BY ano ORDER BY ano ASC"
+
+        cur.execute(sql, params)
+        rows = cur.fetchall() or []
+
+        out = []
+        for r in rows:
+            a = r.get("ano")
+            q = r.get("qtd") or 0
+            if a is not None:
+                out.append({
+                    "ano": int(a),
+                    "qtd": int(q)
+                })
+
+        return out
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def buscar_encontrista_por_nomes_e_ano(ele, ela, ano):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+
+    try:
+        cur.execute("""
+            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
+            FROM encontristas
+            WHERE ano=%s
+              AND LOWER(TRIM(nome_usual_ele)) = LOWER(TRIM(%s))
+              AND LOWER(TRIM(nome_usual_ela)) = LOWER(TRIM(%s))
+            LIMIT 1
+        """, (ano, ele, ela))
+        return cur.fetchone()
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
