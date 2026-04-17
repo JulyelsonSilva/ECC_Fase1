@@ -1,230 +1,58 @@
 from flask import render_template, request, jsonify
-from collections import defaultdict
 
-from db import db_conn
-from utils import (
-    _color_to_rgb_triplet,
-    _hex_to_rgb_triplet,
-    _parse_id_list,
-    _ids_to_str,
-    _csv_ids_unique,
-    _ids_to_csv,
+from services.circulos_service import (
+    listar_circulos,
+    buscar_circulo_por_id,
+    buscar_encontrista_para_circulo,
+    buscar_integrantes_circulo,
+    append_integrante_circulo,
+    concluir_integrantes_circulo,
+    atualizar_campo_circulo,
+    listar_candidatos_circulo,
+    pesquisar_circulos,
+    listar_circulos_transferencia,
+    transferir_casal_circulo,
+    add_integrante_circulo,
+    remove_integrante_circulo,
+    copiar_atual_para_original,
+    definir_coord_circulo,
 )
+from utils import _parse_id_list
 
 
 def register_circulos_routes(app, _encontrista_name_by_id):
-    # -----------------------------
-    # Helpers Circulos (internos)
-    # -----------------------------
-    def _resolve_encontristas(cur, id_list):
-        """Recebe lista de IDs (encontristas.id) e devolve na mesma ordem:
-           [{id, nome_ele, nome_ela, telefone_ele, telefone_ela, endereco, ano}]"""
-        if not id_list:
-            return []
-        placeholders = ",".join(["%s"] * len(id_list))
-        cur.execute(f"""
-            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
-            FROM encontristas
-            WHERE id IN ({placeholders})
-        """, tuple(id_list))
-        rows = cur.fetchall() or []
-        by_id = {r["id"]: r for r in rows}
-        out = []
-        for i in id_list:
-            r = by_id.get(i)
-            if r:
-                out.append({
-                    "id": r["id"],
-                    "nome_ele": r.get("nome_usual_ele") or "",
-                    "nome_ela": r.get("nome_usual_ela") or "",
-                    "telefone_ele": r.get("telefone_ele") or "",
-                    "telefone_ela": r.get("telefone_ela") or "",
-                    "endereco": r.get("endereco") or "",
-                    "ano": r.get("ano"),
-                })
-        return out
-
-    def _parse_ids_csv(raw: str):
-        if not raw:
-            return []
-        raw = raw.replace(";", ",")
-        out = []
-        for p in raw.split(","):
-            p = p.strip()
-            if p.isdigit():
-                out.append(int(p))
-        return out
-
-    # ---------- CÍRCULOS (consulta) ----------
     @app.route("/circulos")
     def circulos_list():
-        # filtros simples (opcionais)
         ano = (request.args.get('ano') or '').strip()
-        q   = (request.args.get('q')   or '').strip()
+        q = (request.args.get('q') or '').strip()
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            where = ["1=1"]
-            params = []
-            if ano:
-                where.append("c.ano = %s")
-                params.append(ano)
-            if q:
-                like = f"%{q}%"
-                where.append("""(
-                      LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
-                      LOWER(c.cor_circulo)     LIKE LOWER(%s) OR
-                      LOWER(c.coord_atual_ele) LIKE LOWER(%s) OR
-                      LOWER(c.coord_atual_ela) LIKE LOWER(%s) OR
-                      LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
-                      LOWER(c.coord_orig_ela)  LIKE LOWER(%s)
-                )""")
-                params += [like, like, like, like, like, like]
-
-            where_sql = " AND ".join(where)
-
-            cur.execute(f"""
-                SELECT
-                   c.id, c.ano, c.cor_circulo, c.nome_circulo,
-                   c.coord_orig_ele, c.coord_orig_ela,
-                   c.coord_atual_ele, c.coord_atual_ela,
-                   c.integrantes_original, c.integrantes_atual,
-                   c.situacao, c.observacao, c.created_at
-                FROM circulos c
-                WHERE {where_sql}
-                ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
-            """, params)
-            rows = cur.fetchall() or []
-
-            # anos para o <select>
-            cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
-            anos_combo = [a['ano'] for a in (cur.fetchall() or [])]
-        finally:
-            try:
-                cur.close(); conn.close()
-            except Exception:
-                pass
-
-        for r in rows:
-            r['rgb_triplet'] = _color_to_rgb_triplet(r.get('cor_circulo') or '')
-
-        agrupado = defaultdict(list)
-        for r in rows:
-            agrupado[r['ano']].append(r)
-        anos_ordenados = sorted(agrupado.keys(), reverse=True)
-
-        por_ano = defaultdict(list)
-        for r in rows:
-            ano_item = r["ano"]
-            nome = (r.get("nome_circulo") or "").strip() or "— Sem nome —"
-            trip = r.get("rgb_triplet")
-
-            ca_ele = (r.get("coord_atual_ele") or "").strip()
-            ca_ela = (r.get("coord_atual_ela") or "").strip()
-            co_ele = (r.get("coord_orig_ele")  or "").strip()
-            co_ela = (r.get("coord_orig_ela")  or "").strip()
-
-            if ca_ele and ca_ela:
-                coord = f"{ca_ele} & {ca_ela}"; hint = ""
-            elif co_ele or co_ela:
-                coord = f"{co_ele} & {co_ela}"; hint = " (Original)"
-            else:
-                coord = "— (sem coordenadores)"; hint = ""
-
-            por_ano[ano_item].append({
-                "id": r["id"],
-                "nome": nome,
-                "rgb": trip,
-                "coord": coord,
-                "coord_hint": hint
-            })
-
-        anos = sorted(por_ano.keys(), reverse=True)
+        dados = listar_circulos(ano=ano, q=q)
 
         return render_template(
             'circulos.html',
-            anos_combo=anos_combo,
-            filtros={'ano': ano, 'q': q},
-            anos_ordenados=anos_ordenados,
-            agrupado=agrupado,
-            anos=anos,
-            por_ano=por_ano
+            anos_combo=dados["anos_combo"],
+            filtros=dados["filtros"],
+            anos_ordenados=dados["anos_ordenados"],
+            agrupado=dados["agrupado"],
+            anos=dados["anos"],
+            por_ano=dados["por_ano"]
         )
 
-    # ---------- CÍRCULOS • Detalhe ----------
     @app.route('/circulos/<int:cid>')
     def circulos_view(cid):
-        def _hex_to_rgb(h):
-            h = (h or '').strip().lstrip('#')
-            if len(h) == 3:
-                h = ''.join([c * 2 for c in h])
-            if len(h) != 6:
-                return None
-            try:
-                return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-            except ValueError:
-                return None
-
-        def _name_to_hex_pt(c):
-            if not c: return None
-            c = c.strip().lower()
-            mapa = {
-                'azul':'#2563eb','vermelho':'#ef4444','verde':'#22c55e','amarelo':'#eab308',
-                'laranja':'#f59e0b','roxo':'#8b5cf6','rosa':'#ec4899','marrom':'#92400e',
-                'cinza':'#6b7280','preto':'#111827','branco':'#ffffff',
-                'blue':'#2563eb','red':'#ef4444','green':'#22c55e','yellow':'#eab308',
-                'orange':'#f59e0b','purple':'#8b5cf6','pink':'#ec4899','brown':'#92400e',
-                'gray':'#6b7280','grey':'#6b7280','black':'#111827','white':'#ffffff'
-            }
-            return mapa.get(c)
-
-        def _to_triplet(c):
-            if not c: return None
-            c = c.strip()
-            hx = _name_to_hex_pt(c) or (c if c.startswith('#') else None)
-            rgb = _hex_to_rgb(hx) if hx else None
-            if not rgb: return None
-            return f"{rgb[0]},{rgb[1]},{rgb[2]}"
-
-        conn = db_conn()
-        cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT * FROM circulos WHERE id=%s", (cid,))
-            r = cur.fetchone()
-        finally:
-            try:
-                cur.close(); conn.close()
-            except Exception:
-                pass
-
-        if not r:
+        dados = buscar_circulo_por_id(cid)
+        if not dados:
             return "Registro não encontrado.", 404
-
-        rgb_triplet = _to_triplet(r.get('cor_circulo'))
-
-        raw_atual = (r.get('integrantes_atual') or '').replace(';', ',')
-        raw_orig  = (r.get('integrantes_original') or '').replace(';', ',')
-
-        integrantes_atual_list = [x.strip() for x in raw_atual.split(',') if x and x.strip()]
-        integrantes_orig_list  = [x.strip() for x in raw_orig.split(',') if x and x.strip()]
-
-        integrantes_list = integrantes_atual_list if integrantes_atual_list else integrantes_orig_list
 
         return render_template(
             'circulos_view.html',
-            r=r,
-            rgb_triplet=rgb_triplet,
-            integrantes_list=integrantes_list,
-            integrantes_atual_list=integrantes_atual_list,
-            integrantes_orig_list=integrantes_orig_list
+            r=dados["r"],
+            rgb_triplet=dados["rgb_triplet"],
+            integrantes_list=dados["integrantes_list"],
+            integrantes_atual_list=dados["integrantes_atual_list"],
+            integrantes_orig_list=dados["integrantes_orig_list"]
         )
 
-    # -----------------------------
-    # API: buscar encontrista por nomes (para integrantes_atual)
-    # Regras:
-    #  - casa por nomes usuais (case-insensitive, ignora espaços extras)
-    #  - valida que o ANO do encontrista == ANO do círculo informado
-    # -----------------------------
     @app.post("/api/circulos/buscar-encontrista")
     def api_circulos_buscar_encontrista():
         data = request.get_json(silent=True) or {}
@@ -235,89 +63,20 @@ def register_circulos_routes(app, _encontrista_name_by_id):
         if not (ano_circulo and ele and ela):
             return jsonify({"ok": False, "msg": "Informe ano, Ele e Ela."}), 400
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("""
-                SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
-                FROM encontristas
-                WHERE LOWER(TRIM(nome_usual_ele)) = LOWER(TRIM(%s))
-                  AND LOWER(TRIM(nome_usual_ela)) = LOWER(TRIM(%s))
-                ORDER BY ano DESC
-                LIMIT 1
-            """, (ele, ela))
-            r = cur.fetchone()
+        resultado = buscar_encontrista_para_circulo(ano_circulo, ele, ela)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            if not r:
-                cur.execute("""
-                    SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
-                    FROM encontristas
-                    WHERE nome_usual_ele LIKE %s
-                      AND nome_usual_ela LIKE %s
-                    ORDER BY ano DESC
-                    LIMIT 3
-                """, (f"{ele}%", f"{ela}%"))
-                sugest = cur.fetchall() or []
-                if not sugest:
-                    return jsonify({"ok": False, "msg": "Casal não encontrado."}), 404
+        return jsonify(resultado)
 
-                multi = []
-                for s in sugest:
-                    multi.append({
-                        "id": s["id"],
-                        "nome_ele": s["nome_usual_ele"],
-                        "nome_ela": s["nome_usual_ela"],
-                        "telefone_ele": s.get("telefone_ele") or "",
-                        "telefone_ela": s.get("telefone_ela") or "",
-                        "endereco": s.get("endereco") or "",
-                        "ano": s.get("ano"),
-                        "match_ano": int(s.get("ano") or 0) == int(ano_circulo),
-                    })
-                return jsonify({"ok": True, "multiplo": True, "opcoes": multi})
-
-            match_ano = int(r.get("ano") or 0) == int(ano_circulo)
-            return jsonify({
-                "ok": True,
-                "multiplo": False,
-                "id": r["id"],
-                "nome_ele": r["nome_usual_ele"],
-                "nome_ela": r["nome_usual_ela"],
-                "telefone_ele": r.get("telefone_ele") or "",
-                "telefone_ela": r.get("telefone_ela") or "",
-                "endereco": r.get("endereco") or "",
-                "ano": r.get("ano"),
-                "match_ano": match_ano
-            })
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
-
-    # -----------------------------
-    # API: obter integrantes resolvidos (nomes) do círculo
-    # -----------------------------
     @app.get("/api/circulos/<int:cid>/integrantes")
     def api_circulos_integrantes(cid):
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT integrantes_atual, integrantes_original FROM circulos WHERE id=%s", (cid,))
-            r = cur.fetchone()
-            if not r:
-                return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+        resultado = buscar_integrantes_circulo(cid)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            ids_atual = _csv_ids_unique(r.get("integrantes_atual") or "")
-            ids_orig  = _csv_ids_unique(r.get("integrantes_original") or "")
+        return jsonify(resultado)
 
-            atual = _resolve_encontristas(cur, ids_atual)
-            orig  = _resolve_encontristas(cur, ids_orig)
-
-            return jsonify({"ok": True, "atual": atual, "original": orig})
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
-
-    # -----------------------------
-    # API: acrescentar 1 integrante no 'integrantes_atual'
-    # body: { "encontrista_id": 123 }
-    # -----------------------------
     @app.post("/api/circulos/<int:cid>/integrantes/append")
     def api_circulos_integrantes_append(cid):
         data = request.get_json(silent=True) or {}
@@ -325,305 +84,75 @@ def register_circulos_routes(app, _encontrista_name_by_id):
         if not (eid and str(eid).isdigit()):
             return jsonify({"ok": False, "msg": "encontrista_id inválido."}), 400
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
-            r = cur.fetchone()
-            if not r:
-                return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+        resultado = append_integrante_circulo(cid, eid)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            ids = _csv_ids_unique(r.get("integrantes_atual") or "")
-            eid = int(eid)
-            if eid not in ids:
-                ids.append(eid)
+        return jsonify(resultado)
 
-            novo_csv = _ids_to_csv(ids)
-            cur2 = conn.cursor()
-            cur2.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (novo_csv, cid))
-            conn.commit()
-            cur2.close()
-
-            ids = _csv_ids_unique(novo_csv)
-            atual = _resolve_encontristas(cur, ids)
-            return jsonify({"ok": True, "atual": atual})
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
-
-    # -----------------------------
-    # API: concluir integrantes -> copiar 'atual' para 'original'
-    # -----------------------------
     @app.post("/api/circulos/<int:cid>/integrantes/concluir")
     def api_circulos_integrantes_concluir(cid):
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
-            r = cur.fetchone()
-            if not r:
-                return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
-            atual = (r.get("integrantes_atual") or "").strip()
-            cur2 = conn.cursor()
-            cur2.execute("""
-                UPDATE circulos
-                   SET integrantes_original=%s
-                 WHERE id=%s
-            """, (atual, cid))
-            conn.commit()
-            cur2.close()
-            return jsonify({"ok": True})
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
+        resultado = concluir_integrantes_circulo(cid)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-    # -----------------------------
-    # API: update genérico de campo (whitelist)
-    # body: { "field": "...", "value": "..." }
-    # Campos editáveis:
-    #   cor_circulo, nome_circulo, coord_atual_ele, coord_atual_ela, integrantes_atual,
-    #   situacao, observacao
-    # (NÃO permite: ano, coord_orig_ele, coord_orig_ela)
-    # -----------------------------
+        return jsonify(resultado)
+
     @app.post("/api/circulos/<int:cid>/update-field")
     def api_circulos_update_field(cid):
         data = request.get_json(silent=True) or {}
         field = (data.get("field") or "").strip()
         value = data.get("value")
 
-        ALLOWED = {
-            "cor_circulo", "nome_circulo",
-            "coord_atual_ele", "coord_atual_ela",
-            "integrantes_atual",
-            "situacao", "observacao"
-        }
-        if field not in ALLOWED:
-            return jsonify({"ok": False, "msg": "Campo não permitido para edição."}), 400
+        resultado = atualizar_campo_circulo(cid, field, value)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-        if field == "integrantes_atual":
-            ids = _csv_ids_unique(str(value or ""))
-            value = _ids_to_csv(ids)
-
-        conn = db_conn(); cur = conn.cursor()
-        try:
-            sql = f"UPDATE circulos SET {field}=%s WHERE id=%s"
-            cur.execute(sql, (value, cid))
-            conn.commit()
-            return jsonify({"ok": True})
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
+        return jsonify(resultado)
 
     @app.get("/api/circulos/candidatos")
     def api_circulos_candidatos():
-        """
-        Lista candidatos (ENCONTRISTAS) do ano informado, removendo quem já
-        está em QUALQUER círculo daquele ano (em integrantes_atual OU original).
-        Querystring: ?ano=YYYY
-        """
         ano = request.args.get("ano", type=int)
         if not ano:
             return jsonify({"ok": False, "msg": "ano requerido"}), 400
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("""
-                SELECT integrantes_atual, integrantes_original
-                  FROM circulos
-                 WHERE ano = %s
-            """, (ano,))
-            usados = set()
-            rows = cur.fetchall() or []
-            for r in rows:
-                for col in ("integrantes_atual", "integrantes_original"):
-                    raw = (r.get(col) or "").replace(";", ",")
-                    for part in raw.split(","):
-                        p = part.strip()
-                        if p.isdigit():
-                            usados.add(int(p))
-
-            cur.execute("""
-                SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
-                  FROM encontristas
-                 WHERE ano = %s
-                 ORDER BY nome_usual_ele, nome_usual_ela
-            """, (ano,))
-            candidatos = []
-            for r in cur.fetchall() or []:
-                if int(r["id"]) in usados:
-                    continue
-                candidatos.append({
-                    "id": r["id"],
-                    "nome_ele": r.get("nome_usual_ele") or "",
-                    "nome_ela": r.get("nome_usual_ela") or "",
-                    "telefone_ele": r.get("telefone_ele") or "",
-                    "telefone_ela": r.get("telefone_ela") or "",
-                    "endereco": r.get("endereco") or ""
-                })
-
-            return jsonify({"ok": True, "candidatos": candidatos})
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
+        resultado = listar_candidatos_circulo(ano)
+        return jsonify(resultado)
 
     @app.route("/pesquisa-circulos")
     def pesquisa_circulos():
-        """
-        Resumo dos círculos, agrupado por ano.
-        Cada card mostra: nome do círculo, coordenadores (atuais ou 'Original'),
-        e lista dos integrantes (atuais).
-        Fundo do card usa a cor do círculo (se #hex) em tom claro.
-        """
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("""
-                SELECT id, ano, cor_circulo, nome_circulo,
-                       coord_orig_ele, coord_orig_ela,
-                       coord_atual_ele, coord_atual_ela,
-                       integrantes_atual, integrantes_original
-                  FROM circulos
-                 ORDER BY ano DESC, id ASC
-            """)
-            rows = cur.fetchall() or []
+        dados = pesquisar_circulos()
+        return render_template("pesquisa_circulos.html", anos=dados["anos"], por_ano=dados["por_ano"])
 
-            all_ids = set()
-            for r in rows:
-                all_ids.update(_parse_ids_csv(r.get("integrantes_atual") or ""))
-                all_ids.update(_parse_ids_csv(r.get("integrantes_original") or ""))
-
-            id2nome = {}
-            if all_ids:
-                placeholders = ",".join(["%s"] * len(all_ids))
-                cur.execute(f"""
-                    SELECT id, nome_usual_ele, nome_usual_ela
-                      FROM encontristas
-                     WHERE id IN ({placeholders})
-                """, tuple(all_ids))
-                for e in cur.fetchall() or []:
-                    id2nome[int(e["id"])] = f"{(e.get('nome_usual_ele') or '').strip()} & {(e.get('nome_usual_ela') or '').strip()}"
-
-            por_ano = defaultdict(list)
-            for r in rows:
-                ids_atual = _parse_ids_csv(r.get("integrantes_atual") or "")
-                nomes_atual = [id2nome.get(i, f"ID {i}") for i in ids_atual]
-
-                ca_ele = (r.get("coord_atual_ele") or "").strip()
-                ca_ela = (r.get("coord_atual_ela") or "").strip()
-                if ca_ele and ca_ela:
-                    coord = f"{ca_ele} & {ca_ela}"
-                    coord_hint = ""
-                else:
-                    co_ele = (r.get("coord_orig_ele") or "").strip()
-                    co_ela = (r.get("coord_orig_ela") or "").strip()
-                    coord = f"{co_ele} & {co_ela}" if (co_ele or co_ela) else "—"
-                    coord_hint = " (Original)"
-
-                triplet = _hex_to_rgb_triplet(r.get("cor_circulo") or "")
-
-                por_ano[r["ano"]].append({
-                    "id": r["id"],
-                    "nome": (r.get("nome_circulo") or "").strip() or "— Sem nome —",
-                    "rgb": triplet,
-                    "cor_text": r.get("cor_circulo") or "",
-                    "coord": coord,
-                    "coord_hint": coord_hint,
-                    "integrantes": nomes_atual
-                })
-
-            for ano in por_ano:
-                por_ano[ano].sort(key=lambda x: x["nome"].lower())
-
-            anos = sorted(por_ano.keys(), reverse=True)
-            return render_template("pesquisa_circulos.html", anos=anos, por_ano=por_ano)
-        finally:
-            try: cur.close(); conn.close()
-            except Exception: pass
-
-    # =========================
-    # CÍRCULOS – Wizard de TRANSFERÊNCIA (NOVO)
-    # =========================
     @app.route("/circulos/transferir")
     def circulos_transferir():
-        """Tela do wizard (reaproveita a mesma grade da pesquisa)."""
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("""
-                SELECT id, ano, nome_circulo, cor_circulo
-                FROM circulos
-                ORDER BY ano DESC, id ASC
-            """)
-            rows = cur.fetchall() or []
-        finally:
-            cur.close(); conn.close()
-
-        por_ano = defaultdict(list)
-        anos = []
-        for r in rows:
-            ano = r["ano"]
-            if ano not in anos:
-                anos.append(ano)
-            por_ano[ano].append({
-                "id": r["id"],
-                "nome": r.get("nome_circulo") or "— Sem nome —",
-                "rgb": _color_to_rgb_triplet(r.get("cor_circulo") or "")
-            })
-        return render_template("transferir_circulos.html", anos=anos, por_ano=por_ano)
+        dados = listar_circulos_transferencia()
+        return render_template("transferir_circulos.html", anos=dados["anos"], por_ano=dados["por_ano"])
 
     @app.route("/api/circulos/transferir", methods=["POST"])
     def api_circulos_transferir():
         data = request.get_json(silent=True) or {}
         from_id = data.get("from_id")
-        to_id   = data.get("to_id")
-        pid     = data.get("encontrista_id")
+        to_id = data.get("to_id")
+        pid = data.get("encontrista_id")
         if not (from_id and to_id and pid):
             return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT id, ano, integrantes_atual, coord_atual_ele, coord_atual_ela FROM circulos WHERE id=%s", (from_id,))
-            src = cur.fetchone()
-            cur.execute("SELECT id, ano, integrantes_atual FROM circulos WHERE id=%s", (to_id,))
-            dst = cur.fetchone()
-            if not src or not dst:
-                return jsonify({"ok": False, "msg": "Círculo origem/destino não encontrado."}), 404
+        resultado = transferir_casal_circulo(from_id, to_id, pid, _encontrista_name_by_id)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            src_ids = _parse_id_list(src.get("integrantes_atual"))
-            if pid not in src_ids:
-                return jsonify({"ok": False, "msg": "Casal não está no círculo de origem."}), 404
-            dst_ids = _parse_id_list(dst.get("integrantes_atual"))
-            if pid in dst_ids:
-                return jsonify({"ok": False, "msg": "Casal já está no círculo de destino."}), 409
+        return jsonify(resultado)
 
-            src_ids = [i for i in src_ids if i != pid]
-            dst_ids.append(int(pid))
-
-            ne, na = _encontrista_name_by_id(conn, pid)
-            cleared_coord = False
-            if ne and na and src.get("coord_atual_ele") and src.get("coord_atual_ela"):
-                if (ne.strip().lower() == (src["coord_atual_ele"] or "").strip().lower()
-                    and na.strip().lower() == (src["coord_atual_ela"] or "").strip().lower()):
-                    cleared_coord = True
-
-            cur.execute(
-                "UPDATE circulos SET integrantes_atual=%s{clear} WHERE id=%s".format(
-                    clear=", coord_atual_ele=NULL, coord_atual_ela=NULL" if cleared_coord else ""
-                ),
-                (_ids_to_str(src_ids), from_id)
-            )
-            cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(dst_ids), to_id))
-            conn.commit()
-            return jsonify({"ok": True, "cleared_coord": cleared_coord})
-        finally:
-            cur.close(); conn.close()
-
-    # =========================
-    # CÍRCULOS – APIs auxiliares que não existiam na sua versão
-    # =========================
     @app.route("/api/circulos/<int:cid>/update", methods=["POST"])
     def api_circulos_update_alias(cid):
         data = request.get_json(silent=True) or {}
         field = (data.get("field") or "").strip()
-        value = (data.get("value") or "").strip()
-        with app.test_request_context(json={"field": field, "value": value}):
-            return api_circulos_update_field(cid)
+        value = data.get("value")
+        resultado = atualizar_campo_circulo(cid, field, value)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
+        return jsonify(resultado)
 
     @app.route("/api/circulos/<int:cid>/integrantes/add", methods=["POST"])
     def api_circulos_add_integrante(cid):
@@ -632,38 +161,11 @@ def register_circulos_routes(app, _encontrista_name_by_id):
         if not pid:
             return jsonify({"ok": False, "msg": "ID do encontrista obrigatório."}), 400
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT ano, integrantes_atual FROM circulos WHERE id=%s", (cid,))
-            circ = cur.fetchone()
-            if not circ:
-                return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+        resultado = add_integrante_circulo(cid, pid)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            cur.execute("SELECT ano FROM encontristas WHERE id=%s", (pid,))
-            r = cur.fetchone()
-            if not r or r["ano"] != circ["ano"]:
-                return jsonify({"ok": False, "msg": "Casal não pertence ao mesmo ano do círculo."}), 409
-
-            cur.execute("SELECT id, integrantes_atual FROM circulos WHERE ano=%s", (circ["ano"],))
-            for row in cur.fetchall() or []:
-                ids = _parse_id_list(row.get("integrantes_atual"))
-                if pid in ids:
-                    return jsonify({"ok": False, "msg": "Casal já está em outro círculo deste ano."}), 409
-
-            ids = _parse_id_list(circ.get("integrantes_atual"))
-            if pid in ids:
-                return jsonify({"ok": True})
-
-            ids.append(int(pid))
-            cur2 = conn.cursor()
-            try:
-                cur2.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(ids), cid))
-                conn.commit()
-            finally:
-                cur2.close()
-            return jsonify({"ok": True})
-        finally:
-            cur.close(); conn.close()
+        return jsonify(resultado)
 
     @app.route("/api/circulos/<int:cid>/integrantes/remove", methods=["POST"])
     def api_circulos_remove_integrante(cid):
@@ -672,100 +174,24 @@ def register_circulos_routes(app, _encontrista_name_by_id):
         if not pid:
             return jsonify({"ok": False, "msg": "ID do encontrista obrigatório."}), 400
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("""
-                SELECT integrantes_atual, coord_atual_ele, coord_atual_ela
-                FROM circulos WHERE id=%s
-            """, (cid,))
-            circ = cur.fetchone()
-            if not circ:
-                return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+        resultado = remove_integrante_circulo(cid, pid, _encontrista_name_by_id)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            ids = _parse_id_list(circ.get("integrantes_atual"))
-            if pid not in ids:
-                return jsonify({"ok": True})
-
-            ids = [i for i in ids if i != pid]
-
-            cleared_coord = False
-            ne, na = _encontrista_name_by_id(conn, pid)
-            if ne and na and circ.get("coord_atual_ele") and circ.get("coord_atual_ela"):
-                if (ne.strip().lower() == (circ["coord_atual_ele"] or "").strip().lower()
-                    and na.strip().lower() == (circ["coord_atual_ela"] or "").strip().lower()):
-                    cleared_coord = True
-                    cur.execute("""
-                        UPDATE circulos
-                        SET integrantes_atual=%s, coord_atual_ele=NULL, coord_atual_ela=NULL
-                        WHERE id=%s
-                    """, (_ids_to_str(ids), cid))
-                else:
-                    cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(ids), cid))
-            else:
-                cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(ids), cid))
-
-            conn.commit()
-            return jsonify({"ok": True, "cleared_coord": cleared_coord})
-        finally:
-            cur.close(); conn.close()
+        return jsonify(resultado)
 
     @app.route("/api/circulos/<int:cid>/integrantes/copy-atual-para-original", methods=["POST"])
     def api_circulos_copy_atual_para_original(cid):
-        conn = db_conn(); cur = conn.cursor()
-        try:
-            cur.execute("""
-                UPDATE circulos
-                   SET integrantes_original = COALESCE(integrantes_atual, '')
-                 WHERE id=%s
-            """, (cid,))
-            conn.commit()
-            return jsonify({"ok": True})
-        finally:
-            try:
-                cur.close(); conn.close()
-            except Exception:
-                pass
+        resultado = copiar_atual_para_original(cid)
+        return jsonify(resultado)
 
     @app.route("/api/circulos/<int:cid>/definir-coord", methods=["POST"])
     def api_circulos_definir_coord(cid):
         data = request.get_json(silent=True) or {}
         pid = data.get("encontrista_id")
 
-        conn = db_conn(); cur = conn.cursor(dictionary=True)
-        try:
-            cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
-            r = cur.fetchone()
-            if not r:
-                return jsonify({"ok": False, "msg": "Círculo não encontrado."}), 404
+        resultado = definir_coord_circulo(cid, pid, _encontrista_name_by_id)
+        if not resultado["ok"]:
+            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
 
-            if not pid:
-                cur2 = conn.cursor()
-                try:
-                    cur2.execute("UPDATE circulos SET coord_atual_ele=NULL, coord_atual_ela=NULL WHERE id=%s", (cid,))
-                    conn.commit()
-                finally:
-                    cur2.close()
-                return jsonify({"ok": True})
-
-            ids = _parse_id_list(r.get("integrantes_atual"))
-            if pid not in ids:
-                return jsonify({"ok": False, "msg": "Casal não está na lista de integrantes atuais."}), 409
-
-            ne, na = _encontrista_name_by_id(conn, pid)
-            if not (ne and na):
-                return jsonify({"ok": False, "msg": "Casal não encontrado."}), 404
-
-            cur2 = conn.cursor()
-            try:
-                cur2.execute("""
-                    UPDATE circulos
-                       SET coord_atual_ele=%s, coord_atual_ela=%s
-                     WHERE id=%s
-                """, (ne, na, cid))
-                conn.commit()
-            finally:
-                cur2.close()
-
-            return jsonify({"ok": True})
-        finally:
-            cur.close(); conn.close()
+        return jsonify(resultado)
