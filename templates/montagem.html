@@ -1,59 +1,72 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Montagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 16px; }
-    h1 { margin:0; font-size: 22px; }
-    a.btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; text-decoration:none; color:inherit; }
-    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-    .tag { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; text-decoration:none; color:#0f172a; background:#fff; margin:6px 6px 0 0; }
-    .muted { color:var(--muted); }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header">
-      <h1>Montagem</h1>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-        <a class="btn" href="{{ url_for('nova_montagem') }}">+ Nova Montagem</a>
-      </div>
+{% extends "base.html" %}
+
+{% block title %}Montagem{% endblock %}
+
+{% block extra_head %}
+<style>
+  .montagem-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .montagem-tag{
+    display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
+    border-radius:10px;text-decoration:none;color:var(--text);background:#fff;margin:6px 6px 0 0;font-weight:600;
+  }
+  .montagem-tag:hover{background:var(--primary-light);text-decoration:none}
+  @media (max-width: 900px){.montagem-cols{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title"><i class="bi bi-diagram-3"></i> Montagem</h1>
+      <p class="subtitle">Acompanhe os anos em aberto e concluídos e continue a montagem das equipes.</p>
     </div>
-
-    <div class="cols">
-      <div class="card">
-        <h3 style="margin-top:0;">Aberto</h3>
-        <p class="muted">Anos com pelo menos um registro com status diferente de <b>Concluido</b>.</p>
-        <div>
-          {% for r in anos_aberto %}
-            <a class="tag" href="{{ url_for('nova_montagem') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.qtd_concluido }}/{{ r.total }}</a>
-          {% else %}
-            <span class="muted">Nenhum ano em aberto.</span>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">Concluído</h3>
-        <p class="muted">Anos em que <b>todos</b> os registros estão com status <b>Concluido</b>.</p>
-        <div>
-          {% for r in anos_concluidos %}
-            <a class="tag" href="{{ url_for('encontreiros') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; {{ r.qtd_concluido }}/{{ r.total }}</a>
-          {% else %}
-            <span class="muted">Nenhum ano concluído.</span>
-          {% endfor %}
-        </div>
-      </div>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('index') }}">
+        <i class="bi bi-house-door"></i>
+        <span>Página Inicial</span>
+      </a>
+      <a class="btn btn-primary" href="{{ url_for('nova_montagem') }}">
+        <i class="bi bi-plus-lg"></i>
+        <span>Nova Montagem</span>
+      </a>
     </div>
   </div>
-</body>
-</html>
 
+  <div class="montagem-cols">
+    <section class="card">
+      <div class="card-head">
+        <h2>Aberto</h2>
+        <p>Anos com pelo menos um registro com status diferente de <b>Concluido</b>.</p>
+      </div>
+      <div class="card-body">
+        {% for r in anos_aberto %}
+          <a class="montagem-tag" href="{{ url_for('nova_montagem') }}?ano={{ r.ano }}">
+            <i class="bi bi-folder2-open"></i>
+            <span>{{ r.ano }} • {{ r.qtd_concluido }}/{{ r.total }}</span>
+          </a>
+        {% else %}
+          <span class="text-muted">Nenhum ano em aberto.</span>
+        {% endfor %}
+      </div>
+    </section>
 
+    <section class="card">
+      <div class="card-head">
+        <h2>Concluído</h2>
+        <p>Anos em que <b>todos</b> os registros estão com status <b>Concluido</b>.</p>
+      </div>
+      <div class="card-body">
+        {% for r in anos_concluidos %}
+          <a class="montagem-tag" href="{{ url_for('encontreiros') }}?ano={{ r.ano }}">
+            <i class="bi bi-check2-circle"></i>
+            <span>{{ r.ano }} • {{ r.qtd_concluido }}/{{ r.total }}</span>
+          </a>
+        {% else %}
+          <span class="text-muted">Nenhum ano concluído.</span>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
