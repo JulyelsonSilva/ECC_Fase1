@@ -12,17 +12,10 @@ def _index_exists(cur, table_name, index_name):
 
 
 def ensure_database_schema():
-    """
-    Cria as tabelas principais se não existirem e adiciona colunas/índices
-    que o código atual espera encontrar.
-    """
     conn = db_conn()
     cur = conn.cursor()
 
     try:
-        # -------------------------
-        # Tabelas principais
-        # -------------------------
         cur.execute("""
             CREATE TABLE IF NOT EXISTS encontristas (
               id INT NOT NULL AUTO_INCREMENT,
@@ -174,11 +167,6 @@ def ensure_database_schema():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
 
-        # -------------------------
-        # Ajustes incrementais
-        # -------------------------
-
-        # circulos: colunas que o código atual usa e o CREATE antigo não garantia
         circulos_missing = {
             "coord_orig_ele": "ALTER TABLE circulos ADD COLUMN coord_orig_ele VARCHAR(120) NULL",
             "coord_orig_ela": "ALTER TABLE circulos ADD COLUMN coord_orig_ela VARCHAR(120) NULL",
@@ -190,7 +178,6 @@ def ensure_database_schema():
             if not _column_exists(cur, "circulos", col):
                 cur.execute(stmt)
 
-        # pendencias_encontreiros: colunas auxiliares para o fluxo atual
         pend_missing = {
             "status": "ALTER TABLE pendencias_encontreiros ADD COLUMN status VARCHAR(30) DEFAULT 'PENDENTE'",
             "created_at": "ALTER TABLE pendencias_encontreiros ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
@@ -199,7 +186,6 @@ def ensure_database_schema():
             if not _column_exists(cur, "pendencias_encontreiros", col):
                 cur.execute(stmt)
 
-        # índice único útil para upsert das sugestões
         if not _index_exists(cur, "pendencias_encontreiros", "uniq_sug"):
             cur.execute("""
                 ALTER TABLE pendencias_encontreiros
@@ -207,12 +193,7 @@ def ensure_database_schema():
             """)
 
         conn.commit()
-
-        return {
-            "ok": True,
-            "msg": "Schema verificado/atualizado com sucesso."
-        }
-
+        return {"ok": True, "msg": "Schema verificado/atualizado com sucesso."}
     finally:
         try:
             cur.close()
