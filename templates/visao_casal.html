@@ -1,205 +1,257 @@
 {% extends "base.html" %}
-{% block content %}
+
+{% block title %}Visão do Casal{% endblock %}
+
+{% block extra_head %}
 <style>
-  :root{
-    --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-    --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
-    --ok:#065f46; --warn:#92400e; --err:#b91c1c;
+  .vc-grid{
+    display:grid;
+    gap:16px;
+    grid-template-columns: 1fr 1fr;
   }
-  .vc-wrap{max-width:1100px;margin:24px auto;padding:0 16px 40px;color:var(--ink)}
-  .vc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-  .vc-title{display:flex;align-items:center;gap:10px}
-  .vc-logo{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;font-size:22px}
-  h1{margin:0;font-size:22px}
-  .btn{appearance:none;border:1px solid var(--border);background:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;text-decoration:none;color:inherit}
-  .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-  .muted{color:var(--muted)}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-  .search{display:grid;gap:10px;grid-template-columns: 1fr 1fr auto}
-  .search input{padding:10px 12px;border:1px solid var(--border);border-radius:10px}
-  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;margin-left:6px}
-  .table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff}
-  .table th,.table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;text-align:left}
-  .table thead th{background:#f1f5f9;font-weight:600}
-  .table tr:last-child td{border-bottom:none}
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    padding:4px 8px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:#f8fafc;
+    color:var(--muted);
+  }
+  .box-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .box-item{
+    padding:12px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:#fff;
+  }
+  .section-title{
+    margin:0 0 12px;
+    font-size:16px;
+    font-weight:700;
+  }
+  @media (max-width: 980px){
+    .vc-grid{ grid-template-columns:1fr; }
+  }
 </style>
+{% endblock %}
 
-<div class="vc-wrap">
-  <div class="vc-head">
-    <div class="vc-title">
-      <div class="vc-logo" aria-hidden="true">💑</div>
-      <div>
-        <h1>Visão do Casal</h1>
-        <div class="muted" style="font-size:13px">Paróquia Divino Espírito Santo — Jatiúca</div>
-      </div>
+{% block content %}
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title">
+        <i class="bi bi-heart"></i>
+        <span>Visão do Casal</span>
+      </h1>
+      <p class="subtitle">Pesquise um casal e visualize seu histórico de encontro, equipes e palestras.</p>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+
+    <div class="actions">
+      <a class="btn" href="{{ url_for('index') }}">
+        <i class="bi bi-house-door"></i>
+        <span>Início</span>
+      </a>
     </div>
   </div>
 
-  {# ===== Busca (APENAS UMA) ===== #}
-  <div class="card" style="margin-bottom:12px">
-    <form method="get" class="search" autocomplete="off">
-      <input type="text" id="nome_ele" name="nome_ele" placeholder="Nome (Ele)" value="{{ nome_ele }}" list="sugestoes_ele" required>
-      <datalist id="sugestoes_ele"></datalist>
-      <input type="text" id="nome_ela" name="nome_ela" placeholder="Nome (Ela)" value="{{ nome_ela }}" list="sugestoes_ela" required>
-      <datalist id="sugestoes_ela"></datalist>
-      <button type="submit" class="btn primary">Buscar</button>
-    </form>
-    {% if erro %}<div class="muted" style="color:var(--err);margin-top:8px">{{ erro }}</div>{% endif %}
-  </div>
+  <section class="card">
+    <div class="card-head">
+      <h2>Pesquisar casal</h2>
+      <p>Informe os dois nomes para montar a visão consolidada.</p>
+    </div>
 
-  {# ===== Dados do Encontro (encontristas) ===== #}
-  {% if dados_encontrista %}
-    <div class="card" style="margin-bottom:12px">
-      <h3 style="margin:0 0 8px">Dados do Encontro</h3>
-      <div><b>Ano do Encontro:</b> {{ dados_encontrista.ano_encontro }}</div>
-      <div><b>Endereço:</b> {{ dados_encontrista.endereco or '—' }}</div>
-      <div><b>Telefones:</b> {{ dados_encontrista.telefones or '—' }}</div>
+    <div class="card-body">
+      <form method="get" action="{{ url_for('visao_casal') }}">
+        <div class="filters">
+          <div class="field col-6">
+            <label for="nome_ele">Nome Ele</label>
+            <input id="nome_ele" name="nome_ele" list="sugestoes_ele" value="{{ nome_ele or '' }}" placeholder="Digite o nome dele">
+            <datalist id="sugestoes_ele"></datalist>
+          </div>
+
+          <div class="field col-6">
+            <label for="nome_ela">Nome Ela</label>
+            <input id="nome_ela" name="nome_ela" list="sugestoes_ela" value="{{ nome_ela or '' }}" placeholder="Digite o nome dela">
+            <datalist id="sugestoes_ela"></datalist>
+          </div>
+
+          <div class="field col-12">
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i>
+                <span>Pesquisar</span>
+              </button>
+              <a class="btn" href="{{ url_for('visao_casal') }}">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                <span>Limpar</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </form>
     </div>
-  {% elif nome_ele and nome_ela and not erro %}
-    <div class="card" style="margin-bottom:12px">
-      <div class="muted">Casal não encontrado.</div>
-    </div>
+  </section>
+
+  {% if erro %}
+    <div class="flash info">{{ erro }}</div>
   {% endif %}
 
-  {# ===== Histórico por Ano (ÚNICO BLOCO) ===== #}
-  <div class="card">
-    <h3 style="margin:0 0 12px">Histórico por Ano</h3>
-    <p class="muted" style="margin:0 0 10px">Equipes trabalhadas e palestras realizadas por ano.</p>
+  {% if dados_encontrista or dados_encontreiros or dados_palestras %}
+    <div class="vc-grid">
+      <section class="card">
+        <div class="card-head">
+          <h2>Dados básicos</h2>
+          <p>Informações do encontro e contatos mais recentes.</p>
+        </div>
+        <div class="card-body">
+          {% if dados_encontrista %}
+            <div class="box-list">
+              <div class="box-item">
+                <div class="small">Ano do encontro</div>
+                <strong>{{ dados_encontrista.ano_encontro or '—' }}</strong>
+              </div>
+              <div class="box-item">
+                <div class="small">Telefones</div>
+                <strong>{{ dados_encontrista.telefones or '—' }}</strong>
+              </div>
+              <div class="box-item">
+                <div class="small">Endereço</div>
+                <strong>{{ dados_encontrista.endereco or '—' }}</strong>
+              </div>
+            </div>
+          {% else %}
+            <p class="small">Nenhum dado básico encontrado para este casal.</p>
+          {% endif %}
+        </div>
+      </section>
 
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width:80px;">Ano</th>
-          <th>Equipes</th>
-          <th>Palestras</th>
-        </tr>
-      </thead>
-      <tbody>
-        {# ===== Modo 1: usa anos + dicionários (preferido) ===== #}
-        {% if anos is defined and por_ano_trabalhos is defined and por_ano_palestras is defined %}
-          {% for ano in anos %}
-            {% set trabs = por_ano_trabalhos.get(ano, []) %}
-            {% set talks = por_ano_palestras.get(ano, []) %}
-            <tr>
-              <td>{{ ano }}</td>
-              <td>
-                {% if trabs %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for t in trabs %}
-                      {% set st = (t.status or '')|trim|lower %}
-                      <li>
-                        {{ t.equipe or '—' }}
-                        {% if (t.coordenador or '')|trim|lower == 'sim' %}
-                          <span class="pill">Coord.</span>
-                        {% endif %}
-                        {# Exibe STATUS e MOTIVO somente para Recusou/Desistiu #}
-                        {% if st in ['recusou','desistiu'] %}
-                          <span class="pill" style="border-color:#fecaca;background:#fee2e2;color:#991b1b;margin-left:6px">{{ st|capitalize }}</span>
-                          {% if t.observacao %}<span class="pill" style="margin-left:6px">{{ t.observacao }}</span>{% endif %}
-                        {% endif %}
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-              <td>
-                {% if talks %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for p in talks %}
-                      <li>{{ p.palestra or '' }}</li>
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        {# ===== Modo 2: compatibilidade com listas cruas ===== #}
-        {% else %}
-          {# Agrupa trabalhos por ano #}
-          {% set trab_por_ano = {} %}
-          {% for r in (dados_encontreiros or []) %}
-            {% set lst = trab_por_ano.get(r.ano, []) + [r] %}
-            {% if trab_por_ano.update({r.ano: lst}) %}{% endif %}
-          {% endfor %}
-          {# Agrupa palestras por ano #}
-          {% set pal_por_ano = {} %}
-          {% for p in (dados_palestras or []) %}
-            {% set lst = pal_por_ano.get(p.ano, []) + [p] %}
-            {% if pal_por_ano.update({p.ano: lst}) %}{% endif %}
-          {% endfor %}
-          {% set anos_tmp = (trab_por_ano.keys() | list) + (pal_por_ano.keys() | list) %}
-          {% set anos_uniq = anos_tmp|unique|list %}
-          {% set anos_sorted = anos_uniq|sort %}
-          {% for ano in anos_sorted %}
-            <tr>
-              <td>{{ ano }}</td>
-              <td>
-                {% set lst = trab_por_ano.get(ano, []) %}
-                {% if lst %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for r in lst %}
-                      {% set st = (r.status or '')|trim|lower %}
-                      <li>
-                        {{ r.equipe or '—' }}
-                        {% if (r.coordenador or '')|trim|lower == 'sim' %}
-                          <span class="pill">Coord.</span>
-                        {% endif %}
-                        {% if st in ['recusou','desistiu'] %}
-                          <span class="pill" style="border-color:#fecaca;background:#fee2e2;color:#991b1b;margin-left:6px">{{ st|capitalize }}</span>
-                          {% if r.observacao %}<span class="pill" style="margin-left:6px">{{ r.observacao }}</span>{% endif %}
-                        {% endif %}
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-              <td>
-                {% set lst2 = pal_por_ano.get(ano, []) %}
-                {% if lst2 %}
-                  <ul style="margin:0;padding-left:16px">
-                    {% for p in lst2 %}
-                      <li>{{ p.palestra or '' }}</li>
-                    {% endfor %}
-                  </ul>
-                {% else %} — {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
+      <section class="card">
+        <div class="card-head">
+          <h2>Resumo</h2>
+          <p>Quantidade de anos com participação em equipes e palestras.</p>
+        </div>
+        <div class="card-body">
+          <div class="box-list">
+            <div class="box-item">
+              <div class="small">Anos com trabalho em equipes</div>
+              <strong>{{ por_ano_trabalhos|length }}</strong>
+            </div>
+            <div class="box-item">
+              <div class="small">Anos com palestras</div>
+              <strong>{{ por_ano_palestras|length }}</strong>
+            </div>
+            <div class="box-item">
+              <div class="small">Anos totais no histórico</div>
+              <strong>{{ anos|length }}</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Histórico por ano</h2>
+        <p>Trabalhos em equipes e palestras do casal ao longo do tempo.</p>
+      </div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ano</th>
+                <th>Equipes / Trabalhos</th>
+                <th>Palestras</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if anos %}
+                {% for ano in anos %}
+                  {% set trabalhos = por_ano_trabalhos.get(ano, []) %}
+                  {% set talks = por_ano_palestras.get(ano, []) %}
+                  <tr>
+                    <td><strong>{{ ano }}</strong></td>
+                    <td>
+                      {% if trabalhos %}
+                        <ul style="margin:0; padding-left:18px;">
+                          {% for r in trabalhos %}
+                            {% set st = (r.status or '')|trim|lower %}
+                            <li style="margin-bottom:6px;">
+                              {{ r.equipe or '—' }}
+                              {% if (r.coordenador or '')|trim|lower == 'sim' %}
+                                <span class="pill">Coord.</span>
+                              {% endif %}
+                              {% if st in ['recusou','desistiu'] %}
+                                <span class="pill" style="background:#fee2e2; color:#991b1b; border-color:#fecaca;">{{ st|capitalize }}</span>
+                              {% endif %}
+                              {% if r.observacao %}
+                                <div class="small" style="margin-top:4px;">Obs.: {{ r.observacao }}</div>
+                              {% endif %}
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      {% else %}
+                        <span class="small">—</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if talks %}
+                        <ul style="margin:0; padding-left:18px;">
+                          {% for p in talks %}
+                            <li>{{ p.palestra or '' }}</li>
+                          {% endfor %}
+                        </ul>
+                      {% else %}
+                        <span class="small">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="3" class="small">Nenhum histórico encontrado.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  {% endif %}
 </div>
 
 <script>
-  // Autocomplete dos nomes (apenas uma vez)
-  (function(){
-    const inputEle = document.getElementById('nome_ele');
-    const inputEla = document.getElementById('nome_ela');
-    const datalistEle = document.getElementById('sugestoes_ele');
-    const datalistEla = document.getElementById('sugestoes_ela');
+(function(){
+  const inputEle = document.getElementById('nome_ele');
+  const inputEla = document.getElementById('nome_ela');
+  const datalistEle = document.getElementById('sugestoes_ele');
+  const datalistEla = document.getElementById('sugestoes_ela');
 
-    function buscarNomes(input, datalist) {
-      const valor = (input.value || '').trim();
-      if (valor.length < 3) { datalist.innerHTML = ''; return; }
-      fetch(`/autocomplete-nomes?q=${encodeURIComponent(valor)}`)
-        .then(res => res.json())
-        .then(data => {
-          datalist.innerHTML = '';
-          (data || []).forEach(nome => {
-            const opt = document.createElement('option');
-            opt.value = nome;
-            datalist.appendChild(opt);
-          });
-        })
-        .catch(() => {});
-    }
+  function buscarNomes(input, datalist) {
+    const valor = (input.value || '').trim();
+    if (valor.length < 3) { datalist.innerHTML = ''; return; }
+    fetch(`/autocomplete-nomes?q=${encodeURIComponent(valor)}`)
+      .then(res => res.json())
+      .then(data => {
+        datalist.innerHTML = '';
+        (data || []).forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = input.id === 'nome_ele' ? item.nome_ele : item.nome_ela;
+          datalist.appendChild(opt);
+        });
+      })
+      .catch(() => {});
+  }
 
-    if (inputEle) inputEle.addEventListener('input', () => buscarNomes(inputEle, datalistEle));
-    if (inputEla) inputEla.addEventListener('input', () => buscarNomes(inputEla, datalistEla));
-  })();
+  if (inputEle) inputEle.addEventListener('input', () => buscarNomes(inputEle, datalistEle));
+  if (inputEla) inputEla.addEventListener('input', () => buscarNomes(inputEla, datalistEla));
+})();
 </script>
 {% endblock %}
