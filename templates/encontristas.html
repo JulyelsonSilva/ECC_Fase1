@@ -1,337 +1,118 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Encontristas • ECC Divino</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root{
-      --brand:#2563eb;
-      --brand-600:#1d4ed8;
-      --bg:#f6f8fb;
-      --card:#ffffff;
-      --ink:#0f172a;
-      --muted:#64748b;
-      --line:#e2e8f0;
-      --ok-bg:#ecfdf5;
-      --ok-bd:#a7f3d0;
-      --ok-tx:#065f46;
-      --warn-bg:#eff6ff;
-      --warn-bd:#bfdbfe;
-      --warn-tx:#1e3a8a;
-      --shadow:0 10px 30px rgba(15,23,42,.06);
-      --radius:18px;
-    }
+{% extends "base.html" %}
 
-    *{ box-sizing:border-box; }
+{% block title %}Encontristas - Sistema ECC{% endblock %}
 
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--ink);
-    }
+{% block content %}
 
-    .page{
-      max-width:1400px;
-      margin:0 auto;
-      padding:24px 18px 40px;
-    }
+<div class="header">
+  <h1 class="title">
+    <i class="bi bi-person-hearts"></i> Encontristas
+  </h1>
 
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-      flex-wrap:wrap;
-      margin-bottom:18px;
-    }
+  <div class="flex gap-10">
+    <a href="{{ url_for('novo_encontrista') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg"></i> Novo
+    </a>
+  </div>
+</div>
 
-    .topbar h1{
-      margin:0;
-      font-size:30px;
-      line-height:1.1;
-      letter-spacing:-.02em;
-    }
+<div class="card">
 
-    .topbar p{
-      margin:8px 0 0;
-      color:var(--muted);
-    }
+  <!-- FILTROS -->
+  <form method="get">
+    <div class="form-row">
 
-    .actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      height:42px;
-      padding:0 14px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--ink);
-      text-decoration:none;
-      font-weight:600;
-      transition:.18s ease;
-    }
-
-    .btn:hover{
-      transform:translateY(-1px);
-      box-shadow:var(--shadow);
-    }
-
-    .btn-primary{
-      background:var(--brand);
-      color:#fff;
-      border-color:var(--brand);
-    }
-
-    .btn-primary:hover{
-      background:var(--brand-600);
-      border-color:var(--brand-600);
-    }
-
-    .flash{
-      border:1px solid;
-      border-radius:14px;
-      padding:12px 14px;
-      margin-bottom:14px;
-      font-weight:600;
-    }
-
-    .flash.ok{
-      background:var(--ok-bg);
-      border-color:var(--ok-bd);
-      color:var(--ok-tx);
-    }
-
-    .flash.info{
-      background:var(--warn-bg);
-      border-color:var(--warn-bd);
-      color:var(--warn-tx);
-    }
-
-    .card{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-    }
-
-    .card-head{
-      padding:18px 20px 0;
-    }
-
-    .card-head h2{
-      margin:0;
-      font-size:19px;
-    }
-
-    .card-head p{
-      margin:6px 0 0;
-      color:var(--muted);
-      font-size:14px;
-    }
-
-    .card-body{
-      padding:18px 20px 20px;
-    }
-
-    .filters{
-      display:grid;
-      grid-template-columns: repeat(12, minmax(0,1fr));
-      gap:14px;
-      margin-bottom:18px;
-    }
-
-    .field{ grid-column:span 12; }
-    .col-4{ grid-column:span 4; }
-    .col-3{ grid-column:span 3; }
-
-    label{
-      display:block;
-      margin:0 0 6px;
-      font-size:13px;
-      font-weight:700;
-    }
-
-    input{
-      width:100%;
-      border:1px solid #cbd5e1;
-      border-radius:12px;
-      padding:11px 12px;
-      font:inherit;
-      background:#fff;
-      color:var(--ink);
-      outline:none;
-    }
-
-    input:focus{
-      border-color:var(--brand);
-      box-shadow:0 0 0 4px rgba(37,99,235,.10);
-    }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-
-    th, td{
-      padding:12px 10px;
-      border-bottom:1px solid var(--line);
-      text-align:left;
-      vertical-align:top;
-    }
-
-    th{
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.05em;
-      color:var(--muted);
-    }
-
-    tr:hover td{
-      background:#f8fafc;
-    }
-
-    .small{
-      font-size:13px;
-      color:var(--muted);
-    }
-
-    .pager{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:14px;
-      flex-wrap:wrap;
-      margin-top:16px;
-    }
-
-    .pager-nav{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-
-    @media (max-width: 980px){
-      .col-4, .col-3{ grid-column:span 12; }
-      table{ font-size:13px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="topbar">
-      <div>
-        <h1>Encontristas</h1>
-        <p>Consulta e edição dos casais cadastrados no sistema.</p>
+      <div class="form-col">
+        <label>Nome Ele</label>
+        <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele','') }}" class="input">
       </div>
-      <div class="actions">
-        <a class="btn btn-primary" href="{{ url_for('fichas') }}">📝 Nova ficha</a>
-        <a class="btn" href="{{ url_for('index') }}">🏠 Início</a>
+
+      <div class="form-col">
+        <label>Nome Ela</label>
+        <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela','') }}" class="input">
       </div>
+
+      <div class="form-col">
+        <label>Ano</label>
+        <input type="text" name="ano" value="{{ request.args.get('ano','') }}" class="input">
+      </div>
+
     </div>
 
-    {% if updated %}
-      <div class="flash ok">Cadastro atualizado com sucesso.</div>
-    {% endif %}
-    {% if notfound %}
-      <div class="flash info">Registro não encontrado.</div>
-    {% endif %}
+    <div class="flex gap-10 mt-10">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-search"></i> Buscar
+      </button>
 
-    <section class="card">
-      <div class="card-head">
-        <h2>Filtros</h2>
-        <p>Use os campos abaixo para localizar rapidamente um casal.</p>
-      </div>
-      <div class="card-body">
-        <form method="get" class="filters">
-          <div class="field col-4">
-            <label for="nome_usual_ele">Nome usual (Ele)</label>
-            <input id="nome_usual_ele" name="nome_usual_ele" value="{{ request.args.get('nome_usual_ele','') }}">
-          </div>
-          <div class="field col-4">
-            <label for="nome_usual_ela">Nome usual (Ela)</label>
-            <input id="nome_usual_ela" name="nome_usual_ela" value="{{ request.args.get('nome_usual_ela','') }}">
-          </div>
-          <div class="field col-3">
-            <label for="ano">Ano</label>
-            <input id="ano" name="ano" value="{{ request.args.get('ano','') }}">
-          </div>
-          <div class="field col-3" style="display:flex; align-items:end; gap:10px;">
-            <button class="btn btn-primary" type="submit">Filtrar</button>
-            <a class="btn" href="{{ url_for('encontristas') }}">Limpar</a>
-          </div>
-        </form>
+      <a href="{{ url_for('encontristas') }}" class="btn">
+        <i class="bi bi-x-lg"></i> Limpar
+      </a>
+    </div>
 
-        <div style="overflow:auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Ano</th>
-                <th>ECC</th>
-                <th>Data casamento</th>
-                <th>Nome usual</th>
-                <th>Nome completo</th>
-                <th>Telefones</th>
-                <th>Endereço</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for r in dados %}
-                <tr>
-                  <td>{{ r.id }}</td>
-                  <td>{{ r.ano }}</td>
-                  <td>{{ r.num_ecc or '' }}</td>
-                  <td>{{ r.data_casamento.strftime('%d/%m/%Y') if r.data_casamento else '' }}</td>
-                  <td>
-                    <strong>{{ r.nome_usual_ele or '' }}</strong> e <strong>{{ r.nome_usual_ela or '' }}</strong>
-                  </td>
-                  <td>
-                    <div>{{ r.nome_completo_ele or '' }}</div>
-                    <div class="small">{{ r.nome_completo_ela or '' }}</div>
-                  </td>
-                  <td>
-                    <div>{{ r.telefone_ele or '' }}</div>
-                    <div class="small">{{ r.telefone_ela or '' }}</div>
-                  </td>
-                  <td>{{ r.endereco or '' }}</td>
-                  <td>
-                    <a class="btn" href="{{ url_for('editar_encontrista', encontrista_id=r.id) }}">Editar</a>
-                  </td>
-                </tr>
-              {% else %}
-                <tr>
-                  <td colspan="9" class="small">Nenhum registro encontrado.</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+  </form>
+</div>
 
-        <div class="pager">
-          <div class="small">Página {{ pagina }} de {{ total_paginas }}</div>
-          <div class="pager-nav">
-            {% if pagina > 1 %}
-              <a class="btn" href="{{ url_for('encontristas', nome_usual_ele=request.args.get('nome_usual_ele',''), nome_usual_ela=request.args.get('nome_usual_ela',''), ano=request.args.get('ano',''), pagina=pagina-1) }}">← Anterior</a>
-            {% endif %}
-            {% if pagina < total_paginas %}
-              <a class="btn" href="{{ url_for('encontristas', nome_usual_ele=request.args.get('nome_usual_ele',''), nome_usual_ela=request.args.get('nome_usual_ela',''), ano=request.args.get('ano',''), pagina=pagina+1) }}">Próxima →</a>
-            {% endif %}
+<div class="card">
+
+  <!-- TABELA -->
+  <table class="table">
+
+    <thead>
+      <tr>
+        <th>Casal</th>
+        <th>Ano</th>
+        <th>Telefone</th>
+        <th>Endereço</th>
+        <th style="width: 120px;">Ações</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for e in encontristas %}
+      <tr>
+
+        <td>
+          <strong>{{ e.nome_usual_ele }}</strong> e {{ e.nome_usual_ela }}
+        </td>
+
+        <td>
+          {{ e.ano }}
+        </td>
+
+        <td>
+          {{ e.telefone_ele }} {{ e.telefone_ela }}
+        </td>
+
+        <td>
+          {{ e.endereco }}
+        </td>
+
+        <td>
+          <div class="flex gap-10">
+
+            <a href="{{ url_for('editar_encontrista', id=e.id) }}" class="btn btn-sm">
+              <i class="bi bi-pencil"></i>
+            </a>
+
+            <a href="{{ url_for('visao_casal', id=e.id) }}" class="btn btn-sm">
+              <i class="bi bi-eye"></i>
+            </a>
+
           </div>
-        </div>
-      </div>
-    </section>
-  </div>
-</body>
-</html>
+        </td>
+
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="text-center text-muted">
+          Nenhum registro encontrado
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+
+  </table>
+
+</div>
+
+{% endblock %}
