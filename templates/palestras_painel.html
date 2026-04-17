@@ -34,7 +34,7 @@
         <p class="muted">Anos com ao menos um registro em <b>Aberto</b>.</p>
         <div>
           {% for r in anos_aberto %}
-            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; abertos: {{ r.abertos }} / total: {{ r.total }}</a>
+            <a class="tag" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">{{ r.ano }} &nbsp;•&nbsp; abertos: {{ r.qtd_aberto }} / total: {{ r.total }}</a>
           {% else %}
             <span class="muted">Nenhum ano em aberto.</span>
           {% endfor %}
