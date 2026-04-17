@@ -4,12 +4,14 @@
 
 {% block extra_head %}
 <style>
-  .montagem-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .montagem-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   .montagem-tag{
-    display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
-    border-radius:10px;text-decoration:none;color:var(--text);background:#fff;margin:6px 6px 0 0;font-weight:600;
+    display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);
+    border-radius:12px;text-decoration:none;color:var(--text);background:#fff;margin:6px 6px 0 0;font-weight:600;
+    transition:.18s ease;box-shadow:var(--shadow);
   }
-  .montagem-tag:hover{background:var(--primary-light);text-decoration:none}
+  .montagem-tag:hover{background:var(--primary-light);text-decoration:none;transform:translateY(-1px)}
+  .montagem-tag i{font-size:16px;color:var(--primary)}
   @media (max-width: 900px){.montagem-cols{grid-template-columns:1fr}}
 </style>
 {% endblock %}
