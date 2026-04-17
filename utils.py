@@ -1,6 +1,8 @@
 import re
 from difflib import SequenceMatcher
 
+from config import TEAM_MAP
+
 
 # =========================
 # Helpers genéricos de texto
@@ -35,6 +37,26 @@ def _yes_coord_vals():
         'sim coordenador',
         'sim - coordenador',
     )
+
+
+# =========================
+# Helpers de equipes
+# =========================
+def _team_label(value: str) -> str:
+    """Normaliza chave/filtro curto para o rótulo salvo no banco."""
+    v = (value or '').strip()
+    if not v:
+        return v
+
+    vl = v.lower()
+    for key, info in TEAM_MAP.items():
+        if (
+            vl == key.lower()
+            or vl == (info.get('filtro') or '').lower()
+            or vl == (info.get('rotulo') or '').lower()
+        ):
+            return info['rotulo']
+    return v
 
 
 # =========================
