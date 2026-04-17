@@ -1,191 +1,231 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Organograma ECC</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      margin: 20px;
-    }
-    .scroll-container {
-      overflow-x: auto;
-    }
-    .linha {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      gap: 50px;
-      margin-bottom: 60px;
-      min-width: calc((250px + 50px) * 8);
-    }
-    .equipe-coluna {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .equipe-box {
-      background: white;
-      border: 1px solid #333;
-      border-radius: 10px;
-      padding: 10px;
-      box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
-      width: 250px;
-    }
-    .coordenador {
-      background-color: #ffeb3b;
-    }
-    .titulo {
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 4px;
-    }
-    .cargo {
-      font-size: 12px;
-      text-align: center;
-      font-style: italic;
-      margin-bottom: 5px;
-    }
-    .nomes {
-      text-align: center;
-    }
-    select {
-      font-size: 16px;
-      margin-bottom: 20px;
-      padding: 5px;
-    }
-    @media (max-width: 768px) {
-      .equipe-box {
-        width: 220px;
-      }
-      .linha {
-        min-width: calc((220px + 50px) * 8);
-      }
-    }
-  </style>
-</head>
-<body>
-  <h1>Organograma ECC</h1>
+{% extends "base.html" %}
 
- <!-- Botão para voltar à página inicial -->
-  <a href="{{ url_for('index') }}">
-    <button type="button">Voltar para Página Inicial</button>
-  </a>
-  <br><br>
-  
-  <label for="ano">Escolha o ano:</label>
-  <select id="ano"></select>
+{% block title %}Organograma ECC{% endblock %}
 
-  <div class="scroll-container" id="organograma"></div>
+{% block extra_head %}
+<style>
+  .org-toolbar{
+    display:flex;
+    gap:12px;
+    align-items:end;
+    flex-wrap:wrap;
+  }
+  .org-scroll{
+    overflow-x:auto;
+    padding-bottom:10px;
+  }
+  .org-board{
+    min-width: 2100px;
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+  .org-line{
+    display:flex;
+    justify-content:center;
+    gap:28px;
+    align-items:flex-start;
+  }
+  .org-column{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:center;
+    flex:0 0 auto;
+  }
+  .org-box{
+    width:250px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:14px;
+  }
+  .org-box.coordenador{
+    background:#fffbeb;
+    border-color:#fde68a;
+  }
+  .org-title{
+    font-weight:700;
+    text-align:center;
+    margin-bottom:6px;
+  }
+  .org-role{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    font-style:italic;
+    margin-bottom:8px;
+  }
+  .org-name{
+    text-align:center;
+    font-size:14px;
+    line-height:1.4;
+    padding:3px 0;
+  }
+  @media (max-width: 768px){
+    .org-box{ width:220px; }
+    .org-board{ min-width: 1880px; }
+  }
+</style>
+{% endblock %}
 
-  <script>
-    const anosValidos = [];
-    for (let y = 2024; y >= 2000; y--) {
-      if (y !== 2020 && y !== 2021) anosValidos.push(y);
+{% block content %}
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title">
+        <i class="bi bi-diagram-2"></i>
+        <span>Organograma ECC</span>
+      </h1>
+      <p class="subtitle">Visualize a estrutura organizacional do encontro por ano.</p>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="{{ url_for('index') }}">
+        <i class="bi bi-house-door"></i>
+        <span>Início</span>
+      </a>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Selecionar ano</h2>
+      <p>Escolha o ano para carregar o organograma.</p>
+    </div>
+    <div class="card-body">
+      <div class="org-toolbar">
+        <div class="field" style="max-width:240px;">
+          <label for="ano">Ano</label>
+          <select id="ano"></select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Estrutura</h2>
+      <p>Coordenadores e equipes distribuídos na organização visual do ECC.</p>
+    </div>
+    <div class="card-body">
+      <div class="org-scroll">
+        <div id="organograma" class="org-board"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const anosValidos = [];
+for (let y = 2024; y >= 2000; y--) {
+  if (y !== 2020 && y !== 2021) anosValidos.push(y);
+}
+const selectAno = document.getElementById("ano");
+selectAno.innerHTML =
+  '<option value="">--Selecione--</option>' +
+  anosValidos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
+
+const estrutura = [
+  ["Equipe Dirigente - MONTAGEM", "Equipe Dirigente - PÓS ENCONTRO", "Equipe Dirigente -FICHAS", "Equipe Dirigente - PALESTRA", "Equipe Dirigente - FINANÇAS"],
+  ["Casal Coordenador Geral", "Casal Setorial"],
+  ["Equipe de Sala", "Equipe de Círculos"],
+  ["Equipe Café e Minimercado", "Equipe Compras", "Equipe Acolhida", "Equipe Ordem e Limpeza", "Equipe Liturgia e Vigília", "Equipe Secretaria", "Equipe Cozinha", "Equipe Visitação"]
+];
+
+selectAno.addEventListener("change", async function() {
+  const ano = this.value;
+  const container = document.getElementById("organograma");
+  container.innerHTML = "";
+  if (!ano) return;
+
+  const res = await fetch(`/dados-organograma?ano=${ano}`);
+  const dados = await res.json();
+
+  const equipes = {};
+  dados.forEach(p => {
+    const equipe = (p.equipe || "").trim();
+    const nome = `${p.nome_ele || ''} e ${p.nome_ela || ''}`.trim();
+    const isCoord = (p.coordenador || "").trim().toLowerCase() === "sim";
+
+    if (!equipes[equipe]) equipes[equipe] = { coordenador: [], membros: [] };
+    if (isCoord) {
+      equipes[equipe].coordenador.push(nome);
+    } else {
+      equipes[equipe].membros.push(nome);
     }
-    const selectAno = document.getElementById("ano");
-    selectAno.innerHTML = '<option value="">--Selecione--</option>' + anosValidos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
+  });
 
-    const estrutura = [
-      ["Equipe Dirigente - MONTAGEM", "Equipe Dirigente - PÓS ENCONTRO", "Equipe Dirigente -FICHAS", "Equipe Dirigente - PALESTRA", "Equipe Dirigente - FINANÇAS"],
-      ["Casal Coordenador Geral", "Casal Setorial"],
-      ["Equipe de Sala", "Equipe de Círculos"],
-      ["Equipe Café e Minimercado", "Equipe Compras", "Equipe Acolhida", "Equipe Ordem e Limpeza", "Equipe Liturgia e Vigília", "Equipe Secretaria", "Equipe Cozinha", "Equipe Visitação"]
-    ];
+  estrutura.forEach((linhaEquipes) => {
+    const linhaDiv = document.createElement("div");
+    linhaDiv.className = "org-line";
 
-    selectAno.addEventListener("change", async function() {
-      const ano = this.value;
-      if (!ano) return;
-      const res = await fetch(`/dados-organograma?ano=${ano}`);
-      const dados = await res.json();
+    linhaEquipes.forEach(equipeBase => {
+      if (!equipeBase) return;
 
-      const container = document.getElementById("organograma");
-      container.innerHTML = "";
+      const equipeColuna = document.createElement("div");
+      equipeColuna.className = "org-column";
 
-      const equipes = {};
-      dados.forEach(p => {
-        const equipe = p.equipe.trim();
-        const nome = p.nome_ele + " e " + p.nome_ela;
-        const isCoord = p.coordenador.trim().toLowerCase() === "sim";
+      const caixaCoord = document.createElement("div");
+      caixaCoord.className = "org-box coordenador";
 
-        if (!equipes[equipe]) equipes[equipe] = { coordenador: [], membros: [] };
-        if (isCoord) {
-          equipes[equipe].coordenador.push(nome);
-        } else {
-          equipes[equipe].membros.push(nome);
+      const tituloCoord = document.createElement("div");
+      tituloCoord.className = "org-title";
+      tituloCoord.textContent = equipeBase;
+      caixaCoord.appendChild(tituloCoord);
+
+      const cargoCoord = document.createElement("div");
+      cargoCoord.className = "org-role";
+      cargoCoord.textContent = "Coordenador(es)";
+      caixaCoord.appendChild(cargoCoord);
+
+      let hasCoord = false;
+      Object.keys(equipes).forEach(eq => {
+        if (eq.toLowerCase().startsWith(equipeBase.toLowerCase()) && equipes[eq].coordenador.length > 0) {
+          hasCoord = true;
+          equipes[eq].coordenador.forEach(c => {
+            const div = document.createElement("div");
+            div.className = "org-name";
+            div.textContent = c;
+            caixaCoord.appendChild(div);
+          });
         }
       });
+      if (hasCoord) equipeColuna.appendChild(caixaCoord);
 
-      estrutura.forEach((linhaEquipes) => {
-        const linhaDiv = document.createElement("div");
-        linhaDiv.className = "linha";
+      const caixaMembros = document.createElement("div");
+      caixaMembros.className = "org-box";
 
-        linhaEquipes.forEach(equipeBase => {
-          if (!equipeBase) return;
+      const tituloMembros = document.createElement("div");
+      tituloMembros.className = "org-title";
+      tituloMembros.textContent = equipeBase;
+      caixaMembros.appendChild(tituloMembros);
 
-          const equipeColuna = document.createElement("div");
-          equipeColuna.className = "equipe-coluna";
-
-          const caixaCoord = document.createElement("div");
-          caixaCoord.className = "equipe-box coordenador";
-          const tituloCoord = document.createElement("div");
-          tituloCoord.className = "titulo";
-          tituloCoord.textContent = equipeBase;
-          caixaCoord.appendChild(tituloCoord);
-          const cargoCoord = document.createElement("div");
-          cargoCoord.className = "cargo";
-          cargoCoord.textContent = "Coordenador(es)";
-          caixaCoord.appendChild(cargoCoord);
-
-          let hasCoord = false;
-          Object.keys(equipes).forEach(eq => {
-            if (eq.toLowerCase().startsWith(equipeBase.toLowerCase()) && equipes[eq].coordenador.length > 0) {
-              hasCoord = true;
-              equipes[eq].coordenador.forEach(c => {
-                const div = document.createElement("div");
-                div.className = "nomes";
-                div.textContent = c;
-                caixaCoord.appendChild(div);
-              });
+      let hasMembro = false;
+      Object.keys(equipes).forEach(eq => {
+        if (eq.toLowerCase().startsWith(equipeBase.toLowerCase()) && equipes[eq].membros.length > 0) {
+          hasMembro = true;
+          equipes[eq].membros.forEach(m => {
+            const div = document.createElement("div");
+            div.className = "org-name";
+            if (equipeBase.toLowerCase() === "equipe de sala") {
+              const subtitulo = eq.replace(/^Equipe de Sala - /i, "");
+              div.textContent = `${subtitulo}: ${m}`;
+            } else {
+              div.textContent = m;
             }
+            caixaMembros.appendChild(div);
           });
-          if (hasCoord) equipeColuna.appendChild(caixaCoord);
-
-          const caixaMembros = document.createElement("div");
-          caixaMembros.className = "equipe-box";
-          const tituloMembros = document.createElement("div");
-          tituloMembros.className = "titulo";
-          tituloMembros.textContent = equipeBase;
-          caixaMembros.appendChild(tituloMembros);
-
-          let hasMembro = false;
-          Object.keys(equipes).forEach(eq => {
-            if (eq.toLowerCase().startsWith(equipeBase.toLowerCase()) && equipes[eq].membros.length > 0) {
-              hasMembro = true;
-              equipes[eq].membros.forEach(m => {
-                const div = document.createElement("div");
-                div.className = "nomes";
-                if (equipeBase.toLowerCase() === "equipe de sala") {
-                  const subtitulo = eq.replace(/^Equipe de Sala - /i, "");
-                  div.textContent = `${subtitulo}: ${m}`;
-                } else {
-                  div.textContent = m;
-                }
-                caixaMembros.appendChild(div);
-              });
-            }
-          });
-          if (hasMembro) equipeColuna.appendChild(caixaMembros);
-
-          if (hasCoord || hasMembro) linhaDiv.appendChild(equipeColuna);
-        });
-
-        container.appendChild(linhaDiv);
+        }
       });
+      if (hasMembro) equipeColuna.appendChild(caixaMembros);
+
+      if (hasCoord || hasMembro) linhaDiv.appendChild(equipeColuna);
     });
-  </script>
-</body>
-</html>
+
+    container.appendChild(linhaDiv);
+  });
+});
+</script>
+{% endblock %}
