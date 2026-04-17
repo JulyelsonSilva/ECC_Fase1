@@ -1,68 +1,113 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <title>Círculos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{ --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0, rgba(255,243,214,0) 60%),
-        var(--bg);
-    }
-    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
-    .header{display:flex; align-items:center; justify-content:space-between; gap:12px}
-    a.btn, button.btn{height:36px; border:1px solid var(--border); border-radius:10px; padding:0 12px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff; cursor:pointer;}
-    .grid{display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; text-decoration:none; color:inherit; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease; box-shadow:0 8px 20px rgba(15,23,42,.05)}
-    .card:hover{ transform: translateY(-2px); box-shadow:0 12px 26px rgba(15,23,42,.08); border-color:#d2d7e0; background:#fcfdff }
-    .circle[data-color]{ background: rgba(var(--c), .12); border-color: rgba(var(--c), .35) }
-    h1{margin:0 0 6px; font-size:20px}
-    h2{margin:16px 0 8px; font-size:18px; color:#334155}
-    .muted{color:var(--muted)}
-    @media (prefers-color-scheme: dark){
-      :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; }
-      .card{box-shadow:none}
-      .card:hover{background:#0f172a}
-      h2{color:#cbd5e1}
-      a.btn,button.btn{background:transparent}
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header">
-      <h1>Círculos</h1>
-      <div class="actions" style="display:flex; gap:8px; flex-wrap:wrap">
-        <a class="btn" href="{{ url_for('circulos_transferir') }}">🔁 Transferir casal entre círculos</a>
-        <a class="btn" href="{{ url_for('pesquisa_circulos') }}">🔎 Pesquisa de Círculos</a>
-        <a class="btn" href="{{ url_for('index') }}">🏠 Início</a>
-      </div>
+{% extends "base.html" %}
+
+{% block title %}Círculos{% endblock %}
+
+{% block extra_head %}
+<style>
+  .circulos-grid{
+    display:grid;
+    gap:14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .circulo-card{
+    display:block;
+    text-decoration:none;
+    color:inherit;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    background:#fff;
+    box-shadow:var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+  }
+
+  .circulo-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 26px rgba(15,23,42,.08);
+    border-color:#d2d7e0;
+    background:#fcfdff;
+    text-decoration:none;
+  }
+
+  .circulo-card[data-color]{
+    background:rgba(var(--c), .12);
+    border-color:rgba(var(--c), .35);
+  }
+
+  .ano-bloco{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .ano-title{
+    margin:0;
+    font-size:18px;
+    color:#334155;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title">
+        <i class="bi bi-circle"></i>
+        <span>Círculos</span>
+      </h1>
+      <p class="subtitle">Visualize e acesse os círculos cadastrados por ano.</p>
     </div>
 
-    {% if not anos %}
-      <p class="muted" style="margin-top:6px">Nenhum círculo cadastrado.</p>
-    {% else %}
-      {% for ano in anos %}
-        <h2>{{ ano }}</h2>
-        <div class="grid">
-          {% for c in por_ano[ano] %}
-            <a class="card circle"
-               href="{{ url_for('circulos_view', cid=c.id) }}"
-               {% if c.rgb %} data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
-              <div style="font-weight:600">{{ c.nome or '— Sem nome —' }}</div>
-              <div class="muted" style="margin-top:4px">
-                {{ c.coord }}{{ c.coord_hint }}
-              </div>
-            </a>
-          {% endfor %}
-        </div>
-      {% endfor %}
-    {% endif %}
+    <div class="actions">
+      <a class="btn" href="{{ url_for('circulos_transferir') }}">
+        <i class="bi bi-arrow-left-right"></i>
+        <span>Transferir casal</span>
+      </a>
+      <a class="btn" href="{{ url_for('pesquisa_circulos') }}">
+        <i class="bi bi-search"></i>
+        <span>Pesquisa</span>
+      </a>
+      <a class="btn" href="{{ url_for('index') }}">
+        <i class="bi bi-house-door"></i>
+        <span>Início</span>
+      </a>
+    </div>
   </div>
-</body>
-</html>
+
+  {% if not anos %}
+    <div class="card">
+      <div class="card-body">
+        <p class="text-muted">Nenhum círculo cadastrado.</p>
+      </div>
+    </div>
+  {% else %}
+    {% for ano in anos %}
+      <section class="card ano-bloco">
+        <div class="card-head">
+          <h2 class="ano-title">{{ ano }}</h2>
+          <p>Selecione um círculo para visualizar ou editar seus dados.</p>
+        </div>
+
+        <div class="card-body">
+          <div class="circulos-grid">
+            {% for c in por_ano[ano] %}
+              <a class="circulo-card"
+                 href="{{ url_for('circulos_view', cid=c.id) }}"
+                 {% if c.rgb %}data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
+                <div style="font-weight:700; margin-bottom:6px;">
+                  {{ c.nome or '— Sem nome —' }}
+                </div>
+                <div class="small">
+                  {{ c.coord }}{{ c.coord_hint }}
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}
