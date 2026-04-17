@@ -1,118 +1,178 @@
 {% extends "base.html" %}
 
-{% block title %}Encontristas - Sistema ECC{% endblock %}
-
 {% block content %}
-
-<div class="header">
-  <h1 class="title">
-    <i class="bi bi-person-hearts"></i> Encontristas
-  </h1>
-
-  <div class="flex gap-10">
-    <a href="{{ url_for('novo_encontrista') }}" class="btn btn-primary">
-      <i class="bi bi-plus-lg"></i> Novo
-    </a>
-  </div>
-</div>
-
-<div class="card">
-
-  <!-- FILTROS -->
-  <form method="get">
-    <div class="form-row">
-
-      <div class="form-col">
-        <label>Nome Ele</label>
-        <input type="text" name="nome_ele" value="{{ request.args.get('nome_ele','') }}" class="input">
-      </div>
-
-      <div class="form-col">
-        <label>Nome Ela</label>
-        <input type="text" name="nome_ela" value="{{ request.args.get('nome_ela','') }}" class="input">
-      </div>
-
-      <div class="form-col">
-        <label>Ano</label>
-        <input type="text" name="ano" value="{{ request.args.get('ano','') }}" class="input">
-      </div>
-
+<div class="page">
+  <div class="topbar">
+    <div>
+      <h1>Encontristas</h1>
+      <p>Consulta e edição dos casais cadastrados no ECC.</p>
     </div>
 
-    <div class="flex gap-10 mt-10">
-      <button type="submit" class="btn btn-primary">
-        <i class="bi bi-search"></i> Buscar
-      </button>
-
-      <a href="{{ url_for('encontristas') }}" class="btn">
-        <i class="bi bi-x-lg"></i> Limpar
+    <div class="actions">
+      <a class="btn" href="{{ url_for('index') }}">
+        <i class="bi bi-house-door"></i>
+        <span>Início</span>
       </a>
     </div>
+  </div>
 
-  </form>
-</div>
+  {% if updated %}
+    <div class="flash ok">
+      Registro atualizado com sucesso.
+    </div>
+  {% endif %}
 
-<div class="card">
+  {% if notfound %}
+    <div class="flash info">
+      Registro não encontrado.
+    </div>
+  {% endif %}
 
-  <!-- TABELA -->
-  <table class="table">
+  <div class="card">
+    <div class="card-head">
+      <h2>Filtros</h2>
+      <p>Use um ou mais campos para localizar os encontristas.</p>
+    </div>
 
-    <thead>
-      <tr>
-        <th>Casal</th>
-        <th>Ano</th>
-        <th>Telefone</th>
-        <th>Endereço</th>
-        <th style="width: 120px;">Ações</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% for e in encontristas %}
-      <tr>
-
-        <td>
-          <strong>{{ e.nome_usual_ele }}</strong> e {{ e.nome_usual_ela }}
-        </td>
-
-        <td>
-          {{ e.ano }}
-        </td>
-
-        <td>
-          {{ e.telefone_ele }} {{ e.telefone_ela }}
-        </td>
-
-        <td>
-          {{ e.endereco }}
-        </td>
-
-        <td>
-          <div class="flex gap-10">
-
-            <a href="{{ url_for('editar_encontrista', id=e.id) }}" class="btn btn-sm">
-              <i class="bi bi-pencil"></i>
-            </a>
-
-            <a href="{{ url_for('visao_casal', id=e.id) }}" class="btn btn-sm">
-              <i class="bi bi-eye"></i>
-            </a>
-
+    <div class="card-body">
+      <form method="get" action="{{ url_for('encontristas') }}">
+        <div class="filters">
+          <div class="field col-4">
+            <label for="nome_usual_ele">Nome Ele</label>
+            <input
+              type="text"
+              id="nome_usual_ele"
+              name="nome_usual_ele"
+              value="{{ request.args.get('nome_usual_ele', '') }}"
+              placeholder="Digite o nome usual dele">
           </div>
-        </td>
 
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="5" class="text-center text-muted">
-          Nenhum registro encontrado
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
+          <div class="field col-4">
+            <label for="nome_usual_ela">Nome Ela</label>
+            <input
+              type="text"
+              id="nome_usual_ela"
+              name="nome_usual_ela"
+              value="{{ request.args.get('nome_usual_ela', '') }}"
+              placeholder="Digite o nome usual dela">
+          </div>
 
-  </table>
+          <div class="field col-3">
+            <label for="ano">Ano</label>
+            <input
+              type="text"
+              id="ano"
+              name="ano"
+              value="{{ request.args.get('ano', '') }}"
+              placeholder="Ex.: 2024">
+          </div>
 
+          <div class="field col-12">
+            <div class="actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i>
+                <span>Buscar</span>
+              </button>
+
+              <a class="btn" href="{{ url_for('encontristas') }}">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                <span>Limpar</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Ano</th>
+              <th>Casal</th>
+              <th>Telefones</th>
+              <th>Endereço</th>
+              <th>ECC</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for e in dados %}
+              <tr>
+                <td>{{ e.id }}</td>
+                <td>{{ e.ano or '' }}</td>
+                <td>
+                  <strong>{{ e.nome_usual_ele or '' }}</strong> e
+                  <strong>{{ e.nome_usual_ela or '' }}</strong>
+                  <div class="small">
+                    {{ e.nome_completo_ele or '' }}{% if e.nome_completo_ele or e.nome_completo_ela %} / {% endif %}{{ e.nome_completo_ela or '' }}
+                  </div>
+                </td>
+                <td>
+                  {{ e.telefone_ele or '' }}
+                  {% if e.telefone_ele and e.telefone_ela %}<br>{% endif %}
+                  {{ e.telefone_ela or '' }}
+                </td>
+                <td>{{ e.endereco or '' }}</td>
+                <td>{{ e.num_ecc or '' }}</td>
+                <td>
+                  <div class="actions">
+                    <a class="btn" href="{{ url_for('editar_encontrista', encontrista_id=e.id) }}">
+                      <i class="bi bi-pencil-square"></i>
+                      <span>Editar</span>
+                    </a>
+
+                    <a class="btn" href="{{ url_for('visao_casal', nome_ele=e.nome_usual_ele, nome_ela=e.nome_usual_ela) }}">
+                      <i class="bi bi-eye"></i>
+                      <span>Ver casal</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="small">Nenhum registro encontrado.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if total_paginas > 1 %}
+        <div class="pager">
+          <div class="small">
+            Página {{ pagina }} de {{ total_paginas }}
+          </div>
+
+          <div class="actions">
+            {% if pagina > 1 %}
+              <a class="btn"
+                 href="{{ url_for('encontristas',
+                                  nome_usual_ele=request.args.get('nome_usual_ele', ''),
+                                  nome_usual_ela=request.args.get('nome_usual_ela', ''),
+                                  ano=request.args.get('ano', ''),
+                                  pagina=pagina-1) }}">
+                <i class="bi bi-chevron-left"></i>
+                <span>Anterior</span>
+              </a>
+            {% endif %}
+
+            {% if pagina < total_paginas %}
+              <a class="btn"
+                 href="{{ url_for('encontristas',
+                                  nome_usual_ele=request.args.get('nome_usual_ele', ''),
+                                  nome_usual_ela=request.args.get('nome_usual_ela', ''),
+                                  ano=request.args.get('ano', ''),
+                                  pagina=pagina+1) }}">
+                <span>Próxima</span>
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
-
 {% endblock %}
