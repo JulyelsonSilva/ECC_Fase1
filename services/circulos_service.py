@@ -1,274 +1,752 @@
-from flask import render_template, request, jsonify
+from collections import defaultdict
 
-from services.montagem_service import (
-    listar_montagem_por_ano,
-    carregar_dados_iniciais_montagem,
-    buscar_casal_para_montagem,
-    adicionar_dirigente_montagem,
-    buscar_cg_montagem,
-    adicionar_cg_montagem,
-    contar_equipes_montagem,
-    carregar_equipe_montagem,
-    check_casal_equipe,
-    add_membro_equipe,
-    marcar_status_dirigente,
-    marcar_status_membro,
-    concluir_montagem_ano,
-    buscar_dados_organograma,
-    buscar_relatorio_montagem,
+from db import db_conn
+from utils import (
+    _color_to_rgb_triplet,
+    _hex_to_rgb_triplet,
+    _parse_id_list,
+    _ids_to_str,
+    _csv_ids_unique,
+    _ids_to_csv,
 )
 
 
-def register_montagem_routes(
-    app,
-    TEAM_MAP,
-    TEAM_LIMITS,
-    _team_label,
-):
-    # =========================
-    # MONTAGEM (Aberto x Concluído)
-    # =========================
-    @app.route('/montagem')
-    def montagem():
-        dados = listar_montagem_por_ano()
-        return render_template(
-            'montagem.html',
-            anos_aberto=dados["anos_aberto"],
-            anos_concluidos=dados["anos_concluidos"]
-        )
+def resolve_encontristas(id_list):
+    if not id_list:
+        return []
 
-    # =========================
-    # Nova Montagem + APIs Dirigentes/CG
-    # =========================
-    @app.route('/montagem/nova')
-    def nova_montagem():
-        ano_preselecionado = request.args.get('ano', type=int)
-        initial_data = carregar_dados_iniciais_montagem(ano_preselecionado, TEAM_MAP)
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        placeholders = ",".join(["%s"] * len(id_list))
+        cur.execute(f"""
+            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+            FROM encontristas
+            WHERE id IN ({placeholders})
+        """, tuple(id_list))
+        rows = cur.fetchall() or []
+        by_id = {r["id"]: r for r in rows}
 
-        return render_template(
-            'nova_montagem.html',
-            ano_preselecionado=ano_preselecionado,
-            initial_data=initial_data,
-            team_map=TEAM_MAP
-        )
+        out = []
+        for i in id_list:
+            r = by_id.get(i)
+            if r:
+                out.append({
+                    "id": r["id"],
+                    "nome_ele": r.get("nome_usual_ele") or "",
+                    "nome_ela": r.get("nome_usual_ela") or "",
+                    "telefone_ele": r.get("telefone_ele") or "",
+                    "telefone_ela": r.get("telefone_ela") or "",
+                    "endereco": r.get("endereco") or "",
+                    "ano": r.get("ano"),
+                })
+        return out
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
-    @app.route('/api/buscar-casal', methods=['POST'])
-    def api_buscar_casal():
-        data = request.get_json(silent=True) or {}
-        nome_ele = (data.get('nome_ele') or '').strip()
-        nome_ela = (data.get('nome_ela') or '').strip()
-        if not nome_ele or not nome_ela:
-            return jsonify({"ok": False, "msg": "Informe nome_ele e nome_ela."}), 400
 
-        resultado = buscar_casal_para_montagem(nome_ele, nome_ela)
-        if not resultado["ok"]:
-            return jsonify(resultado), 404
+def parse_ids_csv(raw: str):
+    if not raw:
+        return []
+    raw = raw.replace(";", ",")
+    out = []
+    for p in raw.split(","):
+        p = p.strip()
+        if p.isdigit():
+            out.append(int(p))
+    return out
 
-        return jsonify(resultado)
 
-    @app.route('/api/adicionar-dirigente', methods=['POST'])
-    def api_adicionar_dirigente():
-        data = request.get_json(silent=True) or {}
-        ano = (str(data.get('ano') or '')).strip()
-        equipe = _team_label((data.get('equipe') or '').strip())
-        nome_ele = (data.get('nome_ele') or '').strip()
-        nome_ela = (data.get('nome_ela') or '').strip()
-        telefones = (data.get('telefones') or '').strip()
-        endereco = (data.get('endereco') or '').strip()
+def listar_circulos(ano="", q=""):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        where = ["1=1"]
+        params = []
+        if ano:
+            where.append("c.ano = %s")
+            params.append(ano)
+        if q:
+            like = f"%{q}%"
+            where.append("""(
+                  LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
+                  LOWER(c.cor_circulo)     LIKE LOWER(%s) OR
+                  LOWER(c.coord_atual_ele) LIKE LOWER(%s) OR
+                  LOWER(c.coord_atual_ela) LIKE LOWER(%s) OR
+                  LOWER(c.coord_orig_ele)  LIKE LOWER(%s) OR
+                  LOWER(c.coord_orig_ela)  LIKE LOWER(%s)
+            )""")
+            params += [like, like, like, like, like, like]
 
-        if not ano.isdigit() or len(ano) != 4:
-            return jsonify({"ok": False, "msg": "Ano inválido."}), 400
-        if not equipe:
-            return jsonify({"ok": False, "msg": "Equipe obrigatória."}), 400
-        if not nome_ele or not nome_ela:
-            return jsonify({"ok": False, "msg": "Preencha nome_ele e nome_ela."}), 400
+        where_sql = " AND ".join(where)
 
-        adicionar_dirigente_montagem(int(ano), equipe, nome_ele, nome_ela, telefones, endereco)
-        return jsonify({"ok": True})
+        cur.execute(f"""
+            SELECT
+               c.id, c.ano, c.cor_circulo, c.nome_circulo,
+               c.coord_orig_ele, c.coord_orig_ela,
+               c.coord_atual_ele, c.coord_atual_ela,
+               c.integrantes_original, c.integrantes_atual,
+               c.situacao, c.observacao, c.created_at
+            FROM circulos c
+            WHERE {where_sql}
+            ORDER BY c.ano DESC, c.nome_circulo, c.coord_orig_ele
+        """, params)
+        rows = cur.fetchall() or []
 
-    @app.route('/api/buscar-cg', methods=['POST'])
-    def api_buscar_cg():
-        data = request.get_json(silent=True) or {}
-        nome_ele = (data.get('nome_ele') or '').strip()
-        nome_ela = (data.get('nome_ela') or '').strip()
-        if not nome_ele or not nome_ela:
-            return jsonify({"ok": False, "msg": "Informe nome_ele e nome_ela."}), 400
+        cur.execute("SELECT DISTINCT ano FROM circulos ORDER BY ano DESC")
+        anos_combo = [a['ano'] for a in (cur.fetchall() or [])]
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
-        resultado = buscar_cg_montagem(nome_ele, nome_ela)
-        if not resultado["ok"]:
-            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
+    for r in rows:
+        r['rgb_triplet'] = _color_to_rgb_triplet(r.get('cor_circulo') or '')
 
-        return jsonify(resultado)
+    agrupado = defaultdict(list)
+    for r in rows:
+        agrupado[r['ano']].append(r)
+    anos_ordenados = sorted(agrupado.keys(), reverse=True)
 
-    @app.route('/api/adicionar-cg', methods=['POST'])
-    def api_adicionar_cg():
-        data = request.get_json(silent=True) or {}
-        ano = (str(data.get('ano') or '')).strip()
-        nome_ele = (data.get('nome_ele') or '').strip()
-        nome_ela = (data.get('nome_ela') or '').strip()
-        telefones = (data.get('telefones') or '').strip()
-        endereco = (data.get('endereco') or '').strip()
+    por_ano = defaultdict(list)
+    for r in rows:
+        ano_item = r["ano"]
+        nome = (r.get("nome_circulo") or "").strip() or "— Sem nome —"
+        trip = r.get("rgb_triplet")
 
-        if not ano.isdigit() or len(ano) != 4:
-            return jsonify({"ok": False, "msg": "Ano inválido."}), 400
-        if not nome_ele or not nome_ela:
-            return jsonify({"ok": False, "msg": "Preencha nome_ele e nome_ela."}), 400
+        ca_ele = (r.get("coord_atual_ele") or "").strip()
+        ca_ela = (r.get("coord_atual_ela") or "").strip()
+        co_ele = (r.get("coord_orig_ele") or "").strip()
+        co_ela = (r.get("coord_orig_ela") or "").strip()
 
-        resultado = adicionar_cg_montagem(int(ano), nome_ele, nome_ela, telefones, endereco)
-        if not resultado["ok"]:
-            return jsonify({"ok": False, "msg": resultado["msg"]}), resultado["status_code"]
+        if ca_ele and ca_ela:
+            coord = f"{ca_ele} & {ca_ela}"
+            hint = ""
+        elif co_ele or co_ela:
+            coord = f"{co_ele} & {co_ela}"
+            hint = " (Original)"
+        else:
+            coord = "— (sem coordenadores)"
+            hint = ""
 
-        return jsonify({"ok": True})
-
-    @app.route('/api/equipe-counts')
-    def api_equipe_counts():
-        ano = request.args.get('ano', type=int)
-        if not ano:
-            return jsonify({"ok": False, "msg": "Ano obrigatório.", "counts": {}}), 400
-
-        counts = contar_equipes_montagem(ano, TEAM_MAP)
-        return jsonify({"ok": True, "counts": counts})
-
-    # =========================
-    # Montagem de Equipe (integrantes) + APIs auxiliares
-    # =========================
-    @app.route('/equipe-montagem')
-    def equipe_montagem():
-        ano = request.args.get('ano', type=int)
-        equipe_filtro = (request.args.get('equipe') or '').strip()
-
-        dados = carregar_equipe_montagem(ano, equipe_filtro, TEAM_MAP, TEAM_LIMITS)
-
-        if dados["modo"] == "sala":
-            return render_template(
-                'equipe_montagem_sala.html',
-                ano=dados["ano"],
-                limites=dados["limites"],
-                sala_slots=dados["sala_slots"],
-                sugestoes_prev_ano=dados["sugestoes_prev_ano"],
-                pref_recepcao=dados["pref_recepcao"]
-            )
-
-        return render_template(
-            'equipe_montagem.html',
-            ano=dados["ano"],
-            equipe=dados["equipe"],
-            equipe_final=dados["equipe_final"],
-            limites=dados["limites"],
-            membros_existentes=dados["membros_existentes"],
-            sugestoes_prev_ano=dados["sugestoes_prev_ano"]
-        )
-
-    @app.route('/api/check-casal-equipe', methods=['POST'])
-    def api_check_casal_equipe():
-        data = request.get_json(silent=True) or {}
-        ano = data.get('ano')
-        equipe_final = _team_label((data.get('equipe_final') or '').strip())
-        nome_ele = (data.get('nome_ele') or '').strip()
-        nome_ela = (data.get('nome_ela') or '').strip()
-        if not (ano and equipe_final and nome_ele and nome_ela):
-            return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
-
-        dados = check_casal_equipe(ano, equipe_final, nome_ele, nome_ela)
-        return jsonify({
-            "ok": True,
-            "ja_coordenador": dados["ja_coordenador"],
-            "trabalhou_antes": dados["trabalhou_antes"],
-            "ja_no_ano": dados["ja_no_ano"],
-            "telefones": dados["telefones"],
-            "endereco": dados["endereco"]
+        por_ano[ano_item].append({
+            "id": r["id"],
+            "nome": nome,
+            "rgb": trip,
+            "coord": coord,
+            "coord_hint": hint
         })
 
-    @app.route('/api/add-membro-equipe', methods=['POST'])
-    def api_add_membro_equipe():
-        data = request.get_json(silent=True) or {}
-        ano = data.get('ano')
-        equipe_final = _team_label((data.get('equipe_final') or '').strip())
-        nome_ele = (data.get('nome_ele') or '').strip()
-        nome_ela = (data.get('nome_ela') or '').strip()
-        telefones = (data.get('telefones') or '').strip()
-        endereco = (data.get('endereco') or '').strip()
-        confirmar_repeticao = bool(data.get('confirmar_repeticao'))
+    anos = sorted(por_ano.keys(), reverse=True)
 
-        if not (ano and equipe_final and nome_ele and nome_ela):
-            return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
+    return {
+        "anos_combo": anos_combo,
+        "filtros": {'ano': ano, 'q': q},
+        "anos_ordenados": anos_ordenados,
+        "agrupado": agrupado,
+        "anos": anos,
+        "por_ano": por_ano
+    }
 
-        resultado = add_membro_equipe(
-            ano, equipe_final, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao
-        )
 
-        if not resultado["ok"]:
-            payload = {"ok": False, "msg": resultado["msg"]}
-            if resultado.get("needs_confirm"):
-                payload["needs_confirm"] = True
-            return jsonify(payload), resultado["status_code"]
-
-        return jsonify({"ok": True, "id": resultado["id"]})
-
-    @app.route('/api/marcar-status-dirigente', methods=['POST'])
-    def api_marcar_status_dirigente():
-        data = request.get_json(silent=True) or {}
-        ano = data.get('ano')
-        equipe = _team_label((data.get('equipe') or '').strip())
-        novo_status = (data.get('novo_status') or '').strip()
-        observacao = (data.get('observacao') or '').strip()
-
-        if not (ano and equipe and novo_status in ('Recusou', 'Desistiu') and observacao):
-            return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
-
-        alterados = marcar_status_dirigente(ano, equipe, novo_status, observacao)
-        if alterados == 0:
-            return jsonify({"ok": False, "msg": "Nenhum registro ABERTO encontrado para alterar."}), 404
-
-        return jsonify({"ok": True})
-
-    @app.route('/api/marcar-status-membro', methods=['POST'])
-    def api_marcar_status_membro():
-        data = request.get_json(silent=True) or {}
-        _id = data.get('id')
-        novo_status = (data.get('novo_status') or '').strip()
-        observacao = (data.get('observacao') or '').strip()
-
-        if not (_id and novo_status in ('Recusou', 'Desistiu') and observacao):
-            return jsonify({"ok": False, "msg": "Parâmetros inválidos. Observação é obrigatória."}), 400
-
-        alterados = marcar_status_membro(_id, novo_status, observacao)
-        if alterados == 0:
-            return jsonify({"ok": False, "msg": "Registro não encontrado ou não alterável."}), 404
-
-        return jsonify({"ok": True})
-
-    @app.route('/api/concluir-montagem-ano', methods=['POST'])
-    def api_concluir_montagem_ano():
-        data = request.get_json(silent=True) or {}
-        ano = data.get('ano')
-        if not ano:
-            return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
-
-        alterados = concluir_montagem_ano(ano)
-        return jsonify({"ok": True, "alterados": alterados})
-
-    # =========================
-    # Organograma
-    # =========================
-    @app.route('/organograma')
-    def organograma():
-        return render_template('organograma.html')
-
-    @app.route('/dados-organograma')
-    def dados_organograma():
-        ano = request.args.get("ano", type=int)
-        if not ano:
-            return jsonify([])
-
-        dados = buscar_dados_organograma(ano)
-        return jsonify(dados)
-
-    @app.route("/imprimir/relatorio-montagem")
-    def imprimir_relatorio_montagem():
-        ano = request.args.get("ano", type=int)
+def buscar_circulo_por_id(cid):
+    def _hex_to_rgb(h):
+        h = (h or '').strip().lstrip('#')
+        if len(h) == 3:
+            h = ''.join([c * 2 for c in h])
+        if len(h) != 6:
+            return None
         try:
-            rows = buscar_relatorio_montagem(ano)
-            return render_template("relatorio_montagem.html", ano=ano, rows=rows)
-        except Exception as e:
-            return f"Erro ao gerar relatório de montagem: {e}", 500
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+        except ValueError:
+            return None
+
+    def _name_to_hex_pt(c):
+        if not c:
+            return None
+        c = c.strip().lower()
+        mapa = {
+            'azul':'#2563eb','vermelho':'#ef4444','verde':'#22c55e','amarelo':'#eab308',
+            'laranja':'#f59e0b','roxo':'#8b5cf6','rosa':'#ec4899','marrom':'#92400e',
+            'cinza':'#6b7280','preto':'#111827','branco':'#ffffff',
+            'blue':'#2563eb','red':'#ef4444','green':'#22c55e','yellow':'#eab308',
+            'orange':'#f59e0b','purple':'#8b5cf6','pink':'#ec4899','brown':'#92400e',
+            'gray':'#6b7280','grey':'#6b7280','black':'#111827','white':'#ffffff'
+        }
+        return mapa.get(c)
+
+    def _to_triplet(c):
+        if not c:
+            return None
+        c = c.strip()
+        hx = _name_to_hex_pt(c) or (c if c.startswith('#') else None)
+        rgb = _hex_to_rgb(hx) if hx else None
+        if not rgb:
+            return None
+        return f"{rgb[0]},{rgb[1]},{rgb[2]}"
+
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT * FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    if not r:
+        return None
+
+    rgb_triplet = _to_triplet(r.get('cor_circulo'))
+
+    raw_atual = (r.get('integrantes_atual') or '').replace(';', ',')
+    raw_orig = (r.get('integrantes_original') or '').replace(';', ',')
+
+    integrantes_atual_list = [x.strip() for x in raw_atual.split(',') if x and x.strip()]
+    integrantes_orig_list = [x.strip() for x in raw_orig.split(',') if x and x.strip()]
+    integrantes_list = integrantes_atual_list if integrantes_atual_list else integrantes_orig_list
+
+    return {
+        "r": r,
+        "rgb_triplet": rgb_triplet,
+        "integrantes_list": integrantes_list,
+        "integrantes_atual_list": integrantes_atual_list,
+        "integrantes_orig_list": integrantes_orig_list,
+    }
+
+
+def buscar_encontrista_para_circulo(ano_circulo, ele, ela):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+            FROM encontristas
+            WHERE LOWER(TRIM(nome_usual_ele)) = LOWER(TRIM(%s))
+              AND LOWER(TRIM(nome_usual_ela)) = LOWER(TRIM(%s))
+            ORDER BY ano DESC
+            LIMIT 1
+        """, (ele, ela))
+        r = cur.fetchone()
+
+        if not r:
+            cur.execute("""
+                SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+                FROM encontristas
+                WHERE nome_usual_ele LIKE %s
+                  AND nome_usual_ela LIKE %s
+                ORDER BY ano DESC
+                LIMIT 3
+            """, (f"{ele}%", f"{ela}%"))
+            sugest = cur.fetchall() or []
+            if not sugest:
+                return {"ok": False, "status_code": 404, "msg": "Casal não encontrado."}
+
+            multi = []
+            for s in sugest:
+                multi.append({
+                    "id": s["id"],
+                    "nome_ele": s["nome_usual_ele"],
+                    "nome_ela": s["nome_usual_ela"],
+                    "telefone_ele": s.get("telefone_ele") or "",
+                    "telefone_ela": s.get("telefone_ela") or "",
+                    "endereco": s.get("endereco") or "",
+                    "ano": s.get("ano"),
+                    "match_ano": int(s.get("ano") or 0) == int(ano_circulo),
+                })
+            return {"ok": True, "multiplo": True, "opcoes": multi}
+
+        match_ano = int(r.get("ano") or 0) == int(ano_circulo)
+        return {
+            "ok": True,
+            "multiplo": False,
+            "id": r["id"],
+            "nome_ele": r["nome_usual_ele"],
+            "nome_ela": r["nome_usual_ela"],
+            "telefone_ele": r.get("telefone_ele") or "",
+            "telefone_ela": r.get("telefone_ela") or "",
+            "endereco": r.get("endereco") or "",
+            "ano": r.get("ano"),
+            "match_ano": match_ano
+        }
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def buscar_integrantes_circulo(cid):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual, integrantes_original FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return {"ok": False, "status_code": 404, "msg": "Círculo não encontrado."}
+
+        ids_atual = _csv_ids_unique(r.get("integrantes_atual") or "")
+        ids_orig = _csv_ids_unique(r.get("integrantes_original") or "")
+
+        atual = resolve_encontristas(ids_atual)
+        orig = resolve_encontristas(ids_orig)
+
+        return {"ok": True, "atual": atual, "original": orig}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def append_integrante_circulo(cid, eid):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return {"ok": False, "status_code": 404, "msg": "Círculo não encontrado."}
+
+        ids = _csv_ids_unique(r.get("integrantes_atual") or "")
+        eid = int(eid)
+        if eid not in ids:
+            ids.append(eid)
+
+        novo_csv = _ids_to_csv(ids)
+        cur2 = conn.cursor()
+        try:
+            cur2.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (novo_csv, cid))
+            conn.commit()
+        finally:
+            cur2.close()
+
+        atual = resolve_encontristas(_csv_ids_unique(novo_csv))
+        return {"ok": True, "atual": atual}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def concluir_integrantes_circulo(cid):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return {"ok": False, "status_code": 404, "msg": "Círculo não encontrado."}
+
+        atual = (r.get("integrantes_atual") or "").strip()
+        cur2 = conn.cursor()
+        try:
+            cur2.execute("""
+                UPDATE circulos
+                   SET integrantes_original=%s
+                 WHERE id=%s
+            """, (atual, cid))
+            conn.commit()
+        finally:
+            cur2.close()
+
+        return {"ok": True}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def atualizar_campo_circulo(cid, field, value):
+    allowed = {
+        "cor_circulo", "nome_circulo",
+        "coord_atual_ele", "coord_atual_ela",
+        "integrantes_atual",
+        "situacao", "observacao"
+    }
+    if field not in allowed:
+        return {"ok": False, "status_code": 400, "msg": "Campo não permitido para edição."}
+
+    if field == "integrantes_atual":
+        ids = _csv_ids_unique(str(value or ""))
+        value = _ids_to_csv(ids)
+
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        sql = f"UPDATE circulos SET {field}=%s WHERE id=%s"
+        cur.execute(sql, (value, cid))
+        conn.commit()
+        return {"ok": True}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def listar_candidatos_circulo(ano):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT integrantes_atual, integrantes_original
+              FROM circulos
+             WHERE ano = %s
+        """, (ano,))
+        usados = set()
+        rows = cur.fetchall() or []
+        for r in rows:
+            for col in ("integrantes_atual", "integrantes_original"):
+                raw = (r.get(col) or "").replace(";", ",")
+                for part in raw.split(","):
+                    p = part.strip()
+                    if p.isdigit():
+                        usados.add(int(p))
+
+        cur.execute("""
+            SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco, ano
+              FROM encontristas
+             WHERE ano = %s
+             ORDER BY nome_usual_ele, nome_usual_ela
+        """, (ano,))
+        candidatos = []
+        for r in cur.fetchall() or []:
+            if int(r["id"]) in usados:
+                continue
+            candidatos.append({
+                "id": r["id"],
+                "nome_ele": r.get("nome_usual_ele") or "",
+                "nome_ela": r.get("nome_usual_ela") or "",
+                "telefone_ele": r.get("telefone_ele") or "",
+                "telefone_ela": r.get("telefone_ela") or "",
+                "endereco": r.get("endereco") or ""
+            })
+
+        return {"ok": True, "candidatos": candidatos}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def pesquisar_circulos():
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT id, ano, cor_circulo, nome_circulo,
+                   coord_orig_ele, coord_orig_ela,
+                   coord_atual_ele, coord_atual_ela,
+                   integrantes_atual, integrantes_original
+              FROM circulos
+             ORDER BY ano DESC, id ASC
+        """)
+        rows = cur.fetchall() or []
+
+        all_ids = set()
+        for r in rows:
+            all_ids.update(parse_ids_csv(r.get("integrantes_atual") or ""))
+            all_ids.update(parse_ids_csv(r.get("integrantes_original") or ""))
+
+        id2nome = {}
+        if all_ids:
+            placeholders = ",".join(["%s"] * len(all_ids))
+            cur.execute(f"""
+                SELECT id, nome_usual_ele, nome_usual_ela
+                  FROM encontristas
+                 WHERE id IN ({placeholders})
+            """, tuple(all_ids))
+            for e in cur.fetchall() or []:
+                id2nome[int(e["id"])] = f"{(e.get('nome_usual_ele') or '').strip()} & {(e.get('nome_usual_ela') or '').strip()}"
+
+        por_ano = defaultdict(list)
+        for r in rows:
+            ids_atual = parse_ids_csv(r.get("integrantes_atual") or "")
+            nomes_atual = [id2nome.get(i, f"ID {i}") for i in ids_atual]
+
+            ca_ele = (r.get("coord_atual_ele") or "").strip()
+            ca_ela = (r.get("coord_atual_ela") or "").strip()
+            if ca_ele and ca_ela:
+                coord = f"{ca_ele} & {ca_ela}"
+                coord_hint = ""
+            else:
+                co_ele = (r.get("coord_orig_ele") or "").strip()
+                co_ela = (r.get("coord_orig_ela") or "").strip()
+                coord = f"{co_ele} & {co_ela}" if (co_ele or co_ela) else "—"
+                coord_hint = " (Original)"
+
+            triplet = _hex_to_rgb_triplet(r.get("cor_circulo") or "")
+
+            por_ano[r["ano"]].append({
+                "id": r["id"],
+                "nome": (r.get("nome_circulo") or "").strip() or "— Sem nome —",
+                "rgb": triplet,
+                "cor_text": r.get("cor_circulo") or "",
+                "coord": coord,
+                "coord_hint": coord_hint,
+                "integrantes": nomes_atual
+            })
+
+        for ano in por_ano:
+            por_ano[ano].sort(key=lambda x: x["nome"].lower())
+
+        anos = sorted(por_ano.keys(), reverse=True)
+        return {"anos": anos, "por_ano": por_ano}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def listar_circulos_transferencia():
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT id, ano, nome_circulo, cor_circulo
+            FROM circulos
+            ORDER BY ano DESC, id ASC
+        """)
+        rows = cur.fetchall() or []
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    por_ano = defaultdict(list)
+    anos = []
+    for r in rows:
+        ano = r["ano"]
+        if ano not in anos:
+            anos.append(ano)
+        por_ano[ano].append({
+            "id": r["id"],
+            "nome": r.get("nome_circulo") or "— Sem nome —",
+            "rgb": _color_to_rgb_triplet(r.get("cor_circulo") or "")
+        })
+
+    return {"anos": anos, "por_ano": por_ano}
+
+
+def transferir_casal_circulo(from_id, to_id, pid, _encontrista_name_by_id):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id, ano, integrantes_atual, coord_atual_ele, coord_atual_ela FROM circulos WHERE id=%s", (from_id,))
+        src = cur.fetchone()
+        cur.execute("SELECT id, ano, integrantes_atual FROM circulos WHERE id=%s", (to_id,))
+        dst = cur.fetchone()
+        if not src or not dst:
+            return {"ok": False, "status_code": 404, "msg": "Círculo origem/destino não encontrado."}
+
+        src_ids = _parse_id_list(src.get("integrantes_atual"))
+        if pid not in src_ids:
+            return {"ok": False, "status_code": 404, "msg": "Casal não está no círculo de origem."}
+
+        dst_ids = _parse_id_list(dst.get("integrantes_atual"))
+        if pid in dst_ids:
+            return {"ok": False, "status_code": 409, "msg": "Casal já está no círculo de destino."}
+
+        src_ids = [i for i in src_ids if i != pid]
+        dst_ids.append(int(pid))
+
+        ne, na = _encontrista_name_by_id(conn, pid)
+        cleared_coord = False
+        if ne and na and src.get("coord_atual_ele") and src.get("coord_atual_ela"):
+            if (
+                ne.strip().lower() == (src["coord_atual_ele"] or "").strip().lower()
+                and na.strip().lower() == (src["coord_atual_ela"] or "").strip().lower()
+            ):
+                cleared_coord = True
+
+        cur.execute(
+            "UPDATE circulos SET integrantes_atual=%s{clear} WHERE id=%s".format(
+                clear=", coord_atual_ele=NULL, coord_atual_ela=NULL" if cleared_coord else ""
+            ),
+            (_ids_to_str(src_ids), from_id)
+        )
+        cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(dst_ids), to_id))
+        conn.commit()
+
+        return {"ok": True, "cleared_coord": cleared_coord}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def add_integrante_circulo(cid, pid):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT ano, integrantes_atual FROM circulos WHERE id=%s", (cid,))
+        circ = cur.fetchone()
+        if not circ:
+            return {"ok": False, "status_code": 404, "msg": "Círculo não encontrado."}
+
+        cur.execute("SELECT ano FROM encontristas WHERE id=%s", (pid,))
+        r = cur.fetchone()
+        if not r or r["ano"] != circ["ano"]:
+            return {"ok": False, "status_code": 409, "msg": "Casal não pertence ao mesmo ano do círculo."}
+
+        cur.execute("SELECT id, integrantes_atual FROM circulos WHERE ano=%s", (circ["ano"],))
+        for row in cur.fetchall() or []:
+            ids = _parse_id_list(row.get("integrantes_atual"))
+            if pid in ids:
+                return {"ok": False, "status_code": 409, "msg": "Casal já está em outro círculo deste ano."}
+
+        ids = _parse_id_list(circ.get("integrantes_atual"))
+        if pid in ids:
+            return {"ok": True}
+
+        ids.append(int(pid))
+        cur2 = conn.cursor()
+        try:
+            cur2.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(ids), cid))
+            conn.commit()
+        finally:
+            cur2.close()
+
+        return {"ok": True}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def remove_integrante_circulo(cid, pid, _encontrista_name_by_id):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT integrantes_atual, coord_atual_ele, coord_atual_ela
+            FROM circulos WHERE id=%s
+        """, (cid,))
+        circ = cur.fetchone()
+        if not circ:
+            return {"ok": False, "status_code": 404, "msg": "Círculo não encontrado."}
+
+        ids = _parse_id_list(circ.get("integrantes_atual"))
+        if pid not in ids:
+            return {"ok": True, "cleared_coord": False}
+
+        ids = [i for i in ids if i != pid]
+
+        cleared_coord = False
+        ne, na = _encontrista_name_by_id(conn, pid)
+        if ne and na and circ.get("coord_atual_ele") and circ.get("coord_atual_ela"):
+            if (
+                ne.strip().lower() == (circ["coord_atual_ele"] or "").strip().lower()
+                and na.strip().lower() == (circ["coord_atual_ela"] or "").strip().lower()
+            ):
+                cleared_coord = True
+                cur.execute("""
+                    UPDATE circulos
+                    SET integrantes_atual=%s, coord_atual_ele=NULL, coord_atual_ela=NULL
+                    WHERE id=%s
+                """, (_ids_to_str(ids), cid))
+            else:
+                cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(ids), cid))
+        else:
+            cur.execute("UPDATE circulos SET integrantes_atual=%s WHERE id=%s", (_ids_to_str(ids), cid))
+
+        conn.commit()
+        return {"ok": True, "cleared_coord": cleared_coord}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def copiar_atual_para_original(cid):
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE circulos
+               SET integrantes_original = COALESCE(integrantes_atual, '')
+             WHERE id=%s
+        """, (cid,))
+        conn.commit()
+        return {"ok": True}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def definir_coord_circulo(cid, pid, _encontrista_name_by_id):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT integrantes_atual FROM circulos WHERE id=%s", (cid,))
+        r = cur.fetchone()
+        if not r:
+            return {"ok": False, "status_code": 404, "msg": "Círculo não encontrado."}
+
+        if not pid:
+            cur2 = conn.cursor()
+            try:
+                cur2.execute("UPDATE circulos SET coord_atual_ele=NULL, coord_atual_ela=NULL WHERE id=%s", (cid,))
+                conn.commit()
+            finally:
+                cur2.close()
+            return {"ok": True}
+
+        ids = _parse_id_list(r.get("integrantes_atual"))
+        if pid not in ids:
+            return {"ok": False, "status_code": 409, "msg": "Casal não está na lista de integrantes atuais."}
+
+        ne, na = _encontrista_name_by_id(conn, pid)
+        if not (ne and na):
+            return {"ok": False, "status_code": 404, "msg": "Casal não encontrado."}
+
+        cur2 = conn.cursor()
+        try:
+            cur2.execute("""
+                UPDATE circulos
+                   SET coord_atual_ele=%s, coord_atual_ela=%s
+                 WHERE id=%s
+            """, (ne, na, cid))
+            conn.commit()
+        finally:
+            cur2.close()
+
+        return {"ok": True}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
