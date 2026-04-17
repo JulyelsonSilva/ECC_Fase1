@@ -1,6 +1,8 @@
+from collections import defaultdict
 from flask import render_template, request, jsonify, redirect, url_for
 
 from db import db_conn
+from services.schema_service import ensure_database_schema
 
 
 def register_admin_routes(
@@ -52,222 +54,299 @@ def register_admin_routes(
     @app.route("/admin/match-fuzzy")
     def admin_match_fuzzy():
         if not _admin_ok():
-            return "Acesso negado", 403
-
-        db = _get_db()
-        cur = db.cursor(dictionary=True)
+            return "Unauthorized", 401
 
         try:
-            # pendentes: encontreiros sem vínculo com encontristas
-            cur.execute("""
-                SELECT id, ano, equipe, nome_ele, nome_ela, casal
-                FROM encontreiros
-                WHERE (casal IS NULL OR casal = 0)
-                ORDER BY ano DESC, id DESC
-            """)
-            pendentes = cur.fetchall() or []
+            batch_size = int(request.args.get("size", "300"))
+        except ValueError:
+            batch_size = 300
 
-            # base de encontristas
-            cur.execute("""
-                SELECT id, nome_usual_ele, nome_usual_ela, ano
-                FROM encontristas
-            """)
+        auto_threshold = 0.92
+        suggest_threshold = 0.80
+
+        conn = _get_db()
+        cur = conn.cursor(dictionary=True)
+
+        try:
+            cur.execute("SELECT id, nome_usual_ele, nome_usual_ela FROM encontristas")
             base = cur.fetchall() or []
 
-            sugestoes = []
-            stats = {
-                "total_encontreiros": len(pendentes),
-                "vinculados": 0,
-                "faltando": 0,
-                "faixas": {
-                    "97+": 0,
-                    "95-97": 0,
-                    "93-95": 0,
-                    "90-93": 0,
-                    "<90": 0,
-                }
-            }
+            bucket = defaultdict(list)
+            for r in base:
+                key = (_norm(r['nome_usual_ele'])[:1], _norm(r['nome_usual_ela'])[:1])
+                bucket[key].append(r)
 
-            base_norm = []
-            for b in base:
-                ele_b = _norm(b.get("nome_usual_ele"))
-                ela_b = _norm(b.get("nome_usual_ela"))
-                casal_b = f"{ele_b} {ela_b}".strip()
-                base_norm.append((b, ele_b, ela_b, casal_b))
+            cur.execute("""
+                SELECT id, nome_ele, nome_ela
+                FROM encontreiros
+                WHERE casal IS NULL
+                ORDER BY id ASC
+                LIMIT %s
+            """, (batch_size,))
+            pend = cur.fetchall() or []
 
-            for e in pendentes:
-                nome_ele = _norm(e.get("nome_ele"))
-                nome_ela = _norm(e.get("nome_ela"))
-                casal_e = f"{nome_ele} {nome_ela}".strip()
+            if not pend:
+                return {
+                    "message": "Nada a processar. Já está zerado.",
+                    "processed": 0
+                }, 200
 
-                melhor = None
-                melhor_score = 0
+            auto_count = 0
+            pend_count = 0
 
-                for b, ele_b, ela_b, casal_b in base_norm:
-                    s1 = SequenceMatcher(None, nome_ele, ele_b).ratio()
-                    s2 = SequenceMatcher(None, nome_ela, ela_b).ratio()
-                    s3 = SequenceMatcher(None, casal_e, casal_b).ratio()
-                    score = max((s1 + s2) / 2, s3)
+            for row in pend:
+                e_id = row['id']
+                n_ele = row['nome_ele'] or ""
+                n_ela = row['nome_ela'] or ""
 
-                    if score > melhor_score:
-                        melhor_score = score
-                        melhor = b
+                key = (_norm(n_ele)[:1], _norm(n_ela)[:1])
+                candidates = bucket.get(key, base)
 
-                pct = round(melhor_score * 100, 2)
+                scored = []
+                for c in candidates:
+                    s_ele = _sim(n_ele, c['nome_usual_ele'])
+                    s_ela = _sim(n_ela, c['nome_usual_ela'])
+                    score = (s_ele + s_ela) / 2.0
+                    scored.append((score, s_ele, s_ela, c['id'], c['nome_usual_ele'], c['nome_usual_ela']))
 
-                if pct >= 97:
-                    stats["faixas"]["97+"] += 1
-                elif pct >= 95:
-                    stats["faixas"]["95-97"] += 1
-                elif pct >= 93:
-                    stats["faixas"]["93-95"] += 1
-                elif pct >= 90:
-                    stats["faixas"]["90-93"] += 1
+                if not scored:
+                    continue
+
+                scored.sort(key=lambda x: x[0], reverse=True)
+                best = scored[0]
+                best_score, best_ele, best_ela, best_id, best_nele, best_nela = best
+
+                if best_ele >= auto_threshold and best_ela >= auto_threshold:
+                    try:
+                        cur.execute("UPDATE encontreiros SET casal=%s WHERE id=%s", (best_id, e_id))
+                        auto_count += 1
+                    except Exception as err:
+                        print(f"[fuzzy] erro ao atualizar encontreiros.id={e_id}: {err}")
                 else:
-                    stats["faixas"]["<90"] += 1
+                    suggestions = [s for s in scored if s[0] >= suggest_threshold][:3]
+                    for s in suggestions:
+                        score, s_ele, s_ela, s_id, s_nele, s_nela = s
+                        try:
+                            cur.execute("""
+                                INSERT INTO pendencias_encontreiros
+                                  (encontreiros_id, nome_ele, nome_ela, candidato_id,
+                                   candidato_nome_usual_ele, candidato_nome_usual_ela,
+                                   score_ele, score_ela, score_medio, status)
+                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'PENDENTE')
+                                ON DUPLICATE KEY UPDATE
+                                  score_ele=VALUES(score_ele),
+                                  score_ela=VALUES(score_ela),
+                                  score_medio=VALUES(score_medio),
+                                  nome_ele=VALUES(nome_ele),
+                                  nome_ela=VALUES(nome_ela),
+                                  candidato_nome_usual_ele=VALUES(candidato_nome_usual_ele),
+                                  candidato_nome_usual_ela=VALUES(candidato_nome_usual_ela),
+                                  status='PENDENTE'
+                            """, (
+                                e_id, n_ele, n_ela, s_id, s_nele, s_nela,
+                                round(s_ele, 4), round(s_ela, 4), round(score, 4)
+                            ))
+                        except Exception as err:
+                            print(f"[pendencia] falha ao inserir sugestao e_id={e_id}, cand={s_id}: {err}")
+                    pend_count += 1
 
-                if melhor:
-                    sugestoes.append({
-                        "encontreiro_id": e["id"],
-                        "ano": e.get("ano"),
-                        "equipe": e.get("equipe") or "",
-                        "nome_ele": e.get("nome_ele") or "",
-                        "nome_ela": e.get("nome_ela") or "",
-                        "match_id": melhor["id"],
-                        "match_nome_ele": melhor.get("nome_usual_ele") or "",
-                        "match_nome_ela": melhor.get("nome_usual_ela") or "",
-                        "match_ano": melhor.get("ano"),
-                        "score": pct
-                    })
+            conn.commit()
 
-            stats["faltando"] = len(sugestoes)
+            cur.execute("SELECT COUNT(*) AS faltando FROM encontreiros WHERE casal IS NULL")
+            faltando = cur.fetchone()["faltando"]
 
-            sugestoes.sort(key=lambda x: x["score"], reverse=True)
-
-            return render_template(
-                "admin_match_fuzzy.html",
-                sugestoes=sugestoes,
-                stats=stats
-            )
+            return {
+                "processados_neste_lote": len(pend),
+                "preenchimentos_automaticos_neste_lote": auto_count,
+                "pendencias_neste_lote": pend_count,
+                "restantes_no_total": faltando
+            }, 200
         finally:
             try:
                 cur.close()
-                db.close()
+                conn.close()
             except Exception:
                 pass
 
     @app.route("/admin/revisao")
     def admin_revisao():
         if not _admin_ok():
-            return "Acesso negado", 403
+            return "Unauthorized", 401
 
-        db = _get_db()
-        cur = db.cursor(dictionary=True)
+        try:
+            page = int(request.args.get("page", "1"))
+            per_page = int(request.args.get("per_page", "50"))
+            min_score = float(request.args.get("min_score", "0.85"))
+        except ValueError:
+            page, per_page, min_score = 1, 50, 0.85
+
+        page = max(1, page)
+        per_page = max(10, min(per_page, 100))
+        offset = (page - 1) * per_page
+        token = request.args.get("token")
+
+        conn = _get_db()
+        cur = conn.cursor(dictionary=True)
 
         try:
             cur.execute("""
-                SELECT 
-                    p.id,
-                    p.encontreiro_id,
-                    p.nome_ele_encontreiro,
-                    p.nome_ela_encontreiro,
-                    p.encontrista_id_sugerido,
-                    p.nome_ele_encontrista,
-                    p.nome_ela_encontrista,
-                    p.score,
-                    e.ano,
-                    e.equipe
-                FROM pendencias_encontreiros p
-                LEFT JOIN encontreiros e ON e.id = p.encontreiro_id
-                WHERE COALESCE(p.status, 'PENDENTE') = 'PENDENTE'
-                ORDER BY p.score DESC, p.id ASC
-            """)
-            pendencias = cur.fetchall() or []
+                SELECT COUNT(*) AS total_groups FROM (
+                  SELECT p.encontreiros_id
+                  FROM pendencias_encontreiros p
+                  JOIN encontreiros e ON e.id = p.encontreiros_id
+                  WHERE e.casal IS NULL
+                    AND COALESCE(p.status, 'PENDENTE') = 'PENDENTE'
+                    AND p.score_medio >= %s
+                  GROUP BY p.encontreiros_id
+                ) t
+            """, (min_score,))
+            total_groups = cur.fetchone()["total_groups"]
+            total_pages = max(1, (total_groups + per_page - 1) // per_page)
 
-            return render_template("admin_revisao.html", pendencias=pendencias)
+            cur.execute("""
+                SELECT p.encontreiros_id, MAX(p.score_medio) AS best_score
+                FROM pendencias_encontreiros p
+                JOIN encontreiros e ON e.id = p.encontreiros_id
+                WHERE e.casal IS NULL
+                  AND COALESCE(p.status, 'PENDENTE') = 'PENDENTE'
+                  AND p.score_medio >= %s
+                GROUP BY p.encontreiros_id
+                ORDER BY best_score DESC, p.encontreiros_id ASC
+                LIMIT %s OFFSET %s
+            """, (min_score, per_page, offset))
+            rows = cur.fetchall() or []
+            ids = [r["encontreiros_id"] for r in rows]
+            id2best = {r["encontreiros_id"]: r["best_score"] for r in rows}
+
+            groups = []
+            if ids:
+                placeholders = ",".join(["%s"] * len(ids))
+
+                cur.execute(f"""
+                    SELECT id, nome_ele, nome_ela, telefones, endereco
+                    FROM encontreiros
+                    WHERE id IN ({placeholders})
+                """, ids)
+                base = {r["id"]: r for r in (cur.fetchall() or [])}
+
+                cur.execute(f"""
+                    SELECT *
+                    FROM pendencias_encontreiros
+                    WHERE encontreiros_id IN ({placeholders})
+                      AND COALESCE(status, 'PENDENTE') = 'PENDENTE'
+                    ORDER BY encontreiros_id ASC, score_medio DESC, id ASC
+                """, ids)
+                cand = cur.fetchall() or []
+
+                bucket = defaultdict(list)
+                for c in cand:
+                    bucket[c["encontreiros_id"]].append(c)
+
+                for eid in ids:
+                    groups.append({
+                        "best_score": id2best.get(eid, 0),
+                        "encontreiros": base.get(eid),
+                        "candidatos": bucket.get(eid, [])
+                    })
+
+            ok_count = request.args.get("ok", None)
+            skipped_count = request.args.get("skipped", None)
+            ok_count = int(ok_count) if ok_count is not None and ok_count.isdigit() else None
+            skipped_count = int(skipped_count) if skipped_count is not None and skipped_count.isdigit() else None
+
+            return render_template(
+                "admin_revisao.html",
+                token=token,
+                page=page,
+                per_page=per_page,
+                min_score=min_score,
+                total_groups=total_groups,
+                total_pages=total_pages,
+                groups=groups,
+                ok_count=ok_count,
+                skipped_count=skipped_count
+            )
         finally:
             try:
                 cur.close()
-                db.close()
+                conn.close()
             except Exception:
                 pass
 
     @app.route("/admin/revisao/confirmar", methods=["POST"])
     def admin_revisao_confirmar():
         if not _admin_ok():
-            return "Acesso negado", 403
+            return "Unauthorized", 401
 
-        pendencia_id = request.form.get("pendencia_id", type=int)
-        encontreiro_id = request.form.get("encontreiro_id", type=int)
-        encontrista_id = request.form.get("encontrista_id", type=int)
-        acao = (request.form.get("acao") or "").strip().lower()
+        token = request.form.get("token", "")
+        page = request.form.get("page", "1")
+        per_page = request.form.get("per_page", "50")
+        min_score = request.form.get("min_score", "0.85")
 
-        if not pendencia_id:
-            return redirect(url_for("admin_revisao", token=request.args.get("token") or request.form.get("token")))
-
-        db = _get_db()
-        cur = db.cursor()
+        conn = _get_db()
+        cur = conn.cursor()
+        ok_count = 0
+        skipped = 0
 
         try:
-            if acao == "confirmar" and encontreiro_id and encontrista_id:
-                cur.execute("""
-                    UPDATE encontreiros
-                    SET casal = %s
-                    WHERE id = %s
-                """, (encontrista_id, encontreiro_id))
+            for key, val in request.form.items():
+                if not key.startswith("sel_"):
+                    continue
 
-                cur.execute("""
-                    UPDATE pendencias_encontreiros
-                    SET status = 'CONFIRMADO'
-                    WHERE id = %s
-                """, (pendencia_id,))
+                try:
+                    eid = int(key.split("_", 1)[1])
+                except Exception:
+                    continue
 
-            elif acao == "ignorar":
-                cur.execute("""
-                    UPDATE pendencias_encontreiros
-                    SET status = 'IGNORADO'
-                    WHERE id = %s
-                """, (pendencia_id,))
-            else:
-                db.rollback()
-                return redirect(url_for("admin_revisao", token=request.args.get("token") or request.form.get("token")))
+                if not val:
+                    skipped += 1
+                    continue
 
-            db.commit()
-            return redirect(url_for("admin_revisao", token=request.args.get("token") or request.form.get("token")))
+                try:
+                    cid = int(val)
+                except Exception:
+                    skipped += 1
+                    continue
+
+                try:
+                    cur.execute(
+                        "UPDATE encontreiros SET casal=%s WHERE id=%s AND casal IS NULL",
+                        (cid, eid)
+                    )
+                    if cur.rowcount > 0:
+                        cur.execute("DELETE FROM pendencias_encontreiros WHERE encontreiros_id=%s", (eid,))
+                        ok_count += 1
+                    else:
+                        skipped += 1
+                except Exception as err:
+                    print(f"[revisao] falha ao confirmar (eid={eid}, cid={cid}): {err}")
+                    skipped += 1
+
+            conn.commit()
         finally:
             try:
                 cur.close()
-                db.close()
+                conn.close()
             except Exception:
                 pass
+
+        return redirect(url_for(
+            "admin_revisao",
+            token=token,
+            page=page,
+            per_page=per_page,
+            min_score=min_score,
+            ok=ok_count,
+            skipped=skipped
+        ))
 
     @app.route("/__init_db__")
     def init_db_route():
         if not _admin_ok():
             return jsonify({"ok": False, "msg": "Acesso negado"}), 403
 
-        db = _get_db()
-        cur = db.cursor()
         try:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS pendencias_encontreiros (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    encontreiro_id INT NOT NULL,
-                    nome_ele_encontreiro VARCHAR(255),
-                    nome_ela_encontreiro VARCHAR(255),
-                    encontrista_id_sugerido INT,
-                    nome_ele_encontrista VARCHAR(255),
-                    nome_ela_encontrista VARCHAR(255),
-                    score DECIMAL(5,2),
-                    status VARCHAR(30) DEFAULT 'PENDENTE',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            db.commit()
-            return jsonify({"ok": True})
-        finally:
-            try:
-                cur.close()
-                db.close()
-            except Exception:
-                pass
+            resultado = ensure_database_schema()
+            return jsonify(resultado)
+        except Exception as e:
+            return jsonify({"ok": False, "msg": str(e)}), 500
