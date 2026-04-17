@@ -3,75 +3,100 @@
 {% block title %}Início - Sistema ECC{% endblock %}
 
 {% block content %}
+<div class="page">
+  <section class="card hero">
+    <h2>Bem-vindo ao sistema de gestão do ECC</h2>
+    <p>Organize fichas, equipes, palestras, círculos e relatórios em um único lugar.</p>
+  </section>
 
-<div class="header">
-  <h1 class="title">
-    <i class="bi bi-house-door"></i> Página Inicial
-  </h1>
+  <div class="hero-grid">
+    <a href="{{ url_for('fichas') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-file-earmark-plus"></i></div>
+      <div>
+        <h3>Fichas</h3>
+        <p>Criar uma nova ficha de encontrista e registrar um novo casal no sistema.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('encontristas') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-person-hearts"></i></div>
+      <div>
+        <h3>Encontristas</h3>
+        <p>Consultar e editar os casais cadastrados nas fichas do ECC.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('encontreiros') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-people"></i></div>
+      <div>
+        <h3>Encontreiros</h3>
+        <p>Visualizar o histórico dos casais que serviram nas equipes dos encontros.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('montagem') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-diagram-3"></i></div>
+      <div>
+        <h3>Montagem</h3>
+        <p>Montar equipes, coordenadores e visualizar os anos em aberto ou concluídos.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('palestras_painel') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-mic"></i></div>
+      <div>
+        <h3>Palestras</h3>
+        <p>Gerenciar os temas e os casais responsáveis por cada palestra.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('circulos_list') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-circle"></i></div>
+      <div>
+        <h3>Círculos</h3>
+        <p>Administrar os círculos, coordenadores e integrantes de cada ano.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('visao_equipes') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-grid-3x3-gap"></i></div>
+      <div>
+        <h3>Visão de Equipes</h3>
+        <p>Consultar a composição histórica das equipes e dos coordenadores.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('visao_casal') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-heart"></i></div>
+      <div>
+        <h3>Visão do Casal</h3>
+        <p>Pesquisar um casal e reunir seus dados de encontro, equipes e palestras.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('organograma') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-diagram-2"></i></div>
+      <div>
+        <h3>Organograma</h3>
+        <p>Exibir a estrutura organizacional da montagem do encontro por ano.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('pesquisa_circulos') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-search"></i></div>
+      <div>
+        <h3>Pesquisa de Círculos</h3>
+        <p>Resumo rápido dos círculos por ano, com coordenadores e integrantes.</p>
+      </div>
+    </a>
+
+    <a href="{{ url_for('relatorios') }}" class="nav-card">
+      <div class="nav-icon"><i class="bi bi-bar-chart"></i></div>
+      <div>
+        <h3>Relatórios</h3>
+        <p>Acessar gráficos, impressões e indicadores consolidados do sistema.</p>
+      </div>
+    </a>
+  </div>
 </div>
-
-<div class="card">
-  <p class="text-muted">
-    Bem-vindo ao sistema de gestão do ECC.
-  </p>
-</div>
-
-<div class="grid grid-3 mt-10">
-
-  <a href="{{ url_for('encontristas') }}" class="card">
-    <div class="flex space-between center">
-      <div>
-        <h3><i class="bi bi-person-hearts"></i> Encontristas</h3>
-        <p class="text-muted">Cadastro e consulta de casais</p>
-      </div>
-    </div>
-  </a>
-
-  <a href="{{ url_for('encontreiros') }}" class="card">
-    <div class="flex space-between center">
-      <div>
-        <h3><i class="bi bi-people"></i> Encontreiros</h3>
-        <p class="text-muted">Equipes e participantes</p>
-      </div>
-    </div>
-  </a>
-
-  <a href="{{ url_for('montagem') }}" class="card">
-    <div class="flex space-between center">
-      <div>
-        <h3><i class="bi bi-diagram-3"></i> Montagem</h3>
-        <p class="text-muted">Organização das equipes</p>
-      </div>
-    </div>
-  </a>
-
-  <a href="{{ url_for('palestras_painel') }}" class="card">
-    <div class="flex space-between center">
-      <div>
-        <h3><i class="bi bi-mic"></i> Palestras</h3>
-        <p class="text-muted">Controle de palestras</p>
-      </div>
-    </div>
-  </a>
-
-  <a href="{{ url_for('circulos_list') }}" class="card">
-    <div class="flex space-between center">
-      <div>
-        <h3><i class="bi bi-circle"></i> Círculos</h3>
-        <p class="text-muted">Gestão dos círculos</p>
-      </div>
-    </div>
-  </a>
-
-  <a href="{{ url_for('relatorios') }}" class="card">
-    <div class="flex space-between center">
-      <div>
-        <h3><i class="bi bi-bar-chart"></i> Relatórios</h3>
-        <p class="text-muted">Indicadores e dados</p>
-      </div>
-    </div>
-  </a>
-
-</div>
-
 {% endblock %}
