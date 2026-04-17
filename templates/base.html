@@ -1,46 +1,78 @@
-
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>ECC - Divino Espírito Santo</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 2em;
-      background-color: #f8f9fa;
-    }
-    h2 {
-      color: #343a40;
-      text-align: center;
-    }
-    form {
-      margin-bottom: 1.5em;
-      text-align: center;
-    }
-    table {
-      width: 90%;
-      margin: auto;
-      border-collapse: collapse;
-    }
-    th, td {
-      border: 1px solid #dee2e6;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #007BFF;
-      color: white;
-    }
-    td.highlight {
-      background-color: yellow;
-    }
-    .negrito {
-      font-weight: bold;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Sistema ECC{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  {% block content %}{% endblock %}
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand-area">
+        <a href="{{ url_for('index') }}" class="brand-link">
+          <span class="brand-mark"><i class="bi bi-people-fill"></i></span>
+          <div class="brand-texts">
+            <div class="brand-title">Sistema ECC</div>
+            <div class="brand-subtitle">Encontro de Casais com Cristo</div>
+          </div>
+        </a>
+      </div>
+
+      <nav class="main-nav">
+        <a href="{{ url_for('index') }}" class="nav-link">
+          <i class="bi bi-house-door"></i>
+          <span>Início</span>
+        </a>
+
+        <a href="{{ url_for('encontristas') }}" class="nav-link">
+          <i class="bi bi-person-hearts"></i>
+          <span>Encontristas</span>
+        </a>
+
+        <a href="{{ url_for('encontreiros') }}" class="nav-link">
+          <i class="bi bi-people"></i>
+          <span>Encontreiros</span>
+        </a>
+
+        <a href="{{ url_for('montagem') }}" class="nav-link">
+          <i class="bi bi-diagram-3"></i>
+          <span>Montagem</span>
+        </a>
+
+        <a href="{{ url_for('implantacao_painel') }}" class="nav-link">
+          <i class="bi bi-building-add"></i>
+          <span>Implantação</span>
+        </a>
+
+        <a href="{{ url_for('palestras_painel') }}" class="nav-link">
+          <i class="bi bi-mic"></i>
+          <span>Palestras</span>
+        </a>
+
+        <a href="{{ url_for('circulos_list') }}" class="nav-link">
+          <i class="bi bi-circle"></i>
+          <span>Círculos</span>
+        </a>
+
+        <a href="{{ url_for('relatorios') }}" class="nav-link">
+          <i class="bi bi-bar-chart"></i>
+          <span>Relatórios</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  {% block extra_scripts %}{% endblock %}
 </body>
 </html>
