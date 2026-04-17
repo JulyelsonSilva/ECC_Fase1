@@ -1,1 +1,40 @@
+{% extends "base.html" %}
 
+{% block title %}Palestras{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title"><i class="bi bi-mic"></i><span>Palestras</span></h1>
+      <p class="subtitle">Painel legado de anos abertos e concluídos.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-primary" href="{{ url_for('nova_palestra') }}"><i class="bi bi-plus-lg"></i><span>Novo cadastro por ano</span></a>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+    <section class="card">
+      <div class="card-head"><h2>Em aberto</h2><p>Anos com títulos faltando (esperado: {{ total_esperado }} títulos).</p></div>
+      <div class="card-body">
+        <div class="actions">
+          {% for r in anos_aberto %}
+            <a class="btn" href="{{ url_for('nova_palestra') }}?ano={{ r.ano }}"><i class="bi bi-calendar-event"></i><span>{{ r.ano }} • {{ r.qtd }}/{{ r.total_esperado }}</span></a>
+          {% else %}<span class="small">Nenhum ano em aberto.</span>{% endfor %}
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Concluído</h2><p>Anos com todos os títulos preenchidos.</p></div>
+      <div class="card-body">
+        <div class="actions">
+          {% for r in anos_concluidos %}
+            <a class="btn" href="{{ url_for('nova_palestra') }}?ano={{ r.ano }}"><i class="bi bi-check2-circle"></i><span>{{ r.ano }} • {{ r.qtd }}/{{ r.total_esperado }}</span></a>
+          {% else %}<span class="small">Nenhum ano concluído.</span>{% endfor %}
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
