@@ -1,11 +1,10 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Cadastro de Palestras</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46; }
+{% extends "base.html" %}
+
+{% block title %}Cadastro de Palestras{% endblock %}
+
+{% block extra_head %}
+<style>
+:root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
       radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
       radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
@@ -37,15 +36,16 @@
     .rep5 { background:#ef4444; }  /* 5 */
     .justify { display:none; margin-top:8px; }
     .note { font-size:12px; color:#475569; margin-top:6px; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
     <div class="header">
       <h1>Palestras — Ano</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('palestras_painel') }}">← Palestras</a>
-        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <a class="btn" href="{{ url_for('palestras_painel') }}"><i class="bi bi-arrow-left"></i> Palestras</a>
+        <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
       </div>
     </div>
 
@@ -353,5 +353,4 @@
       }
     });
   </script>
-</body>
-</html>
+{% endblock %}
