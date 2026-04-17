@@ -1,11 +1,10 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Montagem da Equipe — {{ equipe_final }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46;}
+{% extends "base.html" %}
+
+{% block title %}Montagem da Equipe{% endblock %}
+
+{% block extra_head %}
+<style>
+:root { --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46;}
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
     .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
@@ -36,19 +35,20 @@
     .inline-actions { display:flex; gap:8px; flex-wrap:wrap; }
     .justify-box { margin-top:8px; display:none; }
     .kpis { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
     <div class="header">
       <div>
         <h1>Montagem da Equipe</h1>
         <div class="muted">Ano: <b>{{ ano }}</b> • Equipe: <b>{{ equipe_final }}</b></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
-        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}">↩ Voltar à Nova Montagem</a>
-        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <a class="btn" href="{{ url_for('montagem') }}"><i class="bi bi-arrow-left"></i> Montagem</a>
+        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}"><i class="bi bi-arrow-return-left"></i> Voltar à Nova Montagem</a>
+        <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
       </div>
     </div>
 
@@ -84,9 +84,11 @@
       </div>
     </div>
   </div>
+{% endblock %}
 
-  <script>
-    // ----- Dados do servidor -----
+{% block extra_scripts %}
+<script>
+// ----- Dados do servidor -----
     const ANO = {{ ano | int }};
     const EQUIPE_FINAL = {{ equipe_final | tojson }};
     const LIMITES = {{ (limites or {}) | tojson }};
@@ -367,6 +369,5 @@
     // Init
     renderAll();
     wireSuggestions();
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}
