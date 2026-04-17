@@ -39,7 +39,6 @@ def _encontrista_name_by_id(conn, _id):
 
 
 def _team_label(value: str) -> str:
-    """Normaliza chave/filtro curto para o rótulo salvo no banco."""
     v = (value or '').strip()
     if not v:
         return v
@@ -66,7 +65,6 @@ register_implantacao_routes(app, TEAM_MAP, TEAM_LIMITS, TEAM_CHOICES, _team_labe
 register_palestras_routes(app, PALESTRAS_TITULOS, PALESTRAS_SOLO)
 register_core_routes(app, TEAM_MAP, TEAM_LIMITS, _q)
 register_admin_routes(app, _admin_ok, _get_db, _norm, _sim, SequenceMatcher)
-
 
 if __name__ == "__main__":
     app.run(debug=True)
