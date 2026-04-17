@@ -1,112 +1,157 @@
 {% extends "base.html" %}
+
+{% block title %}Visão por Equipe{% endblock %}
+
 {% block content %}
-  <h2 style="text-align: center;">Visão por Equipe: {{ equipe_selecionada }}</h2>
-
-  {# Detecta se veio da nova_montagem #}
-  {% set target = request.args.get('target') %}
-  {% set ano_montagem = request.args.get('ano_montagem') %}
-  {% set linking = target and ano_montagem %}
-
-  <div style="text-align:center; margin-bottom:14px;">
-    {% if linking %}
-      <a class="btn" href="{{ url_for('nova_montagem', ano=ano_montagem) }}">← Voltar à Nova Montagem ({{ ano_montagem }})</a>
-      <p style="margin-top:8px; color:#475569; font-size:14px;">
-        Clique em um <strong>casal elegível</strong> para selecioná-lo.
+<div class="page">
+  <div class="header">
+    <div>
+      <h1 class="title">
+        <i class="bi bi-grid-3x3-gap"></i>
+        <span>Visão por Equipe</span>
+      </h1>
+      <p class="subtitle">
+        {% if equipe_selecionada %}
+          Histórico da equipe <strong>{{ equipe_selecionada }}</strong>.
+        {% else %}
+          Consulte a composição histórica das equipes.
+        {% endif %}
       </p>
-    {% else %}
-      <a class="btn" href="{{ url_for('index') }}">← Voltar para Página Inicial</a>
-    {% endif %}
+    </div>
+
+    <div class="actions">
+      {% set target = request.args.get('target') %}
+      {% set ano_montagem = request.args.get('ano_montagem') %}
+      {% set linking = target and ano_montagem %}
+
+      {% if linking %}
+        <a class="btn" href="{{ url_for('nova_montagem', ano=ano_montagem) }}">
+          <i class="bi bi-arrow-left"></i>
+          <span>Voltar à Nova Montagem</span>
+        </a>
+      {% else %}
+        <a class="btn" href="{{ url_for('index') }}">
+          <i class="bi bi-house-door"></i>
+          <span>Início</span>
+        </a>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- Filtro (preserva target e ano_montagem quando vier da nova_montagem) -->
-  <form method="get" style="text-align: center; margin-bottom: 20px;">
-    {% if linking %}
-      <input type="hidden" name="target" value="{{ target }}">
-      <input type="hidden" name="ano_montagem" value="{{ ano_montagem }}">
-    {% endif %}
-    <select name="equipe" onchange="this.form.submit()">
-      <option value="">Selecione uma equipe</option>
-      <option value="Dirigentes" {% if equipe_selecionada == 'Dirigentes' %}selected{% endif %}>Dirigentes</option>
-      <option value="Sala" {% if equipe_selecionada == 'Sala' %}selected{% endif %}>Sala</option>
-      <option value="Circulos" {% if equipe_selecionada == 'Circulos' %}selected{% endif %}>Círculos</option>
-      <option value="Café e Minimercado" {% if equipe_selecionada == 'Café e Minimercado' %}selected{% endif %}>Café e Minimercado</option>
-      <option value="Compras" {% if equipe_selecionada == 'Compras' %}selected{% endif %}>Compras</option>
-      <option value="Acolhida" {% if equipe_selecionada == 'Acolhida' %}selected{% endif %}>Acolhida</option>
-      <option value="Ordem e Limpeza" {% if equipe_selecionada == 'Ordem e Limpeza' %}selected{% endif %}>Ordem e Limpeza</option>
-      <option value="Secretaria" {% if equipe_selecionada == 'Secretaria' %}selected{% endif %}>Secretaria</option>
-      <option value="Liturgia e Vigilia" {% if equipe_selecionada == 'Liturgia e Vigilia' %}selected{% endif %}>Liturgia e Vigilia</option>
-      <option value="Cozinha" {% if equipe_selecionada == 'Cozinha' %}selected{% endif %}>Cozinha</option>
-      <option value="Visitação" {% if equipe_selecionada == 'Visitação' %}selected{% endif %}>Visitação</option>
-    </select>
-  </form>
-
-  {% if tabela %}
-  <table border="1" style="margin: auto; border-collapse: collapse;">
-    <thead>
-      <tr>
-        <th style="padding:6px 10px;">Ano</th>
-        {% for col in colunas %}
-          <th style="padding:6px 10px;">{{ col }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for ano, linha in tabela.items() %}
-        <tr>
-          <td style="padding:6px 10px; text-align:center;">{{ ano }}</td>
-          {% for nome in linha %}
-            {% set raw = nome or '' %}
-            {% set is_coord = raw.startswith('*') %}
-            {% set is_mark  = raw.startswith('~') %}
-            {% set clean    = raw[1:] if (is_coord or is_mark) else raw %}
-            <td style="padding:6px 10px;">
-              {% if raw %}
-                {% if is_coord %}
-                  <b>{{ clean }}</b>
-                {% else %}
-                  {% if linking %}
-                    {# Gera link de retorno para /montagem/nova preenchendo os campos #}
-                    {% set partes = clean.split(' e ', 1) %}
-                    {% if partes|length == 2 %}
-                      {% set ele = partes[0] | trim %}
-                      {% set ela = partes[1] | trim %}
-                      <a href="{{ url_for('visao_equipes_select',
-                                        ano_montagem=ano_montagem,
-                                        target=target,
-                                        ele=ele,
-                                        ela=ela) }}"
-                         {% if is_mark %}style="background-color: yellow; padding:2px 4px; border-radius:4px;"{% endif %}>
-                          {{ clean }}
-                      </a>
-                    {% else %}
-                      {% if is_mark %}
-                        <span style="background-color: yellow">{{ clean }}</span>
-                      {% else %}
-                        {{ clean }}
-                      {% endif %}
-                    {% endif %}
-                  {% else %}
-                    {% if is_mark %}
-                      <span style="background-color: yellow">{{ clean }}</span>
-                    {% else %}
-                      {{ clean }}
-                    {% endif %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            </td>
-          {% endfor %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% if linking %}
+    <div class="flash info">
+      Clique em um <strong>casal elegível</strong> para retorná-lo à montagem do ano {{ ano_montagem }}.
+    </div>
   {% endif %}
 
-  <style>
-    .btn {
-      display:inline-block; text-decoration:none; font-size:14px; color:white;
-      background-color:#007BFF; padding:8px 14px; border-radius:8px;
-    }
-    .btn:hover { background-color:#0056b3; }
-  </style>
+  <section class="card">
+    <div class="card-head">
+      <h2>Filtro</h2>
+      <p>Escolha a equipe desejada.</p>
+    </div>
+
+    <div class="card-body">
+      <form method="get" action="{{ url_for('visao_equipes') }}">
+        {% if linking %}
+          <input type="hidden" name="target" value="{{ target }}">
+          <input type="hidden" name="ano_montagem" value="{{ ano_montagem }}">
+        {% endif %}
+
+        <div class="filters">
+          <div class="field col-6">
+            <label for="equipe">Equipe</label>
+            <select id="equipe" name="equipe" onchange="this.form.submit()">
+              <option value="">Selecione uma equipe</option>
+              <option value="Dirigentes" {% if equipe_selecionada == 'Dirigentes' %}selected{% endif %}>Dirigentes</option>
+              <option value="Sala" {% if equipe_selecionada == 'Sala' %}selected{% endif %}>Sala</option>
+              <option value="Circulos" {% if equipe_selecionada == 'Circulos' %}selected{% endif %}>Círculos</option>
+              <option value="Café e Minimercado" {% if equipe_selecionada == 'Café e Minimercado' %}selected{% endif %}>Café e Minimercado</option>
+              <option value="Compras" {% if equipe_selecionada == 'Compras' %}selected{% endif %}>Compras</option>
+              <option value="Acolhida" {% if equipe_selecionada == 'Acolhida' %}selected{% endif %}>Acolhida</option>
+              <option value="Ordem e Limpeza" {% if equipe_selecionada == 'Ordem e Limpeza' %}selected{% endif %}>Ordem e Limpeza</option>
+              <option value="Secretaria" {% if equipe_selecionada == 'Secretaria' %}selected{% endif %}>Secretaria</option>
+              <option value="Liturgia e Vigilia" {% if equipe_selecionada == 'Liturgia e Vigilia' %}selected{% endif %}>Liturgia e Vigilia</option>
+              <option value="Cozinha" {% if equipe_selecionada == 'Cozinha' %}selected{% endif %}>Cozinha</option>
+              <option value="Visitação" {% if equipe_selecionada == 'Visitação' %}selected{% endif %}>Visitação</option>
+            </select>
+          </div>
+        </div>
+      </form>
+
+      {% if tabela %}
+        <div class="table-wrap" style="margin-top: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Ano</th>
+                {% for col in colunas %}
+                  <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for ano, linha in tabela.items() %}
+                <tr>
+                  <td><strong>{{ ano }}</strong></td>
+                  {% for nome in linha %}
+                    {% set raw = nome or '' %}
+                    {% set is_coord = raw.startswith('*') %}
+                    {% set is_mark  = raw.startswith('~') %}
+                    {% set clean    = raw[1:] if (is_coord or is_mark) else raw %}
+                    <td>
+                      {% if raw %}
+                        {% if is_coord %}
+                          <strong>{{ clean }}</strong>
+                        {% else %}
+                          {% if linking %}
+                            {% set partes = clean.split(' e ', 1) %}
+                            {% if partes|length == 2 %}
+                              {% set ele = partes[0] | trim %}
+                              {% set ela = partes[1] | trim %}
+                              <a href="{{ url_for('visao_equipes_select',
+                                                  ano_montagem=ano_montagem,
+                                                  target=target,
+                                                  ele=ele,
+                                                  ela=ela) }}"
+                                 style="{% if is_mark %}background:#fef3c7; border-radius:8px; padding:4px 6px; display:inline-block;{% endif %}">
+                                {{ clean }}
+                              </a>
+                            {% else %}
+                              {% if is_mark %}
+                                <span style="background:#fef3c7; border-radius:8px; padding:4px 6px; display:inline-block;">{{ clean }}</span>
+                              {% else %}
+                                {{ clean }}
+                              {% endif %}
+                            {% endif %}
+                          {% else %}
+                            {% if is_mark %}
+                              <span style="background:#fef3c7; border-radius:8px; padding:4px 6px; display:inline-block;">{{ clean }}</span>
+                            {% else %}
+                              {{ clean }}
+                            {% endif %}
+                          {% endif %}
+                        {% endif %}
+                      {% else %}
+                        <span class="small">—</span>
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <p class="small" style="margin-top:12px;">
+          <strong>Legenda:</strong>
+          <strong>negrito</strong> = coordenador da equipe |
+          <span style="background:#fef3c7; border-radius:8px; padding:2px 6px; display:inline-block;">amarelo</span>
+          = casal que já foi coordenador em algum ano
+        </p>
+      {% else %}
+        <p class="small" style="margin-top:12px;">Selecione uma equipe para visualizar os dados.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
 {% endblock %}
