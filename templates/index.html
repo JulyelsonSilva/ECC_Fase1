@@ -1,236 +1,86 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Encontro de Casais com Cristo</title>
-  <style>
-    :root{
-      --bg:#f6f7fb;
-      --ink:#0f172a;
-      --muted:#64748b;
-      --card:#ffffff;
-      --border:#e5e7eb;
-      --brand:#2563eb;
-      --brand-600:#1e40af;
-      --brand-50:#eff6ff;
-      --accent:#f59e0b;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-        var(--bg);
-    }
-    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
-    header{
-      display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap;
-      padding:12px 0 8px;
-    }
-    .brand{display:flex; align-items:center; gap:12px;}
-    .logo{
-      width:54px; height:54px; border-radius:50%;
-      display:grid; place-items:center;
-      background: linear-gradient(135deg, var(--brand), var(--brand-600));
-      color:white; font-size:28px; box-shadow: 0 8px 24px rgba(37,99,235,.25);
-    }
-    .titles h1{margin:0; font-size:22px; letter-spacing:.2px;}
-    .titles p{margin:2px 0 0; color:var(--muted); font-size:13px;}
+{% extends "base.html" %}
 
-    .hero{
-      margin:18px 0 8px;
-      background: var(--card);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:22px;
-      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-      box-shadow: 0 8px 20px rgba(15,23,42,.05);
-    }
-    .hero .text h2{margin:0 0 6px; font-size:20px;}
-    .hero .text p{margin:0; color:var(--muted); font-size:14px;}
-    .hero .actions{display:flex; gap:10px; flex-wrap:wrap;}
-    .hero .stamp{display:flex; align-items:center; gap:10px; color:#334155; font-size:13px;
-      background: var(--brand-50); border:1px solid #dbeafe; padding:8px 12px; border-radius:999px;}
-    .hero .stamp .dot{width:10px; height:10px; border-radius:999px; background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(245,158,11,.15);}
+{% block title %}Início - Sistema ECC{% endblock %}
 
-    .grid{display:grid; gap:14px; margin-top:18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));}
-    .card{
-      background: var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:16px;
-      text-decoration:none; color:inherit;
-      display:flex; align-items:flex-start; gap:12px;
-      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
-      box-shadow: 0 8px 20px rgba(15,23,42,.04);
-    }
-    .card:hover{
-      transform: translateY(-2px);
-      box-shadow: 0 12px 26px rgba(15,23,42,.08);
-      border-color:#d2d7e0;
-      background:#fcfdff;
-    }
-    .icon{
-      width:42px; height:42px; border-radius:12px;
-      display:grid; place-items:center; color:#0b1e59;
-      background:linear-gradient(135deg, #eef2ff, #e0e7ff);
-      border:1px solid #e2e8f0;
-      font-size:22px;
-      flex:0 0 auto;
-    }
-    .card h3{ margin:0 0 6px; font-size:16px; }
-    .card p{ margin:0; color:var(--muted); font-size:13px; line-height:1.25; }
+{% block content %}
 
-    footer{ margin-top:32px; color:var(--muted); font-size:12px; text-align:center; }
+<div class="header">
+  <h1 class="title">
+    <i class="bi bi-house-door"></i> Página Inicial
+  </h1>
+</div>
 
-    @media (prefers-color-scheme: dark){
-      :root{
-        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
-        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
-      }
-      .logo{ box-shadow:none; }
-      .card{ box-shadow:none; }
-      .hero{ box-shadow:none; }
-      body{ background:
-        radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
-        radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
-        var(--bg); }
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">🕊️</div>
-        <div class="titles">
-          <h1>Encontro de Casais com Cristo</h1>
-          <p>Paróquia Divino Espírito Santo — Jatiúca • Arquidiocese de Maceió</p>
-        </div>
+<div class="card">
+  <p class="text-muted">
+    Bem-vindo ao sistema de gestão do ECC.
+  </p>
+</div>
+
+<div class="grid grid-3 mt-10">
+
+  <a href="{{ url_for('encontristas') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-person-hearts"></i> Encontristas</h3>
+        <p class="text-muted">Cadastro e consulta de casais</p>
       </div>
-      <div class="stamp" title="Serviço Pastoral">
-        <span class="dot" aria-hidden="true"></span>
-        <span>Serviço à comunidade</span>
+    </div>
+  </a>
+
+  <a href="{{ url_for('encontreiros') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-people"></i> Encontreiros</h3>
+        <p class="text-muted">Equipes e participantes</p>
       </div>
-    </header>
+    </div>
+  </a>
 
-    <section class="hero" role="region" aria-label="Ações do Encontro">
-      <div class="text">
-        <h2>Bem-vindos ao serviço do ECC</h2>
-        <p>Ferramentas para organizar o encontro e cuidar dos casais com simplicidade.</p>
+  <a href="{{ url_for('montagem') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-diagram-3"></i> Montagem</h3>
+        <p class="text-muted">Organização das equipes</p>
       </div>
-      <div class="actions">
-        <a class="card" href="{{ url_for('montagem') }}" style="max-width:320px;">
-          <div class="icon" aria-hidden="true">🧩</div>
-          <div>
-            <h3>Montagem</h3>
-            <p>Visão geral das montagens por ano (abertas e concluídas).</p>
-          </div>
-        </a>
+    </div>
+  </a>
 
-        <a class="card" href="{{ url_for('fichas') }}">
-          <div class="icon" aria-hidden="true">📝</div>
-          <div>
-            <h3>Fichas</h3>
-            <p>Cadastro manual de encontristas a partir das fichas do encontro.</p>
-          </div>
-        </a>
-        
-        <a class="card" href="{{ url_for('palestras_painel') }}" style="max-width:320px;">
-          <div class="icon" aria-hidden="true">🎤</div>
-          <div>
-            <h3>Palestras</h3>
-            <p>Painel por ano para cadastrar os palestrantes de cada tema.</p>
-          </div>
-        </a>
-
-        <!-- NOVO: Círculos nas ferramentas -->
-        <a class="card" href="{{ url_for('circulos_list') }}" style="max-width:320px;">
-          <div class="icon" aria-hidden="true">🔵</div>
-          <div>
-            <h3>Círculos</h3>
-            <p>Cadastro de círculos por ano e seus integrantes.</p>
-          </div>
-        </a>
+  <a href="{{ url_for('implantacao_painel') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-building-add"></i> Implantação</h3>
+        <p class="text-muted">Gestão de implantação</p>
       </div>
-    </section>
+    </div>
+  </a>
 
-    <main class="grid" aria-label="Navegação principal">
-      <a class="card" href="{{ url_for('encontristas') }}">
-        <div class="icon" aria-hidden="true">📇</div>
-        <div>
-          <h3>Encontristas</h3>
-          <p>Consulta e edição dos cadastros dos casais que participaram do encontro.</p>
-        </div>
-      </a>
+  <a href="{{ url_for('palestras_painel') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-mic"></i> Palestras</h3>
+        <p class="text-muted">Controle de palestras</p>
+      </div>
+    </div>
+  </a>
 
-      <a class="card" href="{{ url_for('encontreiros') }}">
-        <div class="icon" aria-hidden="true">🤝</div>
-        <div>
-          <h3>Encontreiros</h3>
-          <p>Histórico dos casais que serviram nas equipes do ECC.</p>
-        </div>
-      </a>
+  <a href="{{ url_for('circulos_list') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-circle"></i> Círculos</h3>
+        <p class="text-muted">Gestão dos círculos</p>
+      </div>
+    </div>
+  </a>
 
-      <a class="card" href="{{ url_for('palestrantes') }}">
-        <div class="icon" aria-hidden="true">🎙️</div>
-        <div>
-          <h3>Palestrantes</h3>
-          <p>Lista de palestras e palestrantes por ano, com filtros rápidos.</p>
-        </div>
-      </a>
+  <a href="{{ url_for('relatorios') }}" class="card">
+    <div class="flex space-between center">
+      <div>
+        <h3><i class="bi bi-bar-chart"></i> Relatórios</h3>
+        <p class="text-muted">Indicadores e dados</p>
+      </div>
+    </div>
+  </a>
 
-      <a class="card" href="{{ url_for('visao_equipes') }}">
-        <div class="icon" aria-hidden="true">🗂️</div>
-        <div>
-          <h3>Visão de Equipes</h3>
-          <p>Composição das equipes por ano, coordenadores e integrantes.</p>
-        </div>
-      </a>
+</div>
 
-      <a class="card" href="{{ url_for('visao_casal') }}">
-        <div class="icon" aria-hidden="true">💑</div>
-        <div>
-          <h3>Visão do Casal</h3>
-          <p>Dados consolidados do casal: participação, endereço e telefones.</p>
-        </div>
-      </a>
-
-      <a class="card" href="{{ url_for('organograma') }}">
-        <div class="icon" aria-hidden="true">🕯️</div>
-        <div>
-          <h3>Organograma</h3>
-          <p>Estrutura de coordenação e liderança do encontro correspondente.</p>
-        </div>
-      </a>
-
-      <!-- NOVO: Pesquisa de Círculos -->
-      <a class="card" href="{{ url_for('pesquisa_circulos') }}">
-        <div class="icon" aria-hidden="true">🔎</div>
-        <div>
-          <h3>Pesquisa de Círculos</h3>
-          <p>Resumo por ano: cor, coordenadores e integrantes de cada círculo.</p>
-        </div>
-      </a>
-
-      <a class="card" href="{{ url_for('relatorios') }}">
-        <div class="icon" aria-hidden="true">📊</div>
-        <div>
-          <h3>Relatórios</h3>
-          <p>KPIs, gráficos e documentos de impressão (coordenadores, equipes, vigília).</p>
-        </div>
-      </a>
-    </main>
-
-    <footer>
-      <p>“Que o amor de Cristo una e fortaleça nossas famílias.”</p>
-    </footer>
-  </div>
-</body>
-</html>
+{% endblock %}
