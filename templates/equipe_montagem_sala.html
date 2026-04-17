@@ -1,11 +1,10 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Montagem da Equipe — Sala</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46;}
+{% extends "base.html" %}
+
+{% block title %}Montagem da Equipe — Sala{% endblock %}
+
+{% block extra_head %}
+<style>
+:root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46;}
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
       radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
@@ -34,19 +33,20 @@
     .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; margin-right:6px; }
     .justify-box { margin-top:10px; padding:10px; border:1px solid var(--border); border-radius:10px; background:#fff; display:none; }
     .justify-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
     <div class="header">
       <div>
         <h1>Montagem — Equipe de Sala</h1>
         <div class="small">Ano: <b>{{ ano }}</b></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
-        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}">↩ Voltar à Nova Montagem</a>
-        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <a class="btn" href="{{ url_for('montagem') }}"><i class="bi bi-arrow-left"></i> Montagem</a>
+        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}"><i class="bi bi-arrow-return-left"></i> Voltar à Nova Montagem</a>
+        <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
       </div>
     </div>
 
@@ -88,9 +88,11 @@
       </div>
     </div>
   </div>
+{% endblock %}
 
-  <script>
-  const ANO = {{ ano | int }};
+{% block extra_scripts %}
+<script>
+const ANO = {{ ano | int }};
   const SLOTS = {{ (sala_slots or []) | tojson }};
   const PREF = {{ (pref_recepcao or {}) | tojson }};
 
@@ -387,6 +389,5 @@
   // Inicialização
   renderAll();
   wireSuggestions();
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}
