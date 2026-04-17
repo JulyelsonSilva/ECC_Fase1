@@ -1,11 +1,10 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Nova Montagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root{
+{% extends "base.html" %}
+
+{% block title %}Nova Montagem{% endblock %}
+
+{% block extra_head %}
+<style>
+:root{
       --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
       --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
       /* cartões/KPI */
@@ -77,21 +76,22 @@
           var(--bg);
       }
     }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
     <header>
       <div class="brand">
-        <div class="logo" aria-hidden="true">🧩</div>
+        <div class="logo" aria-hidden="true"><i class="bi bi-diagram-3"></i></div>
         <div>
           <h1>Nova Montagem</h1>
           <p class="muted">Defina dirigentes, coordenador geral e coordenadores de equipe. Acompanhe o andamento das equipes.</p>
         </div>
       </div>
       <div class="inline">
-        <a class="btn" href="{{ url_for('montagem') }}">← Montagem</a>
-        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <a class="btn" href="{{ url_for('montagem') }}"><i class="bi bi-arrow-left"></i> Montagem</a>
+        <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
       </div>
     </header>
 
@@ -177,9 +177,11 @@
       <div class="grid" id="coord-equipes-grid"></div>
     </div>
   </div>
+{% endblock %}
 
-  <script>
-    // ---------- CONSTANTES / JINJA ----------
+{% block extra_scripts %}
+<script>
+// ---------- CONSTANTES / JINJA ----------
     const initialData = {{ (initial_data or {}) | tojson }};
     const anoPre = {{ ano_preselecionado | tojson }};
     const VISAO_EQ_URL = "{{ url_for('visao_equipes') }}";
@@ -814,6 +816,5 @@
         btnContinuar.click();
       }
     });
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}
