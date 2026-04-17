@@ -1,11 +1,10 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>{{ titulo }} — {{ ano }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root{--bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;}
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} — {{ ano }}{% endblock %}
+
+{% block extra_head %}
+<style>
+:root{--bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;}
     *{box-sizing:border-box}
     body{
       margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
@@ -37,19 +36,20 @@
       .readonly{background:#0b1220}
       .meter .fill{background:rgba(0,0,0,.35)}
     }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
     <header>
       <div>
         <h1>{{ titulo }}</h1>
         <div class="muted">Ano: <b>{{ ano }}</b></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('nova_palestra', ano=ano) }}">← Voltar ao Ano</a>
-        <a class="btn" href="{{ url_for('palestras_painel') }}">↩ Palestras</a>
-        <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
+        <a class="btn" href="{{ url_for('nova_palestra', ano=ano) }}"><i class="bi bi-arrow-left"></i> Voltar ao Ano</a>
+        <a class="btn" href="{{ url_for('palestras_painel') }}"><i class="bi bi-arrow-left"></i> Palestras</a>
+        <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
       </div>
     </header>
 
@@ -201,5 +201,4 @@
       });
     }
   </script>
-</body>
-</html>
+{% endblock %}
