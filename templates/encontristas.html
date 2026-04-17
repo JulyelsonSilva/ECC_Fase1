@@ -1,34 +1,35 @@
 {% extends "base.html" %}
 
+{% block title %}Encontristas - Sistema ECC{% endblock %}
+
 {% block content %}
 <div class="page">
-  <div class="topbar">
+  <div class="header">
     <div>
-      <h1>Encontristas</h1>
-      <p>Consulta e edição dos casais cadastrados no ECC.</p>
+      <h1 class="title">
+        <i class="bi bi-person-hearts"></i>
+        <span>Encontristas</span>
+      </h1>
+      <p class="subtitle">Consulta e edição dos casais cadastrados no ECC.</p>
     </div>
 
     <div class="actions">
-      <a class="btn" href="{{ url_for('index') }}">
-        <i class="bi bi-house-door"></i>
-        <span>Início</span>
+      <a class="btn btn-primary" href="{{ url_for('fichas') }}">
+        <i class="bi bi-file-earmark-plus"></i>
+        <span>Nova ficha</span>
       </a>
     </div>
   </div>
 
   {% if updated %}
-    <div class="flash ok">
-      Registro atualizado com sucesso.
-    </div>
+    <div class="flash ok">Registro atualizado com sucesso.</div>
   {% endif %}
 
   {% if notfound %}
-    <div class="flash info">
-      Registro não encontrado.
-    </div>
+    <div class="flash info">Registro não encontrado.</div>
   {% endif %}
 
-  <div class="card">
+  <section class="card">
     <div class="card-head">
       <h2>Filtros</h2>
       <p>Use um ou mais campos para localizar os encontristas.</p>
@@ -83,7 +84,7 @@
         </div>
       </form>
 
-      <div style="overflow-x:auto;">
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -118,12 +119,12 @@
                 <td>{{ e.num_ecc or '' }}</td>
                 <td>
                   <div class="actions">
-                    <a class="btn" href="{{ url_for('editar_encontrista', encontrista_id=e.id) }}">
+                    <a class="btn btn-sm" href="{{ url_for('editar_encontrista', encontrista_id=e.id) }}">
                       <i class="bi bi-pencil-square"></i>
                       <span>Editar</span>
                     </a>
 
-                    <a class="btn" href="{{ url_for('visao_casal', nome_ele=e.nome_usual_ele, nome_ela=e.nome_usual_ela) }}">
+                    <a class="btn btn-sm" href="{{ url_for('visao_casal', nome_ele=e.nome_usual_ele, nome_ela=e.nome_usual_ela) }}">
                       <i class="bi bi-eye"></i>
                       <span>Ver casal</span>
                     </a>
@@ -173,6 +174,6 @@
         </div>
       {% endif %}
     </div>
-  </div>
+  </section>
 </div>
 {% endblock %}
