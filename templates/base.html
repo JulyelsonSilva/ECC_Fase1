@@ -13,46 +13,81 @@
 <body>
   <header class="topbar">
     <div class="container topbar-inner">
-      <a href="{{ url_for('index') }}" class="brand-link">
-        <span class="brand-mark"><i class="bi bi-people-fill"></i></span>
+      <a href="{{ url_for('index') }}" class="brand-link" aria-label="Ir para a página inicial do Sistema ECC Divino">
+        <span class="brand-mark">
+          <img
+            src="{{ url_for('static', filename='img/brasao_divino.jpg') }}"
+            alt="Brasão do Sistema ECC Divino"
+            onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=&quot;bi bi-shield-check&quot;></i>';"
+          >
+        </span>
+
         <div>
-          <div class="brand-title">Sistema ECC</div>
+          <div class="brand-title">Sistema ECC Divino</div>
           <div class="brand-subtitle">Encontro de Casais com Cristo</div>
         </div>
       </a>
 
-      <nav class="main-nav">
-        <a href="{{ url_for('index') }}" class="nav-link">
+      <nav class="main-nav" aria-label="Navegação principal">
+        <a
+          href="{{ url_for('index') }}"
+          class="nav-link {% if request.endpoint == 'index' %}is-active{% endif %}"
+          {% if request.endpoint == 'index' %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-house-door"></i>
           <span>Início</span>
         </a>
 
-        <a href="{{ url_for('encontristas') }}" class="nav-link">
+        <a
+          href="{{ url_for('encontristas') }}"
+          class="nav-link {% if request.endpoint in ['encontristas', 'fichas', 'editar_encontrista'] %}is-active{% endif %}"
+          {% if request.endpoint in ['encontristas', 'fichas', 'editar_encontrista'] %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-person-hearts"></i>
           <span>Encontristas</span>
         </a>
 
-        <a href="{{ url_for('encontreiros') }}" class="nav-link">
+        <a
+          href="{{ url_for('encontreiros') }}"
+          class="nav-link {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes'] %}is-active{% endif %}"
+          {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes'] %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-people"></i>
           <span>Encontreiros</span>
         </a>
 
-        <a href="{{ url_for('montagem') }}" class="nav-link">
+        <a
+          href="{{ url_for('montagem') }}"
+          class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'equipe_montagem_sala', 'organograma'] %}is-active{% endif %}"
+          {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'equipe_montagem_sala', 'organograma'] %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-diagram-3"></i>
           <span>Montagem</span>
         </a>
 
-        <a href="{{ url_for('palestras_painel') }}" class="nav-link">
+        <a
+          href="{{ url_for('palestras_painel') }}"
+          class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras', 'nova_palestras', 'palestrantes', 'palestra_topico'] %}is-active{% endif %}"
+          {% if request.endpoint in ['palestras_painel', 'palestras', 'nova_palestras', 'palestrantes', 'palestra_topico'] %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-mic"></i>
           <span>Palestras</span>
         </a>
 
-        <a href="{{ url_for('circulos_list') }}" class="nav-link">
+        <a
+          href="{{ url_for('circulos_list') }}"
+          class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'transferir_circulos'] %}is-active{% endif %}"
+          {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'transferir_circulos'] %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-circle"></i>
           <span>Círculos</span>
         </a>
 
-        <a href="{{ url_for('relatorios') }}" class="nav-link">
+        <a
+          href="{{ url_for('relatorios') }}"
+          class="nav-link {% if request.endpoint in ['relatorios', 'docs', 'auditoria_enderecos', 'relatorio_mapa_encontristas', 'implantacao'] %}is-active{% endif %}"
+          {% if request.endpoint in ['relatorios', 'docs', 'auditoria_enderecos', 'relatorio_mapa_encontristas', 'implantacao'] %}aria-current="page"{% endif %}
+        >
           <i class="bi bi-bar-chart"></i>
           <span>Relatórios</span>
         </a>
@@ -62,6 +97,27 @@
 
   <main class="page-shell">
     <div class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="stack" style="margin-bottom: 16px;">
+            {% for category, message in messages %}
+              {% set flash_class = 'info' %}
+              {% if category in ['success', 'ok'] %}
+                {% set flash_class = 'ok' %}
+              {% elif category in ['warning', 'warn'] %}
+                {% set flash_class = 'warn' %}
+              {% elif category in ['danger', 'error'] %}
+                {% set flash_class = 'error' %}
+              {% endif %}
+
+              <div class="flash {{ flash_class }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
       {% block content %}{% endblock %}
     </div>
   </main>
