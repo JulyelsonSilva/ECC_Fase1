@@ -1,165 +1,406 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Relatórios • ECC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "base.html" %}
 
-  <!-- Chart.js via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block title %}Relatórios | Sistema ECC{% endblock %}
 
-  <style>
-    :root{
-      --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb;
-      --brand:#2563eb; --brand-600:#1e40af; --brand-50:#eff6ff; --accent:#f59e0b;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-        var(--bg);
-    }
-    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
-    header{
-      display:flex; align-items:center; gap:16px; justify-content:space-between; flex-wrap:wrap; padding:12px 0 8px;
-    }
-    .brand{ display:flex; align-items:center; gap:12px; }
-    .logo{
-      width:54px; height:54px; border-radius:50%; display:grid; place-items:center;
-      background: linear-gradient(135deg, var(--brand), var(--brand-600));
-      color:white; font-size:28px; box-shadow: 0 8px 24px rgba(37,99,235,.25);
-    }
-    .titles h1{ margin:0; font-size:22px; letter-spacing:.2px; }
-    .titles p{ margin:2px 0 0; color:var(--muted); font-size:13px; }
-    .stamp{
-      display:flex; align-items:center; gap:10px; color:#334155; font-size:13px;
-      background: var(--brand-50); border:1px solid #dbeafe; padding:8px 12px; border-radius:999px;
-    }
-    .stamp .dot{
-      width:10px; height:10px; border-radius:999px; background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(245,158,11,.15);
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .reports-shell{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .reports-hero{
+    padding:24px;
+  }
+
+  .reports-hero-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .reports-hero-text{
+    max-width:820px;
+  }
+
+  .reports-hero-text h2{
+    margin:0 0 8px;
+    color:var(--primary);
+    font-size:clamp(26px, 4vw, 36px);
+    line-height:1.1;
+    letter-spacing:-0.03em;
+  }
+
+  .reports-hero-text p{
+    margin:0;
+    color:var(--muted);
+    font-size:15px;
+    line-height:1.7;
+  }
+
+  .reports-stamp{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    min-height:40px;
+    padding:0 14px;
+    border-radius:999px;
+    background:var(--accent-soft);
+    border:1px solid #ead8b5;
+    color:var(--accent-dark);
+    font-size:13px;
+    font-weight:700;
+    white-space:nowrap;
+    box-shadow:var(--shadow-xs);
+  }
+
+  .reports-stamp-dot{
+    width:10px;
+    height:10px;
+    border-radius:999px;
+    background:var(--accent);
+    box-shadow:0 0 0 4px rgba(184,145,87,0.14);
+    flex:0 0 auto;
+  }
+
+  .reports-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    gap:12px;
+  }
+
+  .reports-toolbar .field{
+    min-width:210px;
+    max-width:260px;
+    margin:0;
+  }
+
+  .reports-toolbar-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+
+  .reports-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+  }
+
+  .report-chart-card{
+    position:relative;
+  }
+
+  .report-chart-card .card-head{
+    padding-bottom:12px;
+  }
+
+  .report-chart-card .card-head h3{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:18px;
+  }
+
+  .report-chart-card .card-head p{
+    margin-top:6px;
+  }
+
+  .report-chart-area{
+    position:relative;
+    min-height:360px;
+    padding:0 20px 20px;
+  }
+
+  .report-chart-area--sm{
+    min-height:280px;
+  }
+
+  .report-chart-area canvas{
+    width:100% !important;
+    height:100% !important;
+  }
+
+  .report-chart-msg{
+    position:absolute;
+    inset:0 20px 20px 20px;
+    display:none;
+    place-items:center;
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.6;
+    padding:16px;
+    border-radius:16px;
+    background:rgba(255,255,255,0.58);
+    border:1px dashed var(--border);
+    backdrop-filter:blur(2px);
+  }
+
+  .report-mini-stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:14px;
+  }
+
+  .report-mini-stat{
+    padding:18px;
+    border-radius:var(--radius);
+    border:1px solid var(--border);
+    background:rgba(255,253,250,0.82);
+    box-shadow:var(--shadow-xs);
+  }
+
+  .report-mini-stat-label{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .report-mini-stat-value{
+    margin-top:8px;
+    color:var(--primary);
+    font-size:24px;
+    font-weight:800;
+    line-height:1;
+    letter-spacing:-0.03em;
+  }
+
+  .report-mini-stat-help{
+    margin-top:8px;
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.5;
+  }
+
+  @media (max-width: 760px){
+    .reports-hero{
+      padding:20px;
     }
 
-    .hero{
-      margin:18px 0 8px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px;
-      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-      box-shadow: 0 8px 20px rgba(15,23,42,.05);
-    }
-    .hero .text h2{ margin:0 0 6px; font-size:20px; }
-    .hero .text p{ margin:0; color:var(--muted); font-size:14px; }
-    .hero .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .btn{
-      text-decoration:none; background:var(--brand); color:#fff; padding:10px 14px; border-radius:10px; border:1px solid var(--brand-600);
-    }
-    .btn-outline{
-      background:transparent; color:var(--brand-600); border:1px solid var(--brand-600);
-    }
-    .btn:hover{ filter:brightness(0.98); }
-    .btn-outline:hover{ background:var(--brand-50); }
-
-    .stack{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:18px; }
-
-    .chart-card{
-      background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px;
-      min-height:340px; position:relative;
-    }
-    /* 👇 menor só no donut */
-    .chart-sm{ min-height:260px; }
-    .chart-card canvas{ height: 100%; width: 100%; }
-    .msg{
-      position:absolute; inset:0; display:grid; place-items:center;
-      color:var(--muted); font-size:14px; padding:12px; text-align:center;
+    .reports-toolbar{
+      align-items:stretch;
     }
 
-    @media (prefers-color-scheme: dark){
-      :root{
-        --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8;
-        --brand:#3b82f6; --brand-600:#1d4ed8; --brand-50:#0b255a; --accent:#fde68a;
-      }
-      .logo, .hero{ box-shadow:none; }
-      body{
-        background:
-          radial-gradient(1200px 800px at 80% -10%, rgba(30,64,175,.25) 0%, rgba(30,64,175,0) 55%),
-          radial-gradient(1000px 600px at -10% 110%, rgba(245,158,11,.15) 0%, rgba(245,158,11,0) 55%),
-          var(--bg);
-      }
-      .chart-card{ background:var(--card); }
-      .btn-outline{ color:#93c5fd; border-color:#60a5fa; }
-      .btn-outline:hover{ background:rgba(59,130,246,.1); }
+    .reports-toolbar .field{
+      min-width:100%;
+      max-width:none;
     }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">🕊️</div>
-        <div class="titles">
-          <h1>Relatórios</h1>
-          <p>Paróquia Divino Espírito Santo — Jatiúca • Arquidiocese de Maceió</p>
-        </div>
-      </div>
-      <div class="stamp" title="Serviço Pastoral">
-        <span class="dot" aria-hidden="true"></span>
-        <span>Serviço à comunidade</span>
-      </div>
-    </header>
 
-    <section class="hero" role="region" aria-label="Filtros e ações">
-      <div class="text">
-        <h2>Visão estatística do ECC</h2>
-        <p>Origem (ano de encontro), casais que trabalharam (dedup) e total de registros por ano.</p>
-      </div>
-      <div class="actions">
-        <label for="anoSel" style="color:var(--muted); font-size:13px;">Ano de trabalho:</label>
-        <select id="anoSel">
-          {% for a in anos %}
-            <option value="{{a}}">{{a}}</option>
-          {% endfor %}
-        </select>
+    .reports-toolbar-actions{
+      width:100%;
+      flex-direction:column;
+      align-items:stretch;
+    }
 
-        <a class="btn" href="{{ url_for('docs_index') }}" target="_blank">🖨️ Documentos de impressão</a>
-        <a class="btn" href="{{ url_for('relatorio_mapa_encontristas') }}">🗺️ Mapa dos Encontristas</a>
-        <a class="btn btn-outline" href="{{ url_for('auditoria_enderecos') }}">🔎 Auditoria de Endereços</a>
-         <a class="btn" href="{{ url_for('index') }}">⌂ Página Inicial</a>
-      </div>
-    </section>
+    .reports-toolbar-actions .btn{
+      width:100%;
+    }
 
-    <div class="stack" aria-label="Gráficos de Relatórios">
-      <!-- DONUT (menor) -->
-      <div class="chart-card chart-sm">
-        <canvas id="distAnoEncontro"></canvas>
-        <div id="msgDist" class="msg" style="display:none;"></div>
-      </div>
+    .report-chart-area{
+      min-height:300px;
+      padding:0 16px 16px;
+    }
 
-      <!-- Barras: casais (dedup) -->
-      <div class="chart-card">
-        <canvas id="barTrabalhos"></canvas>
-        <div id="msgBar" class="msg" style="display:none;"></div>
-      </div>
+    .report-chart-area--sm{
+      min-height:250px;
+    }
 
-      <!-- Barras: ENCONTRISTAS por ano -->
-      <div class="chart-card">
-        <canvas id="barEncontristas"></canvas>
-        <div id="msgEncts" class="msg" style="display:none;"></div>
-      </div>
-    </div>
+    .report-chart-msg{
+      inset:0 16px 16px 16px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page reports-shell">
+
+  <div class="breadcrumb">
+    <a href="{{ url_for('index') }}">Início</a>
+    <i class="bi bi-chevron-right"></i>
+    <span>Relatórios</span>
   </div>
 
+  <section class="card reports-hero">
+    <div class="reports-hero-top">
+      <div class="reports-hero-text">
+        <div class="eyebrow">Ecossistema analítico</div>
+        <h2>Relatórios do ECC</h2>
+        <p>
+          Visualize a origem dos trabalhadores, a distribuição anual de casais que serviram
+          no encontro e a evolução dos encontristas cadastrados. Esta área concentra a leitura
+          analítica do sistema em uma interface mais limpa e integrada ao restante da aplicação.
+        </p>
+      </div>
+
+      <div class="reports-stamp" title="Serviço Pastoral">
+        <span class="reports-stamp-dot" aria-hidden="true"></span>
+        <span>Serviço à comunidade</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h3>Filtros e atalhos</h3>
+      <p>
+        Escolha o ano de trabalho para a visão de origem dos trabalhadores e acesse rapidamente
+        os demais relatórios e utilidades do sistema.
+      </p>
+    </div>
+
+    <div class="card-body">
+      <div class="reports-toolbar">
+        <div class="field">
+          <label for="anoSel">Ano de trabalho</label>
+          <select id="anoSel">
+            {% for a in anos %}
+              <option value="{{ a }}">{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="reports-toolbar-actions">
+          <a class="btn btn-primary" href="{{ url_for('docs_index') }}" target="_blank">
+            <i class="bi bi-printer"></i>
+            <span>Documentos de impressão</span>
+          </a>
+
+          <a class="btn btn-secondary" href="{{ url_for('relatorio_mapa_encontristas') }}">
+            <i class="bi bi-map"></i>
+            <span>Mapa dos Encontristas</span>
+          </a>
+
+          <a class="btn btn-ghost" href="{{ url_for('auditoria_enderecos') }}">
+            <i class="bi bi-search"></i>
+            <span>Auditoria de Endereços</span>
+          </a>
+
+          <a class="btn" href="{{ url_for('index') }}">
+            <i class="bi bi-house-door"></i>
+            <span>Página Inicial</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="report-mini-stats">
+    <div class="report-mini-stat">
+      <div class="report-mini-stat-label">Origem dos trabalhadores</div>
+      <div class="report-mini-stat-value">Donut por ano</div>
+      <div class="report-mini-stat-help">
+        Mostra de que ano de encontro vieram os casais que trabalharam no ano selecionado.
+      </div>
+    </div>
+
+    <div class="report-mini-stat">
+      <div class="report-mini-stat-label">Trabalharam por ano</div>
+      <div class="report-mini-stat-value">Barras dedup</div>
+      <div class="report-mini-stat-help">
+        Considera casais que trabalharam por ano sem duplicidade no consolidado.
+      </div>
+    </div>
+
+    <div class="report-mini-stat">
+      <div class="report-mini-stat-label">Encontristas por ano</div>
+      <div class="report-mini-stat-value">Base histórica</div>
+      <div class="report-mini-stat-help">
+        Exibe a evolução anual dos encontristas registrados na tabela principal.
+      </div>
+    </div>
+  </section>
+
+  <section class="reports-grid" aria-label="Gráficos de relatórios">
+
+    <article class="card report-chart-card">
+      <div class="card-head">
+        <h3>
+          <i class="bi bi-pie-chart"></i>
+          <span>Origem dos trabalhadores no ano selecionado</span>
+        </h3>
+        <p>
+          Distribuição do ano de encontro dos casais que trabalharam no ano escolhido acima.
+        </p>
+      </div>
+
+      <div class="report-chart-area report-chart-area--sm">
+        <canvas id="distAnoEncontro"></canvas>
+        <div id="msgDist" class="report-chart-msg"></div>
+      </div>
+    </article>
+
+    <article class="card report-chart-card">
+      <div class="card-head">
+        <h3>
+          <i class="bi bi-bar-chart"></i>
+          <span>Casais que trabalharam por ano</span>
+        </h3>
+        <p>
+          Quantidade anual de casais que atuaram no ECC, considerando deduplicação por casal.
+        </p>
+      </div>
+
+      <div class="report-chart-area">
+        <canvas id="barTrabalhos"></canvas>
+        <div id="msgBar" class="report-chart-msg"></div>
+      </div>
+    </article>
+
+    <article class="card report-chart-card">
+      <div class="card-head">
+        <h3>
+          <i class="bi bi-bar-chart-line"></i>
+          <span>Encontristas por ano</span>
+        </h3>
+        <p>
+          Quantidade de encontristas cadastrados por ano na base histórica do sistema.
+        </p>
+      </div>
+
+      <div class="report-chart-area">
+        <canvas id="barEncontristas"></canvas>
+        <div id="msgEncts" class="report-chart-msg"></div>
+      </div>
+    </article>
+
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
 let chBar, chDist, chEncts;
-function destroyIf(c){ if(c) c.destroy(); }
-function showMsg(id, text){ const el = document.getElementById(id); if(!el) return; el.textContent = text; el.style.display = 'grid'; }
-function hideMsg(id){ const el = document.getElementById(id); if(!el) return; el.style.display = 'none'; }
+
+function destroyIf(c){
+  if (c) c.destroy();
+}
+
+function showMsg(id, text){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.style.display = 'grid';
+}
+
+function hideMsg(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'none';
+}
 
 async function safeFetchJson(url){
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-  if(!res.ok){
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  if (!res.ok){
     const t = await res.text();
-    throw new Error(`HTTP ${res.status} em ${url} → ${t.slice(0,200)}`);
+    throw new Error(`HTTP ${res.status} em ${url} → ${t.slice(0, 200)}`);
   }
   return res.json();
 }
@@ -170,11 +411,22 @@ async function carregaTrabalhosPorAno(){
     const data = await safeFetchJson("/api/trabalhos_por_ano");
     const labels = data.map(d => d.ano);
     const valores = data.map(d => d.qtd);
+
     destroyIf(chBar);
     chBar = new Chart(document.getElementById("barTrabalhos"), {
       type: "bar",
-      data: { labels, datasets: [{ label: "Casais que trabalharam por ano (dedup)", data: valores }] },
-      options: { responsive:true, maintainAspectRatio:false }
+      data: {
+        labels,
+        datasets: [{
+          label: "Casais que trabalharam por ano (dedup)",
+          data: valores,
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
     });
   }catch(err){
     console.error(err);
@@ -182,18 +434,28 @@ async function carregaTrabalhosPorAno(){
   }
 }
 
-/* 👇 agora busca ENCONTRISTAS por ano (tabela 'encontristas') */
 async function carregaEncontristasPorAno(){
   try{
     hideMsg('msgEncts');
     const data = await safeFetchJson("/api/encontristas_por_ano");
     const labels = data.map(d => d.ano);
     const valores = data.map(d => d.qtd);
+
     destroyIf(chEncts);
     chEncts = new Chart(document.getElementById("barEncontristas"), {
       type: "bar",
-      data: { labels, datasets: [{ label: "Encontristas por ano", data: valores }] },
-      options: { responsive:true, maintainAspectRatio:false }
+      data: {
+        labels,
+        datasets: [{
+          label: "Encontristas por ano",
+          data: valores,
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
     });
   }catch(err){
     console.error(err);
@@ -204,16 +466,28 @@ async function carregaEncontristasPorAno(){
 async function carregaDistribuicaoAnoEncontro(ano){
   try{
     hideMsg('msgDist');
-    if(!ano){ throw new Error("Ano inválido"); }
+    if (!ano) throw new Error("Ano inválido");
+
     const data = await safeFetchJson(`/api/ano_origem_dos_trabalhadores?ano=${encodeURIComponent(ano)}`);
-    if(!data.dist){ throw new Error("Resposta inesperada da API"); }
+    if (!data.dist) throw new Error("Resposta inesperada da API");
+
     const labels = data.dist.map(d => d.ano_encontro);
     const valores = data.dist.map(d => d.qtd);
+
     destroyIf(chDist);
     chDist = new Chart(document.getElementById("distAnoEncontro"), {
       type: "doughnut",
-      data: { labels, datasets: [{ label: `Ano de encontro de quem trabalhou em ${ano}`, data: valores }] },
-      options: { responsive:true, maintainAspectRatio:false }
+      data: {
+        labels,
+        datasets: [{
+          label: `Ano de encontro de quem trabalhou em ${ano}`,
+          data: valores
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
     });
   }catch(err){
     console.error(err);
@@ -221,19 +495,22 @@ async function carregaDistribuicaoAnoEncontro(ano){
   }
 }
 
-document.getElementById("anoSel").addEventListener("change", e => carregaDistribuicaoAnoEncontro(e.target.value));
+document.getElementById("anoSel").addEventListener("change", e => {
+  carregaDistribuicaoAnoEncontro(e.target.value);
+});
+
 window.addEventListener("DOMContentLoaded", async () => {
-  if(!window.Chart){
+  if (!window.Chart){
     showMsg('msgDist', "Chart.js não carregou. Verifique a conexão com a CDN.");
     showMsg('msgBar', "Chart.js não carregou. Verifique a conexão com a CDN.");
     showMsg('msgEncts', "Chart.js não carregou. Verifique a conexão com a CDN.");
     return;
   }
+
   const anoIni = document.getElementById("anoSel")?.value;
-  await carregaDistribuicaoAnoEncontro(anoIni);   // donut
-  await carregaTrabalhosPorAno();                 // barras (dedup)
-  await carregaEncontristasPorAno();              // barras (encontristas)
+  await carregaDistribuicaoAnoEncontro(anoIni);
+  await carregaTrabalhosPorAno();
+  await carregaEncontristasPorAno();
 });
 </script>
-</body>
-</html>
+{% endblock %}
