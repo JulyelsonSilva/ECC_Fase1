@@ -49,8 +49,8 @@
 
         <a
           href="{{ url_for('encontreiros') }}"
-          class="nav-link {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes'] %}is-active{% endif %}"
-          {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes'] %}aria-current="page"{% endif %}
+          class="nav-link {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes', 'visao_equipes_select', 'relatorio_casais'] %}is-active{% endif %}"
+          {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes', 'visao_equipes_select', 'relatorio_casais'] %}aria-current="page"{% endif %}
         >
           <i class="bi bi-people"></i>
           <span>Encontreiros</span>
@@ -58,8 +58,8 @@
 
         <a
           href="{{ url_for('montagem') }}"
-          class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'equipe_montagem_sala', 'organograma'] %}is-active{% endif %}"
-          {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'equipe_montagem_sala', 'organograma'] %}aria-current="page"{% endif %}
+          class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}is-active{% endif %}"
+          {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}aria-current="page"{% endif %}
         >
           <i class="bi bi-diagram-3"></i>
           <span>Montagem</span>
@@ -67,8 +67,8 @@
 
         <a
           href="{{ url_for('palestras_painel') }}"
-          class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras', 'nova_palestras', 'palestrantes', 'palestra_topico'] %}is-active{% endif %}"
-          {% if request.endpoint in ['palestras_painel', 'palestras', 'nova_palestras', 'palestrantes', 'palestra_topico'] %}aria-current="page"{% endif %}
+          class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}is-active{% endif %}"
+          {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}aria-current="page"{% endif %}
         >
           <i class="bi bi-mic"></i>
           <span>Palestras</span>
@@ -76,8 +76,8 @@
 
         <a
           href="{{ url_for('circulos_list') }}"
-          class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'transferir_circulos'] %}is-active{% endif %}"
-          {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'transferir_circulos'] %}aria-current="page"{% endif %}
+          class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}is-active{% endif %}"
+          {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}aria-current="page"{% endif %}
         >
           <i class="bi bi-circle"></i>
           <span>Círculos</span>
@@ -85,8 +85,8 @@
 
         <a
           href="{{ url_for('relatorios') }}"
-          class="nav-link {% if request.endpoint in ['relatorios', 'docs', 'auditoria_enderecos', 'relatorio_mapa_encontristas', 'implantacao'] %}is-active{% endif %}"
-          {% if request.endpoint in ['relatorios', 'docs', 'auditoria_enderecos', 'relatorio_mapa_encontristas', 'implantacao'] %}aria-current="page"{% endif %}
+          class="nav-link {% if request.endpoint in ['relatorios', 'docs_index', 'auditoria_enderecos', 'relatorio_mapa_encontristas', 'implantacao_painel', 'implantacao_nova'] %}is-active{% endif %}"
+          {% if request.endpoint in ['relatorios', 'docs_index', 'auditoria_enderecos', 'relatorio_mapa_encontristas', 'implantacao_painel', 'implantacao_nova'] %}aria-current="page"{% endif %}
         >
           <i class="bi bi-bar-chart"></i>
           <span>Relatórios</span>
