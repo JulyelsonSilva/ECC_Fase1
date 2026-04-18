@@ -36,7 +36,7 @@ register_montagem_routes(app, TEAM_MAP, TEAM_LIMITS, _team_label)
 register_implantacao_routes(app, TEAM_MAP, TEAM_LIMITS, TEAM_CHOICES, _team_label)
 register_palestras_routes(app, PALESTRAS_TITULOS, PALESTRAS_SOLO)
 register_core_routes(app, TEAM_MAP, TEAM_LIMITS, _q)
-register_admin_routes(app, _admin_ok, _get_db, _norm, _sim, None)
+register_admin_routes(app, _admin_ok)
 register_vinculos_routes(app, _admin_ok, _norm, _sim)
 
 
