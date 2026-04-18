@@ -19,9 +19,9 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             return "Unauthorized", 401
 
         try:
-            batch_size = int(request.args.get("size", "750"))
+            batch_size = int(request.args.get("size", "1000"))
         except ValueError:
-            batch_size = 750
+            batch_size = 1000
 
         resultado = processar_match_fuzzy(
             _norm=_norm,
