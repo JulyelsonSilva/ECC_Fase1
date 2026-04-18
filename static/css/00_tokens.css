@@ -1,0 +1,108 @@
+:root {
+  /* =========================
+     PALETA PRINCIPAL
+  ========================= */
+  --ecc-bg: #f3efe7;
+  --ecc-bg-soft: #f7f3ec;
+  --ecc-bg-strong: #ece6da;
+
+  --ecc-surface: rgba(255, 252, 247, 0.86);
+  --ecc-surface-strong: rgba(255, 251, 245, 0.94);
+  --ecc-surface-solid: #fffdfa;
+
+  --ecc-line: #e3d7c4;
+  --ecc-line-strong: #d8c7ab;
+
+  --ecc-text: #22314d;
+  --ecc-text-soft: #50607a;
+  --ecc-text-muted: #6f7b8f;
+
+  --ecc-primary: #243f6b;
+  --ecc-primary-strong: #1e3558;
+  --ecc-primary-soft: #edf2f9;
+
+  --ecc-gold: #b88b43;
+  --ecc-gold-strong: #9c7437;
+  --ecc-gold-soft: #f4ead7;
+
+  --ecc-wine: #8a4a46;
+  --ecc-wine-soft: #f7ece8;
+
+  --ecc-success: #55795b;
+  --ecc-success-soft: #edf5ee;
+
+  --ecc-warning: #9a6a2e;
+  --ecc-warning-soft: #f9f1e6;
+
+  --ecc-danger: #b75050;
+  --ecc-danger-soft: #faecec;
+
+  --ecc-info: #4d6f98;
+  --ecc-info-soft: #edf3fa;
+
+  /* =========================
+     TIPOGRAFIA
+  ========================= */
+  --font-sans: "Segoe UI", "Inter", Roboto, Arial, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+
+  --fs-hero: clamp(2.35rem, 5vw, 4.6rem);
+  --fs-h1: clamp(2rem, 4vw, 3.15rem);
+  --fs-h2: clamp(1.5rem, 2.6vw, 2.15rem);
+  --fs-h3: 1.25rem;
+  --fs-body: 1rem;
+  --fs-sm: 0.92rem;
+  --fs-xs: 0.82rem;
+
+  --lh-tight: 1.08;
+  --lh-title: 1.16;
+  --lh-body: 1.6;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+
+  /* =========================
+     ESPAÇAMENTO
+  ========================= */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.5rem;
+  --space-10: 3rem;
+  --space-11: 4rem;
+  --space-12: 5rem;
+
+  /* =========================
+     RAIOS E SOMBRAS
+  ========================= */
+  --radius-sm: 14px;
+  --radius-md: 20px;
+  --radius-lg: 30px;
+  --radius-xl: 40px;
+  --radius-pill: 999px;
+
+  --shadow-xs: 0 4px 12px rgba(27, 39, 58, 0.04);
+  --shadow-sm: 0 12px 32px rgba(27, 39, 58, 0.06);
+  --shadow-md: 0 20px 48px rgba(27, 39, 58, 0.09);
+  --shadow-lg: 0 28px 72px rgba(27, 39, 58, 0.12);
+
+  /* =========================
+     LAYOUT
+  ========================= */
+  --container-max: 1360px;
+  --container-narrow: 1120px;
+  --header-height: 106px;
+
+  /* =========================
+     TRANSIÇÕES
+  ========================= */
+  --ease: 180ms ease;
+}
