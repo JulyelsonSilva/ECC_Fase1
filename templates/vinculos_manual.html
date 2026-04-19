@@ -249,6 +249,7 @@
 
   <form method="get" action="{{ url_for('admin_vinculos_manual') }}" class="vm-card">
     <input type="hidden" name="token" value="{{ filtros.token }}">
+
     <div class="vm-card-header">
       <h2 class="vm-title">Filtros da tela</h2>
       <p class="vm-subtitle">Use os campos abaixo para afunilar os dois lados antes de vincular.</p>
@@ -275,13 +276,23 @@
         </div>
 
         <div class="vm-field">
-          <label for="c_nome_completo">Encontristas • Nome completo</label>
-          <input id="c_nome_completo" type="text" name="c_nome_completo" value="{{ filtros.c_nome_completo }}">
+          <label for="c_nome_completo_ele">Encontristas • Nome completo ele</label>
+          <input id="c_nome_completo_ele" type="text" name="c_nome_completo_ele" value="{{ filtros.c_nome_completo_ele }}">
         </div>
 
         <div class="vm-field">
-          <label for="c_nome_usual">Encontristas • Nome usual</label>
-          <input id="c_nome_usual" type="text" name="c_nome_usual" value="{{ filtros.c_nome_usual }}">
+          <label for="c_nome_completo_ela">Encontristas • Nome completo ela</label>
+          <input id="c_nome_completo_ela" type="text" name="c_nome_completo_ela" value="{{ filtros.c_nome_completo_ela }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="c_nome_usual_ele">Encontristas • Nome usual ele</label>
+          <input id="c_nome_usual_ele" type="text" name="c_nome_usual_ele" value="{{ filtros.c_nome_usual_ele }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="c_nome_usual_ela">Encontristas • Nome usual ela</label>
+          <input id="c_nome_usual_ela" type="text" name="c_nome_usual_ela" value="{{ filtros.c_nome_usual_ela }}">
         </div>
 
         <div class="vm-field">
@@ -316,8 +327,11 @@
     <input type="hidden" name="e_nome_ela" value="{{ filtros.e_nome_ela }}">
     <input type="hidden" name="e_ano" value="{{ filtros.e_ano }}">
     <input type="hidden" name="e_endereco" value="{{ filtros.e_endereco }}">
-    <input type="hidden" name="c_nome_completo" value="{{ filtros.c_nome_completo }}">
-    <input type="hidden" name="c_nome_usual" value="{{ filtros.c_nome_usual }}">
+
+    <input type="hidden" name="c_nome_completo_ele" value="{{ filtros.c_nome_completo_ele }}">
+    <input type="hidden" name="c_nome_completo_ela" value="{{ filtros.c_nome_completo_ela }}">
+    <input type="hidden" name="c_nome_usual_ele" value="{{ filtros.c_nome_usual_ele }}">
+    <input type="hidden" name="c_nome_usual_ela" value="{{ filtros.c_nome_usual_ela }}">
     <input type="hidden" name="c_ano" value="{{ filtros.c_ano }}">
     <input type="hidden" name="c_endereco" value="{{ filtros.c_endereco }}">
 
