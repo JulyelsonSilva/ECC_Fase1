@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+
+{% block title %}Vinculação Manual | Sistema ECC{% endblock %}
+
+{% block extra_head %}
+<style>
+  .vm-grid {
+    display: grid;
+    grid-template-columns: 1fr 180px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .vm-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .vm-card-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(248,245,239,.92));
+  }
+
+  .vm-card-body {
+    padding: 16px 18px;
+  }
+
+  .vm-title {
+    margin: 0;
+    font-size: 20px;
+    color: var(--primary);
+  }
+
+  .vm-subtitle {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .vm-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .vm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .vm-field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .vm-field input {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: #fff;
+    color: var(--text);
+  }
+
+  .vm-actions-top {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .vm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .vm-btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .vm-btn-secondary {
+    background: #fff;
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  .vm-list {
+    max-height: 70vh;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .vm-item {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255,255,255,.82);
+    padding: 12px 14px;
+  }
+
+  .vm-item-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .vm-item-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .vm-item-title {
+    margin: 0;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .vm-meta {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .vm-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .vm-middle {
+    position: sticky;
+    top: 96px;
+  }
+
+  .vm-middle-box {
+    background: var(--card-strong);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 18px;
+    text-align: center;
+  }
+
+  .vm-middle-box h3 {
+    margin: 0 0 8px;
+    color: var(--primary);
+    font-size: 18px;
+  }
+
+  .vm-middle-box p {
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .vm-middle-box button {
+    width: 100%;
+  }
+
+  .vm-count {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .vm-empty {
+    padding: 24px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    text-align: center;
+    color: var(--muted);
+    background: rgba(255,255,255,.6);
+  }
+
+  .vm-toolbar-list {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .vm-toolbar-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 1080px) {
+    .vm-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .vm-middle {
+      position: static;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-main">
+      <div class="eyebrow">Vínculos manuais</div>
+      <h1 class="title">
+        <i class="bi bi-link-45deg"></i>
+        Vincular Encontreiros a Encontristas
+      </h1>
+      <p class="subtitle">
+        À esquerda ficam os registros de <strong>Encontreiros sem casal_id</strong>. À direita, a base de
+        <strong>Encontristas</strong>. Marque vários do lado esquerdo, selecione apenas um do lado direito e aplique o vínculo em lote.
+      </p>
+    </div>
+  </div>
+
+  <form method="get" action="{{ url_for('admin_vinculos_manual') }}" class="vm-card">
+    <input type="hidden" name="token" value="{{ filtros.token }}">
+    <div class="vm-card-header">
+      <h2 class="vm-title">Filtros da tela</h2>
+      <p class="vm-subtitle">Use os campos abaixo para afunilar os dois lados antes de vincular.</p>
+
+      <div class="vm-filters">
+        <div class="vm-field">
+          <label for="e_nome_ele">Encontreiros • Nome ele</label>
+          <input id="e_nome_ele" type="text" name="e_nome_ele" value="{{ filtros.e_nome_ele }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="e_nome_ela">Encontreiros • Nome ela</label>
+          <input id="e_nome_ela" type="text" name="e_nome_ela" value="{{ filtros.e_nome_ela }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="e_ano">Encontreiros • Ano</label>
+          <input id="e_ano" type="text" name="e_ano" value="{{ filtros.e_ano }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="e_endereco">Encontreiros • Endereço</label>
+          <input id="e_endereco" type="text" name="e_endereco" value="{{ filtros.e_endereco }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="c_nome_completo">Encontristas • Nome completo</label>
+          <input id="c_nome_completo" type="text" name="c_nome_completo" value="{{ filtros.c_nome_completo }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="c_nome_usual">Encontristas • Nome usual</label>
+          <input id="c_nome_usual" type="text" name="c_nome_usual" value="{{ filtros.c_nome_usual }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="c_ano">Encontristas • Ano</label>
+          <input id="c_ano" type="text" name="c_ano" value="{{ filtros.c_ano }}">
+        </div>
+
+        <div class="vm-field">
+          <label for="c_endereco">Encontristas • Endereço</label>
+          <input id="c_endereco" type="text" name="c_endereco" value="{{ filtros.c_endereco }}">
+        </div>
+      </div>
+
+      <div class="vm-actions-top">
+        <button type="submit" class="vm-btn vm-btn-primary">
+          <i class="bi bi-funnel"></i>
+          Aplicar filtros
+        </button>
+
+        <a class="vm-btn vm-btn-secondary" href="{{ url_for('admin_vinculos_manual', token=filtros.token) }}">
+          <i class="bi bi-arrow-counterclockwise"></i>
+          Limpar filtros
+        </a>
+      </div>
+    </div>
+  </form>
+
+  <form method="post" action="{{ url_for('admin_vinculos_manual_vincular') }}">
+    <input type="hidden" name="token" value="{{ filtros.token }}">
+
+    <input type="hidden" name="e_nome_ele" value="{{ filtros.e_nome_ele }}">
+    <input type="hidden" name="e_nome_ela" value="{{ filtros.e_nome_ela }}">
+    <input type="hidden" name="e_ano" value="{{ filtros.e_ano }}">
+    <input type="hidden" name="e_endereco" value="{{ filtros.e_endereco }}">
+    <input type="hidden" name="c_nome_completo" value="{{ filtros.c_nome_completo }}">
+    <input type="hidden" name="c_nome_usual" value="{{ filtros.c_nome_usual }}">
+    <input type="hidden" name="c_ano" value="{{ filtros.c_ano }}">
+    <input type="hidden" name="c_endereco" value="{{ filtros.c_endereco }}">
+
+    <div class="vm-grid">
+      <section class="vm-card">
+        <div class="vm-card-header">
+          <h2 class="vm-title">Encontreiros sem casal_id</h2>
+          <p class="vm-subtitle">{{ encontreiros|length }} registro(s) no filtro atual.</p>
+        </div>
+
+        <div class="vm-card-body">
+          <div class="vm-toolbar-list">
+            <div class="vm-badge">Seleção múltipla</div>
+            <div class="vm-toolbar-buttons">
+              <button type="button" class="vm-btn vm-btn-secondary" onclick="selecionarTodosEncontreiros(true)">Marcar todos</button>
+              <button type="button" class="vm-btn vm-btn-secondary" onclick="selecionarTodosEncontreiros(false)">Desmarcar todos</button>
+            </div>
+          </div>
+
+          {% if encontreiros %}
+            <div class="vm-list">
+              {% for e in encontreiros %}
+                <article class="vm-item">
+                  <div class="vm-item-top">
+                    <input type="checkbox" name="encontreiros_ids" value="{{ e.id }}" class="js-encontreiro-check">
+
+                    <div class="vm-item-main">
+                      <p class="vm-item-title">
+                        {{ e.nome_ele or '—' }} e {{ e.nome_ela or '—' }}
+                      </p>
+
+                      <div class="vm-meta">
+                        <span class="vm-badge">ID {{ e.id }}</span>
+                        <span>Ano {{ e.ano or '—' }}</span>
+                        <span>{{ e.equipe or 'Sem equipe' }}</span>
+                      </div>
+
+                      <div class="vm-meta">
+                        <span><strong>Telefone:</strong> {{ e.telefones or '—' }}</span>
+                      </div>
+
+                      <div class="vm-meta">
+                        <span><strong>Endereço:</strong> {{ e.endereco or '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="vm-empty">
+              Nenhum registro de Encontreiros encontrado com os filtros informados.
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <aside class="vm-middle">
+        <div class="vm-middle-box">
+          <h3>Aplicar vínculo</h3>
+          <p>
+            Marque um ou mais registros à esquerda e selecione um único casal à direita.
+          </p>
+
+          <button type="submit" class="vm-btn vm-btn-primary">
+            <i class="bi bi-arrow-left-right"></i>
+            Vincular selecionados
+          </button>
+
+          <div class="vm-count">
+            Esquerda: múltipla seleção<br>
+            Direita: seleção única
+          </div>
+        </div>
+      </aside>
+
+      <section class="vm-card">
+        <div class="vm-card-header">
+          <h2 class="vm-title">Encontristas</h2>
+          <p class="vm-subtitle">{{ encontristas|length }} registro(s) no filtro atual.</p>
+        </div>
+
+        <div class="vm-card-body">
+          <div class="vm-toolbar-list">
+            <div class="vm-badge">Seleção única</div>
+          </div>
+
+          {% if encontristas %}
+            <div class="vm-list">
+              {% for c in encontristas %}
+                <article class="vm-item">
+                  <div class="vm-item-top">
+                    <input type="radio" name="casal_id" value="{{ c.id }}" {% if loop.first %}checked{% endif %}>
+
+                    <div class="vm-item-main">
+                      <p class="vm-item-title">
+                        {{ c.nome_usual_ele or '—' }} e {{ c.nome_usual_ela or '—' }}
+                      </p>
+
+                      <div class="vm-meta">
+                        <span class="vm-badge">ID {{ c.id }}</span>
+                        <span>Ano {{ c.ano or '—' }}</span>
+                      </div>
+
+                      <div class="vm-meta">
+                        <span><strong>Nome completo:</strong> {{ c.nome_completo_ele or '—' }} e {{ c.nome_completo_ela or '—' }}</span>
+                      </div>
+
+                      <div class="vm-meta">
+                        <span><strong>Telefones:</strong> {{ c.telefone_ele or '—' }} / {{ c.telefone_ela or '—' }}</span>
+                      </div>
+
+                      <div class="vm-meta">
+                        <span><strong>Endereço:</strong> {{ c.endereco or '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="vm-empty">
+              Nenhum Encontrista encontrado com os filtros informados.
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function selecionarTodosEncontreiros(marcar) {
+    document.querySelectorAll('.js-encontreiro-check').forEach(el => {
+      el.checked = marcar;
+    });
+  }
+</script>
+{% endblock %}
