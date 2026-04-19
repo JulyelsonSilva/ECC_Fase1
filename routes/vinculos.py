@@ -90,7 +90,7 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             skipped=resultado["skipped"]
         ))
 
-    @app.route("/admin/vinculos/manual")
+     @app.route("/admin/vinculos/manual")
     def admin_vinculos_manual():
         if not _admin_ok():
             return "Unauthorized", 401
@@ -100,8 +100,10 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             "e_nome_ela": request.args.get("e_nome_ela", ""),
             "e_ano": request.args.get("e_ano", ""),
             "e_endereco": request.args.get("e_endereco", ""),
-            "c_nome_completo": request.args.get("c_nome_completo", ""),
-            "c_nome_usual": request.args.get("c_nome_usual", ""),
+            "c_nome_completo_ele": request.args.get("c_nome_completo_ele", ""),
+            "c_nome_completo_ela": request.args.get("c_nome_completo_ela", ""),
+            "c_nome_usual_ele": request.args.get("c_nome_usual_ele", ""),
+            "c_nome_usual_ela": request.args.get("c_nome_usual_ela", ""),
             "c_ano": request.args.get("c_ano", ""),
             "c_endereco": request.args.get("c_endereco", ""),
             "token": request.args.get("token", ""),
@@ -129,8 +131,10 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             "e_nome_ela": request.form.get("e_nome_ela", ""),
             "e_ano": request.form.get("e_ano", ""),
             "e_endereco": request.form.get("e_endereco", ""),
-            "c_nome_completo": request.form.get("c_nome_completo", ""),
-            "c_nome_usual": request.form.get("c_nome_usual", ""),
+            "c_nome_completo_ele": request.form.get("c_nome_completo_ele", ""),
+            "c_nome_completo_ela": request.form.get("c_nome_completo_ela", ""),
+            "c_nome_usual_ele": request.form.get("c_nome_usual_ele", ""),
+            "c_nome_usual_ela": request.form.get("c_nome_usual_ela", ""),
             "c_ano": request.form.get("c_ano", ""),
             "c_endereco": request.form.get("c_endereco", ""),
         }
@@ -148,5 +152,14 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
         return redirect(url_for(
             "admin_vinculos_manual",
             token=token,
-            **filtros
+            e_nome_ele=filtros["e_nome_ele"],
+            e_nome_ela=filtros["e_nome_ela"],
+            e_ano=filtros["e_ano"],
+            e_endereco=filtros["e_endereco"],
+            c_nome_completo_ele=filtros["c_nome_completo_ele"],
+            c_nome_completo_ela=filtros["c_nome_completo_ela"],
+            c_nome_usual_ele=filtros["c_nome_usual_ele"],
+            c_nome_usual_ela=filtros["c_nome_usual_ela"],
+            c_ano=filtros["c_ano"],
+            c_endereco=filtros["c_endereco"],
         ))
