@@ -28,7 +28,7 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             _sim=_sim,
             batch_size=batch_size,
             auto_threshold=0.92,
-            suggest_threshold=0.50,
+            suggest_threshold=0.3,
         )
         return jsonify(resultado), 200
 
