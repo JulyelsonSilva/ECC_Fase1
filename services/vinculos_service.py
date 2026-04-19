@@ -357,74 +357,6 @@ def listar_encontreiros_sem_casal_manual(filtros):
             pass
 
 
-def listar_encontristas_para_vinculo_manual(filtros):
-    conn = db_conn()
-    cur = conn.cursor(dictionary=True)
-
-    try:
-        where = ["1=1"]
-        params = []
-
-        nome_completo = (filtros.get("c_nome_completo") or "").strip()
-        nome_usual = (filtros.get("c_nome_usual") or "").strip()
-        ano = (filtros.get("c_ano") or "").strip()
-        endereco = (filtros.get("c_endereco") or "").strip()
-
-        if nome_completo:
-            where.append("""
-                (
-                    c.nome_completo_ele LIKE %s
-                    OR c.nome_completo_ela LIKE %s
-                )
-            """)
-            params.extend([f"%{nome_completo}%", f"%{nome_completo}%"])
-
-        if nome_usual:
-            where.append("""
-                (
-                    c.nome_usual_ele LIKE %s
-                    OR c.nome_usual_ela LIKE %s
-                )
-            """)
-            params.extend([f"%{nome_usual}%", f"%{nome_usual}%"])
-
-        if ano:
-            where.append("c.ano = %s")
-            params.append(ano)
-
-        if endereco:
-            where.append("c.endereco LIKE %s")
-            params.append(f"%{endereco}%")
-
-        sql = f"""
-            SELECT
-                c.id,
-                c.ano,
-                c.nome_completo_ele,
-                c.nome_completo_ela,
-                c.nome_usual_ele,
-                c.nome_usual_ela,
-                c.telefone_ele,
-                c.telefone_ela,
-                c.endereco
-            FROM encontristas c
-            WHERE {' AND '.join(where)}
-            ORDER BY
-                c.ano DESC,
-                c.nome_usual_ele ASC,
-                c.nome_usual_ela ASC
-            LIMIT 300
-        """
-
-        cur.execute(sql, params)
-        return cur.fetchall() or []
-    finally:
-        try:
-            cur.close()
-            conn.close()
-        except Exception:
-            pass
-
 
 def vincular_encontreiros_em_lote(encontreiros_ids, casal_id):
     conn = db_conn()
@@ -470,6 +402,74 @@ def vincular_encontreiros_em_lote(encontreiros_ids, casal_id):
             "ok": True,
             "msg": f"{afetados} registro(s) vinculado(s) com sucesso."
         }
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+def listar_encontristas_para_vinculo_manual(filtros):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+
+    try:
+        where = ["1=1"]
+        params = []
+
+        nome_completo_ele = (filtros.get("c_nome_completo_ele") or "").strip()
+        nome_completo_ela = (filtros.get("c_nome_completo_ela") or "").strip()
+        nome_usual_ele = (filtros.get("c_nome_usual_ele") or "").strip()
+        nome_usual_ela = (filtros.get("c_nome_usual_ela") or "").strip()
+        ano = (filtros.get("c_ano") or "").strip()
+        endereco = (filtros.get("c_endereco") or "").strip()
+
+        if nome_completo_ele:
+            where.append("c.nome_completo_ele LIKE %s")
+            params.append(f"%{nome_completo_ele}%")
+
+        if nome_completo_ela:
+            where.append("c.nome_completo_ela LIKE %s")
+            params.append(f"%{nome_completo_ela}%")
+
+        if nome_usual_ele:
+            where.append("c.nome_usual_ele LIKE %s")
+            params.append(f"%{nome_usual_ele}%")
+
+        if nome_usual_ela:
+            where.append("c.nome_usual_ela LIKE %s")
+            params.append(f"%{nome_usual_ela}%")
+
+        if ano:
+            where.append("c.ano = %s")
+            params.append(ano)
+
+        if endereco:
+            where.append("c.endereco LIKE %s")
+            params.append(f"%{endereco}%")
+
+        sql = f"""
+            SELECT
+                c.id,
+                c.ano,
+                c.nome_completo_ele,
+                c.nome_completo_ela,
+                c.nome_usual_ele,
+                c.nome_usual_ela,
+                c.telefone_ele,
+                c.telefone_ela,
+                c.endereco
+            FROM encontristas c
+            WHERE {' AND '.join(where)}
+            ORDER BY
+                c.ano DESC,
+                c.nome_usual_ele ASC,
+                c.nome_usual_ela ASC
+            LIMIT 300
+        """
+
+        cur.execute(sql, params)
+        return cur.fetchall() or []
     finally:
         try:
             cur.close()
