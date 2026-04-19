@@ -8,7 +8,6 @@ from services.vinculos_service import (
     listar_encontreiros_sem_casal_manual,
     listar_encontristas_para_vinculo_manual,
     vincular_encontreiros_em_lote,
-
 )
 
 
@@ -27,12 +26,18 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
         except ValueError:
             batch_size = 300
 
+        try:
+            auto_threshold = float(request.args.get("auto_threshold", "0.92"))
+            suggest_threshold = float(request.args.get("suggest_threshold", "0.80"))
+        except ValueError:
+            auto_threshold, suggest_threshold = 0.92, 0.80
+
         resultado = processar_match_fuzzy(
             _norm=_norm,
             _sim=_sim,
             batch_size=batch_size,
-            auto_threshold=0.92,
-            suggest_threshold=0.3,
+            auto_threshold=auto_threshold,
+            suggest_threshold=suggest_threshold,
         )
         return jsonify(resultado), 200
 
@@ -51,6 +56,7 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
         token = request.args.get("token")
         ok_count = request.args.get("ok", None)
         skipped_count = request.args.get("skipped", None)
+
         ok_count = int(ok_count) if ok_count is not None and ok_count.isdigit() else None
         skipped_count = int(skipped_count) if skipped_count is not None and skipped_count.isdigit() else None
 
@@ -90,7 +96,7 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             skipped=resultado["skipped"]
         ))
 
-     @app.route("/admin/vinculos/manual")
+    @app.route("/admin/vinculos/manual")
     def admin_vinculos_manual():
         if not _admin_ok():
             return "Unauthorized", 401
