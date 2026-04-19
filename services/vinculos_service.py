@@ -299,3 +299,180 @@ def autocomplete_nomes_encontristas(q):
             conn.close()
         except Exception:
             pass
+
+def listar_encontreiros_sem_casal_manual(filtros):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+
+    try:
+        where = ["e.casal_id IS NULL"]
+        params = []
+
+        nome_ele = (filtros.get("e_nome_ele") or "").strip()
+        nome_ela = (filtros.get("e_nome_ela") or "").strip()
+        ano = (filtros.get("e_ano") or "").strip()
+        endereco = (filtros.get("e_endereco") or "").strip()
+
+        if nome_ele:
+            where.append("e.nome_ele LIKE %s")
+            params.append(f"%{nome_ele}%")
+
+        if nome_ela:
+            where.append("e.nome_ela LIKE %s")
+            params.append(f"%{nome_ela}%")
+
+        if ano:
+            where.append("e.ano = %s")
+            params.append(ano)
+
+        if endereco:
+            where.append("e.endereco LIKE %s")
+            params.append(f"%{endereco}%")
+
+        sql = f"""
+            SELECT
+                e.id,
+                e.ano,
+                e.equipe,
+                e.nome_ele,
+                e.nome_ela,
+                e.telefones,
+                e.endereco
+            FROM encontreiros e
+            WHERE {' AND '.join(where)}
+            ORDER BY
+                e.ano DESC,
+                e.nome_ele ASC,
+                e.nome_ela ASC
+            LIMIT 1000
+        """
+
+        cur.execute(sql, params)
+        return cur.fetchall() or []
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def listar_encontristas_para_vinculo_manual(filtros):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+
+    try:
+        where = ["1=1"]
+        params = []
+
+        nome_completo = (filtros.get("c_nome_completo") or "").strip()
+        nome_usual = (filtros.get("c_nome_usual") or "").strip()
+        ano = (filtros.get("c_ano") or "").strip()
+        endereco = (filtros.get("c_endereco") or "").strip()
+
+        if nome_completo:
+            where.append("""
+                (
+                    c.nome_completo_ele LIKE %s
+                    OR c.nome_completo_ela LIKE %s
+                )
+            """)
+            params.extend([f"%{nome_completo}%", f"%{nome_completo}%"])
+
+        if nome_usual:
+            where.append("""
+                (
+                    c.nome_usual_ele LIKE %s
+                    OR c.nome_usual_ela LIKE %s
+                )
+            """)
+            params.extend([f"%{nome_usual}%", f"%{nome_usual}%"])
+
+        if ano:
+            where.append("c.ano = %s")
+            params.append(ano)
+
+        if endereco:
+            where.append("c.endereco LIKE %s")
+            params.append(f"%{endereco}%")
+
+        sql = f"""
+            SELECT
+                c.id,
+                c.ano,
+                c.nome_completo_ele,
+                c.nome_completo_ela,
+                c.nome_usual_ele,
+                c.nome_usual_ela,
+                c.telefone_ele,
+                c.telefone_ela,
+                c.endereco
+            FROM encontristas c
+            WHERE {' AND '.join(where)}
+            ORDER BY
+                c.ano DESC,
+                c.nome_usual_ele ASC,
+                c.nome_usual_ela ASC
+            LIMIT 300
+        """
+
+        cur.execute(sql, params)
+        return cur.fetchall() or []
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def vincular_encontreiros_em_lote(encontreiros_ids, casal_id):
+    conn = db_conn()
+    cur = conn.cursor()
+
+    try:
+        ids = []
+        for item in encontreiros_ids:
+            try:
+                ids.append(int(item))
+            except Exception:
+                pass
+
+        try:
+            casal_id = int(casal_id)
+        except Exception:
+            return {"ok": False, "msg": "Casal selecionado inválido."}
+
+        if not ids:
+            return {"ok": False, "msg": "Selecione pelo menos um registro em Encontreiros."}
+
+        placeholders = ",".join(["%s"] * len(ids))
+        sql = f"""
+            UPDATE encontreiros
+            SET casal_id = %s
+            WHERE id IN ({placeholders})
+              AND casal_id IS NULL
+        """
+
+        cur.execute(sql, [casal_id] + ids)
+        afetados = cur.rowcount
+
+        if ids:
+            placeholders_del = ",".join(["%s"] * len(ids))
+            cur.execute(f"""
+                DELETE FROM pendencias_encontreiros
+                WHERE encontreiros_id IN ({placeholders_del})
+            """, ids)
+
+        conn.commit()
+
+        return {
+            "ok": True,
+            "msg": f"{afetados} registro(s) vinculado(s) com sucesso."
+        }
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
