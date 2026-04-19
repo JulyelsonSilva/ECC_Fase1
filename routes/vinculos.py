@@ -1,10 +1,14 @@
-from flask import render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, redirect, url_for, flash
 
 from services.vinculos_service import (
     processar_match_fuzzy,
     carregar_revisao_pendencias,
     confirmar_revisao_vinculos,
     autocomplete_nomes_encontristas,
+    listar_encontreiros_sem_casal_manual,
+    listar_encontristas_para_vinculo_manual,
+    vincular_encontreiros_em_lote,
+
 )
 
 
@@ -84,4 +88,65 @@ def register_vinculos_routes(app, _admin_ok, _norm, _sim):
             min_score=min_score,
             ok=resultado["ok_count"],
             skipped=resultado["skipped"]
+        ))
+
+    @app.route("/admin/vinculos/manual")
+    def admin_vinculos_manual():
+        if not _admin_ok():
+            return "Unauthorized", 401
+
+        filtros = {
+            "e_nome_ele": request.args.get("e_nome_ele", ""),
+            "e_nome_ela": request.args.get("e_nome_ela", ""),
+            "e_ano": request.args.get("e_ano", ""),
+            "e_endereco": request.args.get("e_endereco", ""),
+            "c_nome_completo": request.args.get("c_nome_completo", ""),
+            "c_nome_usual": request.args.get("c_nome_usual", ""),
+            "c_ano": request.args.get("c_ano", ""),
+            "c_endereco": request.args.get("c_endereco", ""),
+            "token": request.args.get("token", ""),
+        }
+
+        encontreiros = listar_encontreiros_sem_casal_manual(filtros)
+        encontristas = listar_encontristas_para_vinculo_manual(filtros)
+
+        return render_template(
+            "vinculos_manual.html",
+            filtros=filtros,
+            encontreiros=encontreiros,
+            encontristas=encontristas
+        )
+
+    @app.route("/admin/vinculos/manual/vincular", methods=["POST"])
+    def admin_vinculos_manual_vincular():
+        if not _admin_ok():
+            return "Unauthorized", 401
+
+        token = request.form.get("token", "")
+
+        filtros = {
+            "e_nome_ele": request.form.get("e_nome_ele", ""),
+            "e_nome_ela": request.form.get("e_nome_ela", ""),
+            "e_ano": request.form.get("e_ano", ""),
+            "e_endereco": request.form.get("e_endereco", ""),
+            "c_nome_completo": request.form.get("c_nome_completo", ""),
+            "c_nome_usual": request.form.get("c_nome_usual", ""),
+            "c_ano": request.form.get("c_ano", ""),
+            "c_endereco": request.form.get("c_endereco", ""),
+        }
+
+        encontreiros_ids = request.form.getlist("encontreiros_ids")
+        casal_id = request.form.get("casal_id")
+
+        resultado = vincular_encontreiros_em_lote(encontreiros_ids, casal_id)
+
+        if resultado["ok"]:
+            flash(resultado["msg"], "success")
+        else:
+            flash(resultado["msg"], "danger")
+
+        return redirect(url_for(
+            "admin_vinculos_manual",
+            token=token,
+            **filtros
         ))
