@@ -1,6 +1,32 @@
 from db import db_conn
 
 
+def _telefones(row):
+    tel_ele = (row.get("telefone_ele") or "").strip()
+    tel_ela = (row.get("telefone_ela") or "").strip()
+    return " / ".join([t for t in [tel_ele, tel_ela] if t])
+
+
+def _buscar_encontrista_por_nomes(cur, nome_ele, nome_ela):
+    nome_ele = (nome_ele or "").strip()
+    nome_ela = (nome_ela or "").strip()
+
+    cur.execute("""
+        SELECT id, ano, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
+          FROM encontristas
+         WHERE UPPER(TRIM(nome_usual_ele)) = UPPER(TRIM(%s))
+           AND UPPER(TRIM(nome_usual_ela)) = UPPER(TRIM(%s))
+         ORDER BY ano DESC, id DESC
+         LIMIT 1
+    """, (nome_ele, nome_ela))
+    return cur.fetchone()
+
+
+def _buscar_casal_id_por_nomes(cur, nome_ele, nome_ela):
+    r = _buscar_encontrista_por_nomes(cur, nome_ele, nome_ela)
+    return r["id"] if r else None
+
+
 def listar_montagem_por_ano():
     conn = db_conn()
     cursor = conn.cursor(dictionary=True)
@@ -63,11 +89,20 @@ def carregar_dados_iniciais_montagem(ano_preselecionado, TEAM_MAP):
     try:
         for equipe in equipes_dir:
             cur.execute("""
-                SELECT nome_ele, nome_ela, telefones, endereco
-                  FROM encontreiros
-                 WHERE ano = %s AND equipe = %s
-                   AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
-                 ORDER BY id ASC
+                SELECT
+                    i.nome_usual_ele AS nome_ele,
+                    i.nome_usual_ela AS nome_ela,
+                    CONCAT_WS(' / ',
+                        NULLIF(TRIM(i.telefone_ele), ''),
+                        NULLIF(TRIM(i.telefone_ela), '')
+                    ) AS telefones,
+                    i.endereco AS endereco
+                  FROM encontreiros e
+                  JOIN encontristas i ON i.id = e.casal_id
+                 WHERE e.ano = %s
+                   AND e.equipe = %s
+                   AND (e.status IS NULL OR UPPER(e.status) NOT IN ('RECUSOU','DESISTIU'))
+                 ORDER BY e.id ASC
                  LIMIT 1
             """, (ano_preselecionado, equipe))
             r = cur.fetchone()
@@ -80,12 +115,20 @@ def carregar_dados_iniciais_montagem(ano_preselecionado, TEAM_MAP):
                 }
 
         cur.execute("""
-            SELECT nome_ele, nome_ela, telefones, endereco
-              FROM encontreiros
-             WHERE ano = %s
-               AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
-               AND UPPER(status) = 'ABERTO'
-             ORDER BY id DESC
+            SELECT
+                i.nome_usual_ele AS nome_ele,
+                i.nome_usual_ela AS nome_ela,
+                CONCAT_WS(' / ',
+                    NULLIF(TRIM(i.telefone_ele), ''),
+                    NULLIF(TRIM(i.telefone_ela), '')
+                ) AS telefones,
+                i.endereco AS endereco
+              FROM encontreiros e
+              JOIN encontristas i ON i.id = e.casal_id
+             WHERE e.ano = %s
+               AND UPPER(e.equipe) = 'CASAL COORDENADOR GERAL'
+               AND UPPER(e.status) = 'ABERTO'
+             ORDER BY e.id DESC
              LIMIT 1
         """, (ano_preselecionado,))
         r_cg = cur.fetchone()
@@ -101,13 +144,21 @@ def carregar_dados_iniciais_montagem(ano_preselecionado, TEAM_MAP):
             rotulo = info["rotulo"]
             filtro = info["filtro"]
             cur.execute("""
-                SELECT nome_ele, nome_ela, telefones, endereco
-                  FROM encontreiros
-                 WHERE ano = %s
-                   AND equipe IN (%s, %s)
-                   AND UPPER(coordenador) = 'SIM'
-                   AND UPPER(status) = 'ABERTO'
-                 ORDER BY id DESC
+                SELECT
+                    i.nome_usual_ele AS nome_ele,
+                    i.nome_usual_ela AS nome_ela,
+                    CONCAT_WS(' / ',
+                        NULLIF(TRIM(i.telefone_ele), ''),
+                        NULLIF(TRIM(i.telefone_ela), '')
+                    ) AS telefones,
+                    i.endereco AS endereco
+                  FROM encontreiros e
+                  JOIN encontristas i ON i.id = e.casal_id
+                 WHERE e.ano = %s
+                   AND e.equipe IN (%s, %s)
+                   AND UPPER(e.coordenador) = 'SIM'
+                   AND UPPER(e.status) = 'ABERTO'
+                 ORDER BY e.id DESC
                  LIMIT 1
             """, (ano_preselecionado, rotulo, filtro))
             r_team = cur.fetchone()
@@ -132,44 +183,27 @@ def buscar_casal_para_montagem(nome_ele, nome_ela):
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        encontrista = _buscar_encontrista_por_nomes(cur, nome_ele, nome_ela)
+        if not encontrista:
+            return {"ok": False, "msg": "Casal não participou do ECC."}
+
         cur.execute("""
-            SELECT ano, telefones, endereco
+            SELECT ano
               FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             ORDER BY ano DESC
+             WHERE casal_id = %s
+             ORDER BY ano DESC, id DESC
              LIMIT 1
-        """, (nome_ele, nome_ela))
+        """, (encontrista["id"],))
         r = cur.fetchone()
-        if r:
-            return {
-                "ok": True,
-                "origem": "encontreiros",
-                "ano": r["ano"],
-                "telefones": r.get("telefones") or "",
-                "endereco": r.get("endereco") or ""
-            }
 
-        cur.execute("""
-            SELECT telefone_ele, telefone_ela, endereco, ano
-              FROM encontristas
-             WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-             ORDER BY ano DESC
-             LIMIT 1
-        """, (nome_ele, nome_ela))
-        r2 = cur.fetchone()
-        if r2:
-            tel_ele = (r2.get('telefone_ele') or '').strip()
-            tel_ela = (r2.get('telefone_ela') or '').strip()
-            tels = " / ".join([t for t in [tel_ele, tel_ela] if t])
-            return {
-                "ok": True,
-                "origem": "encontristas",
-                "ano": r2.get("ano"),
-                "telefones": tels or "",
-                "endereco": r2.get("endereco") or ""
-            }
-
-        return {"ok": False, "msg": "Casal não participou do ECC."}
+        return {
+            "ok": True,
+            "origem": "encontreiros" if r else "encontristas",
+            "casal_id": encontrista["id"],
+            "ano": r["ano"] if r else encontrista["ano"],
+            "telefones": _telefones(encontrista),
+            "endereco": encontrista.get("endereco") or ""
+        }
     finally:
         try:
             cur.close()
@@ -178,18 +212,22 @@ def buscar_casal_para_montagem(nome_ele, nome_ela):
             pass
 
 
-def adicionar_dirigente_montagem(ano, equipe, nome_ele, nome_ela, telefones, endereco):
+def adicionar_dirigente_montagem(ano, equipe, nome_ele, nome_ela, telefones=None, endereco=None):
     conn = db_conn()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
     try:
+        casal_id = _buscar_casal_id_por_nomes(cur, nome_ele, nome_ela)
+        if not casal_id:
+            return {"ok": False, "status_code": 404, "msg": "Casal não participou do ECC."}
+
         cur.execute("""
             INSERT INTO encontreiros
-                (ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador, status)
+                (ano, equipe, casal_id, coordenador, status)
             VALUES
-                (%s,  %s,     %s,       %s,       %s,         %s,       'Sim',      'Aberto')
-        """, (int(ano), equipe, nome_ele, nome_ela, telefones, endereco))
+                (%s, %s, %s, 'Sim', 'Aberto')
+        """, (int(ano), equipe, casal_id))
         conn.commit()
-        return True
+        return {"ok": True, "id": cur.lastrowid}
     finally:
         try:
             cur.close()
@@ -202,13 +240,19 @@ def buscar_cg_montagem(nome_ele, nome_ela):
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        encontrista = _buscar_encontrista_por_nomes(cur, nome_ele, nome_ela)
+        if not encontrista:
+            return {"ok": False, "status_code": 404, "msg": "Casal não participou do ECC."}
+
+        casal_id = encontrista["id"]
+
         cur.execute("""
-            SELECT ano, telefones, endereco
+            SELECT ano
               FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             ORDER BY ano DESC
+             WHERE casal_id = %s
+             ORDER BY ano DESC, id DESC
              LIMIT 1
-        """, (nome_ele, nome_ela))
+        """, (casal_id,))
         r = cur.fetchone()
         if not r:
             return {"ok": False, "status_code": 404, "msg": "Casal nunca trabalhou no ECC."}
@@ -216,19 +260,19 @@ def buscar_cg_montagem(nome_ele, nome_ela):
         cur.execute("""
             SELECT 1
               FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+             WHERE casal_id = %s
                AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
              LIMIT 1
-        """, (nome_ele, nome_ela))
-        r2 = cur.fetchone()
-        if r2:
+        """, (casal_id,))
+        if cur.fetchone():
             return {"ok": False, "status_code": 409, "msg": "Casal já foi Coordenador Geral."}
 
         return {
             "ok": True,
+            "casal_id": casal_id,
             "ano_ref": r["ano"],
-            "telefones": r.get("telefones") or "",
-            "endereco": r.get("endereco") or ""
+            "telefones": _telefones(encontrista),
+            "endereco": encontrista.get("endereco") or ""
         }
     finally:
         try:
@@ -238,40 +282,42 @@ def buscar_cg_montagem(nome_ele, nome_ela):
             pass
 
 
-def adicionar_cg_montagem(ano, nome_ele, nome_ela, telefones, endereco):
+def adicionar_cg_montagem(ano, nome_ele, nome_ela, telefones=None, endereco=None):
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        casal_id = _buscar_casal_id_por_nomes(cur, nome_ele, nome_ela)
+        if not casal_id:
+            return {"ok": False, "status_code": 404, "msg": "Casal não participou do ECC."}
+
         cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+            SELECT 1
+              FROM encontreiros
+             WHERE casal_id = %s
              LIMIT 1
-        """, (nome_ele, nome_ela))
+        """, (casal_id,))
         if not cur.fetchone():
             return {"ok": False, "status_code": 404, "msg": "Casal nunca trabalhou no ECC."}
 
         cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+            SELECT 1
+              FROM encontreiros
+             WHERE casal_id = %s
                AND UPPER(equipe) = 'CASAL COORDENADOR GERAL'
              LIMIT 1
-        """, (nome_ele, nome_ela))
+        """, (casal_id,))
         if cur.fetchone():
             return {"ok": False, "status_code": 409, "msg": "Casal já foi Coordenador Geral."}
 
-        cur2 = conn.cursor()
-        try:
-            cur2.execute("""
-                INSERT INTO encontreiros
-                    (ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador, status)
-                VALUES
-                    (%s,  'Casal Coordenador Geral', %s, %s, %s, %s, 'Sim', 'Aberto')
-            """, (int(ano), nome_ele, nome_ela, telefones, endereco))
-            conn.commit()
-        finally:
-            cur2.close()
+        cur.execute("""
+            INSERT INTO encontreiros
+                (ano, equipe, casal_id, coordenador, status)
+            VALUES
+                (%s, 'Casal Coordenador Geral', %s, 'Sim', 'Aberto')
+        """, (int(ano), casal_id))
+        conn.commit()
 
-        return {"ok": True}
+        return {"ok": True, "id": cur.lastrowid}
     finally:
         try:
             cur.close()
@@ -330,28 +376,34 @@ def buscar_sugestoes_prev_ano_montagem(ano):
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
-            SELECT e.nome_usual_ele, e.nome_usual_ela, e.telefone_ele, e.telefone_ela, e.endereco
+            SELECT
+                e.id,
+                e.nome_usual_ele,
+                e.nome_usual_ela,
+                e.telefone_ele,
+                e.telefone_ela,
+                e.endereco
               FROM encontristas e
              WHERE e.ano = %s
                AND NOT EXISTS (
                     SELECT 1
                       FROM encontreiros w
                      WHERE w.ano = %s
-                       AND LOWER(TRIM(w.nome_ele)) = LOWER(TRIM(e.nome_usual_ele))
-                       AND LOWER(TRIM(w.nome_ela)) = LOWER(TRIM(e.nome_usual_ela))
+                       AND w.casal_id = e.id
+                       AND (w.status IS NULL OR UPPER(TRIM(w.status)) NOT IN ('RECUSOU','DESISTIU'))
                )
              ORDER BY e.nome_usual_ele, e.nome_usual_ela
         """, (ano - 1, ano))
+
         for r in cur.fetchall() or []:
-            tel_ele = (r.get('telefone_ele') or '').strip()
-            tel_ela = (r.get('telefone_ela') or '').strip()
-            tels = " / ".join([t for t in [tel_ele, tel_ela] if t])
             sugestoes_prev_ano.append({
-                "nome_ele": r.get('nome_usual_ele') or '',
-                "nome_ela": r.get('nome_usual_ela') or '',
-                "telefones": tels,
-                "endereco": r.get('endereco') or ''
+                "casal_id": r.get("id"),
+                "nome_ele": r.get("nome_usual_ele") or "",
+                "nome_ela": r.get("nome_usual_ela") or "",
+                "telefones": _telefones(r),
+                "endereco": r.get("endereco") or ""
             })
+
         return sugestoes_prev_ano
     finally:
         try:
@@ -364,13 +416,14 @@ def buscar_sugestoes_prev_ano_montagem(ano):
 def carregar_equipe_montagem(ano, equipe_filtro, TEAM_MAP, TEAM_LIMITS):
     equipe_final = None
     for _key, info in TEAM_MAP.items():
-        if info['filtro'].lower() == equipe_filtro.lower():
-            equipe_final = info['rotulo']
+        if info["filtro"].lower() == equipe_filtro.lower():
+            equipe_final = info["rotulo"]
             break
-    if not equipe_final:
-        equipe_final = equipe_filtro or 'Equipe'
 
-    if equipe_filtro.lower() == 'sala':
+    if not equipe_final:
+        equipe_final = equipe_filtro or "Equipe"
+
+    if equipe_filtro.lower() == "sala":
         SALA_DB = {
             "Canto": "Equipe de Sala - Canto",
             "Som e Projeção": "Equipe de Sala - Som e Projeção",
@@ -391,13 +444,26 @@ def carregar_equipe_montagem(ano, equipe_filtro, TEAM_MAP, TEAM_LIMITS):
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute("""
-                SELECT id, ano, equipe, nome_ele, nome_ela, telefones, endereco, status
-                  FROM encontreiros
-                 WHERE ano = %s
-                   AND equipe IN (%s, %s, %s, %s)
-                   AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
-                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
-                 ORDER BY id ASC
+                SELECT
+                    e.id,
+                    e.ano,
+                    e.equipe,
+                    e.casal_id,
+                    i.nome_usual_ele AS nome_ele,
+                    i.nome_usual_ela AS nome_ela,
+                    CONCAT_WS(' / ',
+                        NULLIF(TRIM(i.telefone_ele), ''),
+                        NULLIF(TRIM(i.telefone_ela), '')
+                    ) AS telefones,
+                    i.endereco AS endereco,
+                    e.status
+                  FROM encontreiros e
+                  JOIN encontristas i ON i.id = e.casal_id
+                 WHERE e.ano = %s
+                   AND e.equipe IN (%s, %s, %s, %s)
+                   AND (e.coordenador IS NULL OR UPPER(TRIM(e.coordenador)) <> 'SIM')
+                   AND (e.status IS NULL OR UPPER(TRIM(e.status)) NOT IN ('RECUSOU','DESISTIU'))
+                 ORDER BY e.id ASC
             """, (
                 ano,
                 SALA_DB["Canto"],
@@ -409,19 +475,27 @@ def carregar_equipe_montagem(ano, equipe_filtro, TEAM_MAP, TEAM_LIMITS):
 
             buckets = {k: [] for k in SALA_DB.keys()}
             for r in rows:
-                eq = (r.get("equipe") or "")
+                eq = r.get("equipe") or ""
                 for k, dbname in SALA_DB.items():
                     if eq == dbname:
                         buckets[k].append(r)
                         break
 
             cur.execute("""
-                SELECT nome_ele, nome_ela, telefones, endereco
-                  FROM encontreiros
-                 WHERE ano = %s
-                   AND UPPER(equipe) = 'EQUIPE DIRIGENTE - PALESTRA'
-                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
-                 ORDER BY id DESC
+                SELECT
+                    i.nome_usual_ele AS nome_ele,
+                    i.nome_usual_ela AS nome_ela,
+                    CONCAT_WS(' / ',
+                        NULLIF(TRIM(i.telefone_ele), ''),
+                        NULLIF(TRIM(i.telefone_ela), '')
+                    ) AS telefones,
+                    i.endereco AS endereco
+                  FROM encontreiros e
+                  JOIN encontristas i ON i.id = e.casal_id
+                 WHERE e.ano = %s
+                   AND UPPER(e.equipe) = 'EQUIPE DIRIGENTE - PALESTRA'
+                   AND (e.status IS NULL OR UPPER(TRIM(e.status)) NOT IN ('RECUSOU','DESISTIU'))
+                 ORDER BY e.id DESC
                  LIMIT 1
             """, (ano,))
             pref_recepcao = cur.fetchone() or {}
@@ -433,7 +507,13 @@ def carregar_equipe_montagem(ano, equipe_filtro, TEAM_MAP, TEAM_LIMITS):
                 pass
 
         sala_slots = []
-        use_index = {"Canto": 0, "Som e Projeção": 0, "Boa Vontade": 0, "Recepção Palestrantes": 0}
+        use_index = {
+            "Canto": 0,
+            "Som e Projeção": 0,
+            "Boa Vontade": 0,
+            "Recepção Palestrantes": 0
+        }
+
         for label, kind in sala_order:
             lst = buckets.get(kind, [])
             idx = use_index[kind]
@@ -460,21 +540,32 @@ def carregar_equipe_montagem(ano, equipe_filtro, TEAM_MAP, TEAM_LIMITS):
 
     limites_cfg = TEAM_LIMITS.get(equipe_filtro, TEAM_LIMITS.get(equipe_final, {}))
     limites = {
-        "min": int(limites_cfg.get('min', 0)),
-        "max": int(limites_cfg.get('max', 8)),
+        "min": int(limites_cfg.get("min", 0)),
+        "max": int(limites_cfg.get("max", 8)),
     }
 
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
-            SELECT id, nome_ele, nome_ela, telefones, endereco, status
-              FROM encontreiros
-             WHERE ano = %s
-               AND equipe = %s
-               AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
-               AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
-             ORDER BY id ASC
+            SELECT
+                e.id,
+                e.casal_id,
+                i.nome_usual_ele AS nome_ele,
+                i.nome_usual_ela AS nome_ela,
+                CONCAT_WS(' / ',
+                    NULLIF(TRIM(i.telefone_ele), ''),
+                    NULLIF(TRIM(i.telefone_ela), '')
+                ) AS telefones,
+                i.endereco AS endereco,
+                e.status
+              FROM encontreiros e
+              JOIN encontristas i ON i.id = e.casal_id
+             WHERE e.ano = %s
+               AND e.equipe = %s
+               AND (e.coordenador IS NULL OR UPPER(TRIM(e.coordenador)) <> 'SIM')
+               AND (e.status IS NULL OR UPPER(TRIM(e.status)) NOT IN ('RECUSOU','DESISTIU'))
+             ORDER BY e.id ASC
         """, (ano, equipe_final))
         membros_existentes = cur.fetchall() or []
     finally:
@@ -506,29 +597,33 @@ def casal_ja_no_ano(ano: int, nome_ele: str, nome_ela: str, equipe_final: str = 
     equipe_final = (equipe_final or "").strip()
 
     conn = db_conn()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
     try:
+        casal_id = _buscar_casal_id_por_nomes(cur, nome_ele, nome_ela)
+        if not casal_id:
+            return False
+
         if equipe_eh_dirigente(equipe_final):
             cur.execute("""
                 SELECT 1
                   FROM encontreiros
                  WHERE ano = %s
-                   AND nome_ele = %s AND nome_ela = %s
+                   AND casal_id = %s
                    AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
                    AND UPPER(equipe) LIKE 'EQUIPE DIRIGENTE%%'
                  LIMIT 1
-            """, (ano, nome_ele, nome_ela))
+            """, (ano, casal_id))
             return cur.fetchone() is not None
 
         cur.execute("""
             SELECT 1
               FROM encontreiros
              WHERE ano = %s
-               AND nome_ele = %s AND nome_ela = %s
+               AND casal_id = %s
                AND (status IS NULL OR UPPER(status) NOT IN ('RECUSOU','DESISTIU'))
                AND UPPER(equipe) NOT LIKE 'EQUIPE DIRIGENTE%%'
              LIMIT 1
-        """, (ano, nome_ele, nome_ela))
+        """, (ano, casal_id))
         return cur.fetchone() is not None
     finally:
         try:
@@ -542,57 +637,46 @@ def check_casal_equipe(ano, equipe_final, nome_ele, nome_ela):
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        encontrista = _buscar_encontrista_por_nomes(cur, nome_ele, nome_ela)
+
+        if not encontrista:
+            return {
+                "ja_coordenador": False,
+                "trabalhou_antes": False,
+                "ja_no_ano": False,
+                "telefones": "",
+                "endereco": "",
+            }
+
+        casal_id = encontrista["id"]
+
         cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+            SELECT 1
+              FROM encontreiros
+             WHERE casal_id = %s
                AND equipe = %s
                AND UPPER(coordenador) = 'SIM'
              LIMIT 1
-        """, (nome_ele, nome_ela, equipe_final))
+        """, (casal_id, equipe_final))
         ja_coord = cur.fetchone() is not None
 
         cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+            SELECT 1
+              FROM encontreiros
+             WHERE casal_id = %s
                AND equipe = %s
              LIMIT 1
-        """, (nome_ele, nome_ela, equipe_final))
+        """, (casal_id, equipe_final))
         trabalhou_antes = cur.fetchone() is not None
 
         ja_no_ano = casal_ja_no_ano(int(ano), nome_ele, nome_ela, equipe_final)
-
-        cur.execute("""
-            SELECT telefones, endereco
-              FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             ORDER BY ano DESC
-             LIMIT 1
-        """, (nome_ele, nome_ela))
-        r = cur.fetchone()
-        telefones = (r.get('telefones') if r else '') or ''
-        endereco = (r.get('endereco') if r else '') or ''
-
-        if not r:
-            cur.execute("""
-                SELECT telefone_ele, telefone_ela, endereco
-                  FROM encontristas
-                 WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-                 ORDER BY ano DESC
-                 LIMIT 1
-            """, (nome_ele, nome_ela))
-            r2 = cur.fetchone()
-            if r2:
-                tel_ele = (r2.get('telefone_ele') or '').strip()
-                tel_ela = (r2.get('telefone_ela') or '').strip()
-                telefones = " / ".join([t for t in [tel_ele, tel_ela] if t])
-                endereco = r2.get('endereco') or ''
 
         return {
             "ja_coordenador": ja_coord,
             "trabalhou_antes": trabalhou_antes,
             "ja_no_ano": ja_no_ano,
-            "telefones": telefones,
-            "endereco": endereco,
+            "telefones": _telefones(encontrista),
+            "endereco": encontrista.get("endereco") or "",
         }
     finally:
         try:
@@ -602,17 +686,30 @@ def check_casal_equipe(ano, equipe_final, nome_ele, nome_ela):
             pass
 
 
-def add_membro_equipe(ano, equipe_final, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao=False):
+def add_membro_equipe(
+    ano,
+    equipe_final,
+    nome_ele,
+    nome_ela,
+    telefones=None,
+    endereco=None,
+    confirmar_repeticao=False
+):
     conn = db_conn()
     cur = conn.cursor(dictionary=True)
     try:
+        casal_id = _buscar_casal_id_por_nomes(cur, nome_ele, nome_ela)
+        if not casal_id:
+            return {"ok": False, "status_code": 404, "msg": "Casal não participou do ECC."}
+
         cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+            SELECT 1
+              FROM encontreiros
+             WHERE casal_id = %s
                AND equipe = %s
                AND UPPER(coordenador) = 'SIM'
              LIMIT 1
-        """, (nome_ele, nome_ela, equipe_final))
+        """, (casal_id, equipe_final))
         if cur.fetchone():
             return {"ok": False, "status_code": 409, "msg": "Casal já foi coordenador desta equipe."}
 
@@ -620,11 +717,12 @@ def add_membro_equipe(ano, equipe_final, nome_ele, nome_ela, telefones, endereco
             return {"ok": False, "status_code": 409, "msg": "Casal já está montado neste ano."}
 
         cur.execute("""
-            SELECT 1 FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
+            SELECT 1
+              FROM encontreiros
+             WHERE casal_id = %s
                AND equipe = %s
              LIMIT 1
-        """, (nome_ele, nome_ela, equipe_final))
+        """, (casal_id, equipe_final))
         if cur.fetchone() and not confirmar_repeticao:
             return {
                 "ok": False,
@@ -633,20 +731,15 @@ def add_membro_equipe(ano, equipe_final, nome_ele, nome_ela, telefones, endereco
                 "msg": "Casal já trabalhou na equipe. Confirmar para montar novamente?"
             }
 
-        cur2 = conn.cursor()
-        try:
-            cur2.execute("""
-                INSERT INTO encontreiros
-                    (ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador, status)
-                VALUES
-                    (%s,  %s,     %s,       %s,       %s,         %s,       'Não',      'Aberto')
-            """, (int(ano), equipe_final, nome_ele, nome_ela, telefones, endereco))
-            conn.commit()
-            new_id = cur2.lastrowid
-        finally:
-            cur2.close()
+        cur.execute("""
+            INSERT INTO encontreiros
+                (ano, equipe, casal_id, coordenador, status)
+            VALUES
+                (%s, %s, %s, 'Não', 'Aberto')
+        """, (int(ano), equipe_final, casal_id))
+        conn.commit()
 
-        return {"ok": True, "id": new_id}
+        return {"ok": True, "id": cur.lastrowid}
     finally:
         try:
             cur.close()
@@ -661,7 +754,8 @@ def marcar_status_dirigente(ano, equipe, novo_status, observacao):
     try:
         cur.execute("""
             UPDATE encontreiros
-               SET status = %s, observacao = %s
+               SET status = %s,
+                   observacao = %s
              WHERE ano = %s
                AND equipe = %s
                AND UPPER(status) = 'ABERTO'
@@ -684,7 +778,8 @@ def marcar_status_membro(_id, novo_status, observacao):
     try:
         cur.execute("""
             UPDATE encontreiros
-               SET status = %s, observacao = %s
+               SET status = %s,
+                   observacao = %s
              WHERE id = %s
                AND (status IS NULL OR UPPER(status) IN ('ABERTO','ACEITO'))
              LIMIT 1
@@ -724,10 +819,15 @@ def buscar_dados_organograma(ano):
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("""
-            SELECT equipe, nome_ele, nome_ela, coordenador
-              FROM encontreiros
-             WHERE ano = %s
-               AND (status IS NULL OR UPPER(TRIM(status)) IN ('ABERTO','CONCLUIDO'))
+            SELECT
+                e.equipe,
+                i.nome_usual_ele AS nome_ele,
+                i.nome_usual_ela AS nome_ela,
+                e.coordenador
+              FROM encontreiros e
+              JOIN encontristas i ON i.id = e.casal_id
+             WHERE e.ano = %s
+               AND (e.status IS NULL OR UPPER(TRIM(e.status)) IN ('ABERTO','CONCLUIDO'))
         """, (ano,))
         return cursor.fetchall() or []
     finally:
@@ -746,20 +846,27 @@ def buscar_relatorio_montagem(ano):
             SELECT 
                 e.ano,
                 e.equipe,
-                COALESCE(e.nome_ele, '')        AS nome_ele,
-                COALESCE(e.nome_ela, '')        AS nome_ela,
-                COALESCE(e.telefones, '')       AS telefones,
-                COALESCE(e.endereco, '')        AS endereco,
-                COALESCE(e.coordenador, '')     AS coordenador,
-                COALESCE(e.status, '')          AS status,
-                COALESCE(e.observacao, '')      AS observacao,
-                COALESCE(i.ano, NULL)           AS ano_encontro
+                COALESCE(i.nome_usual_ele, '') AS nome_ele,
+                COALESCE(i.nome_usual_ela, '') AS nome_ela,
+                COALESCE(
+                    CONCAT_WS(' / ',
+                        NULLIF(TRIM(i.telefone_ele), ''),
+                        NULLIF(TRIM(i.telefone_ela), '')
+                    ),
+                    ''
+                ) AS telefones,
+                COALESCE(i.endereco, '') AS endereco,
+                COALESCE(e.coordenador, '') AS coordenador,
+                COALESCE(e.status, '') AS status,
+                COALESCE(e.observacao, '') AS observacao,
+                COALESCE(i.ano, NULL) AS ano_encontro
             FROM encontreiros e
-            LEFT JOIN encontristas i
-              ON UPPER(TRIM(i.nome_usual_ele)) = UPPER(TRIM(e.nome_ele))
-             AND UPPER(TRIM(i.nome_usual_ela)) = UPPER(TRIM(e.nome_ela))
+            JOIN encontristas i ON i.id = e.casal_id
             WHERE (%s IS NULL OR e.ano = %s)
-            ORDER BY e.equipe, (COALESCE(e.coordenador,'')='Sim') DESC, e.nome_ele, e.nome_ela
+            ORDER BY e.equipe,
+                     (COALESCE(e.coordenador,'')='Sim') DESC,
+                     i.nome_usual_ele,
+                     i.nome_usual_ela
         """, (ano, ano))
         return cur.fetchall() or []
     finally:
