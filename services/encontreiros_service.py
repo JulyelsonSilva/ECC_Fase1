@@ -6,31 +6,52 @@ from mysql.connector import errors as mysql_errors
 from db import db_conn
 
 
+def _telefones_encontrista(row):
+    tel_ele = (row.get("telefone_ele") or "").strip()
+    tel_ela = (row.get("telefone_ela") or "").strip()
+    return " / ".join([t for t in [tel_ele, tel_ela] if t])
+
+
 def listar_encontreiros(nome_ele="", nome_ela="", ano_filtro=""):
     conn = db_conn()
     cursor = conn.cursor(dictionary=True)
 
     try:
         query = """
-            SELECT id, ano, equipe, nome_ele, nome_ela, telefones, endereco, coordenador
-              FROM encontreiros
-             WHERE (status IS NULL OR UPPER(TRIM(status)) IN ('ABERTO','CONCLUIDO'))
+            SELECT
+                e.id,
+                e.ano,
+                e.equipe,
+                e.casal_id,
+                i.nome_usual_ele AS nome_ele,
+                i.nome_usual_ela AS nome_ela,
+                CONCAT_WS(' / ',
+                    NULLIF(TRIM(i.telefone_ele), ''),
+                    NULLIF(TRIM(i.telefone_ela), '')
+                ) AS telefones,
+                i.endereco AS endereco,
+                e.coordenador,
+                e.status,
+                e.observacao
+            FROM encontreiros e
+            JOIN encontristas i ON i.id = e.casal_id
+            WHERE (e.status IS NULL OR UPPER(TRIM(e.status)) IN ('ABERTO','CONCLUIDO'))
         """
         params = []
 
         if nome_ele:
-            query += " AND nome_ele LIKE %s"
+            query += " AND i.nome_usual_ele LIKE %s"
             params.append(f"%{nome_ele}%")
 
         if nome_ela:
-            query += " AND nome_ela LIKE %s"
+            query += " AND i.nome_usual_ela LIKE %s"
             params.append(f"%{nome_ela}%")
 
         if ano_filtro:
-            query += " AND ano = %s"
+            query += " AND e.ano = %s"
             params.append(ano_filtro)
 
-        query += " ORDER BY ano DESC, equipe ASC, id ASC"
+        query += " ORDER BY e.ano DESC, e.equipe ASC, e.id ASC"
 
         cursor.execute(query, params)
         todos = cursor.fetchall() or []
@@ -41,14 +62,19 @@ def listar_encontreiros(nome_ele="", nome_ela="", ano_filtro=""):
 
         return {
             "por_ano": por_ano,
-            "colunas_visiveis": ['equipe', 'nome_ele', 'nome_ela', 'telefones', 'endereco', 'coordenador']
+            "colunas_visiveis": [
+                "equipe",
+                "nome_ele",
+                "nome_ela",
+                "telefones",
+                "endereco",
+                "coordenador"
+            ]
         }
+
     finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception:
-            pass
+        cursor.close()
+        conn.close()
 
 
 def montar_visao_equipes(equipe):
@@ -62,92 +88,144 @@ def montar_visao_equipes(equipe):
     cursor = conn.cursor(dictionary=True)
 
     try:
-        if equipe == 'Dirigentes':
-            colunas = ['Montagem', 'Fichas', 'Palestra', 'Finanças', 'Pós Encontro']
+        base_select = """
+            SELECT
+                e.id,
+                e.ano,
+                e.equipe,
+                e.casal_id,
+                i.nome_usual_ele AS nome_ele,
+                i.nome_usual_ela AS nome_ela,
+                e.coordenador,
+                e.status,
+                e.observacao
+            FROM encontreiros e
+            JOIN encontristas i ON i.id = e.casal_id
+            WHERE 1=1
+        """
+
+        if equipe == "Dirigentes":
+            colunas = ["Montagem", "Fichas", "Palestra", "Finanças", "Pós Encontro"]
             dados = {col: {} for col in colunas}
 
             for pasta in colunas:
                 cursor.execute(
-                    "SELECT * FROM encontreiros WHERE equipe LIKE '%DIRIGENTE%' AND equipe LIKE %s",
+                    base_select + """
+                    AND e.equipe LIKE '%DIRIGENTE%'
+                    AND UPPER(e.equipe) LIKE %s
+                    ORDER BY e.ano ASC, e.id ASC
+                    """,
                     (f"%{pasta.upper()}%",)
                 )
+
                 for row in cursor.fetchall() or []:
-                    ano = row['ano']
+                    ano = row["ano"]
+                    nome_base = f"{row['nome_ele']} e {row['nome_ela']}"
+
                     nome = (
-                        f"*{row['nome_ele']} e {row['nome_ela']}"
-                        if (row.get('coordenador') or '').strip().lower() == 'sim'
-                        else f"{row['nome_ele']} e {row['nome_ela']}"
+                        f"*{nome_base}"
+                        if (row.get("coordenador") or "").strip().lower() == "sim"
+                        else nome_base
                     )
+
                     dados[pasta].setdefault(ano, nome)
 
             anos = sorted({ano for pasta_data in dados.values() for ano in pasta_data})
-            for a in anos:
-                linha = [dados[col].get(a, '') for col in colunas]
-                tabela[a] = linha
+
+            for ano in anos:
+                tabela[ano] = [dados[col].get(ano, "") for col in colunas]
 
         else:
-            cursor.execute("SELECT * FROM encontreiros WHERE equipe LIKE %s", (f"%{equipe}%",))
+            cursor.execute(
+                base_select + """
+                AND e.equipe LIKE %s
+                ORDER BY e.ano ASC, e.equipe ASC, e.id ASC
+                """,
+                (f"%{equipe}%",)
+            )
+
             all_rows = cursor.fetchall() or []
 
             coordenadores_globais = set(
                 f"{row['nome_ele']} e {row['nome_ela']}"
                 for row in all_rows
-                if (row.get('coordenador') or '').strip().lower() == 'sim'
+                if (row.get("coordenador") or "").strip().lower() == "sim"
             )
 
-            if equipe == 'Sala':
-                colunas = ['Coordenador', 'Boa Vontade', 'Canto 1', 'Canto 2', 'Som e Projeção 1', 'Som e Projeção 2', 'Recepção de Palestras']
-                dados_ano = defaultdict(lambda: {col: '' for col in colunas})
+            if equipe == "Sala":
+                colunas = [
+                    "Coordenador",
+                    "Boa Vontade",
+                    "Canto 1",
+                    "Canto 2",
+                    "Som e Projeção 1",
+                    "Som e Projeção 2",
+                    "Recepção de Palestras"
+                ]
+
+                dados_ano = defaultdict(lambda: {col: "" for col in colunas})
 
                 for row in all_rows:
-                    a = row['ano']
-                    equipe_txt = (row['equipe'] or '').upper()
+                    ano = row["ano"]
+                    equipe_txt = (row["equipe"] or "").upper()
                     nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
-                    coordenador = (row.get('coordenador') or '').strip().lower() == 'sim'
+                    coordenador = (row.get("coordenador") or "").strip().lower() == "sim"
 
-                    if coordenador and all(x not in equipe_txt for x in ['BOA VONTADE', 'CANTO', 'SOM E PROJEÇÃO', 'RECEPÇÃO']):
-                        dados_ano[a]['Coordenador'] = f"*{nome_chave}"
-                    elif 'BOA VONTADE' in equipe_txt:
-                        dados_ano[a]['Boa Vontade'] = nome_chave
-                    elif 'CANTO' in equipe_txt:
-                        if not dados_ano[a]['Canto 1']:
-                            dados_ano[a]['Canto 1'] = nome_chave
-                        elif not dados_ano[a]['Canto 2']:
-                            dados_ano[a]['Canto 2'] = nome_chave
-                    elif 'SOM E PROJEÇÃO' in equipe_txt:
-                        if not dados_ano[a]['Som e Projeção 1']:
-                            dados_ano[a]['Som e Projeção 1'] = nome_chave
-                        elif not dados_ano[a]['Som e Projeção 2']:
-                            dados_ano[a]['Som e Projeção 2'] = nome_chave
-                    elif 'RECEPÇÃO' in equipe_txt:
-                        dados_ano[a]['Recepção de Palestras'] = nome_chave
+                    if coordenador and all(
+                        x not in equipe_txt
+                        for x in ["BOA VONTADE", "CANTO", "SOM E PROJEÇÃO", "RECEPÇÃO"]
+                    ):
+                        dados_ano[ano]["Coordenador"] = f"*{nome_chave}"
 
-                for a, linha_dict in dados_ano.items():
+                    elif "BOA VONTADE" in equipe_txt:
+                        dados_ano[ano]["Boa Vontade"] = nome_chave
+
+                    elif "CANTO" in equipe_txt:
+                        if not dados_ano[ano]["Canto 1"]:
+                            dados_ano[ano]["Canto 1"] = nome_chave
+                        elif not dados_ano[ano]["Canto 2"]:
+                            dados_ano[ano]["Canto 2"] = nome_chave
+
+                    elif "SOM E PROJEÇÃO" in equipe_txt:
+                        if not dados_ano[ano]["Som e Projeção 1"]:
+                            dados_ano[ano]["Som e Projeção 1"] = nome_chave
+                        elif not dados_ano[ano]["Som e Projeção 2"]:
+                            dados_ano[ano]["Som e Projeção 2"] = nome_chave
+
+                    elif "RECEPÇÃO" in equipe_txt:
+                        dados_ano[ano]["Recepção de Palestras"] = nome_chave
+
+                for ano, linha_dict in dados_ano.items():
                     linha = []
+
                     for col in colunas:
                         nome = linha_dict[col]
+
                         if nome.startswith("*"):
                             linha.append(nome)
                         elif nome in coordenadores_globais:
                             linha.append(f"~{nome}")
                         else:
                             linha.append(nome)
-                    tabela[a] = linha
+
+                    tabela[ano] = linha
 
             else:
-                colunas = ['Coordenador'] + [f'Integrante {i}' for i in range(1, 10)]
+                colunas = ["Coordenador"] + [f"Integrante {i}" for i in range(1, 10)]
                 por_ano = defaultdict(list)
 
                 for row in all_rows:
-                    a = row['ano']
+                    ano = row["ano"]
                     nome_chave = f"{row['nome_ele']} e {row['nome_ela']}"
-                    if (row.get('coordenador') or '').strip().lower() == 'sim':
-                        por_ano[a].insert(0, f"*{nome_chave}")
-                    else:
-                        por_ano[a].append(nome_chave)
 
-                for a, nomes in por_ano.items():
+                    if (row.get("coordenador") or "").strip().lower() == "sim":
+                        por_ano[ano].insert(0, f"*{nome_chave}")
+                    else:
+                        por_ano[ano].append(nome_chave)
+
+                for ano, nomes in por_ano.items():
                     linha = []
+
                     for nome in nomes:
                         if nome.startswith("*"):
                             linha.append(nome)
@@ -155,17 +233,17 @@ def montar_visao_equipes(equipe):
                             linha.append(f"~{nome}")
                         else:
                             linha.append(nome)
+
                     while len(linha) < len(colunas):
-                        linha.append('')
-                    tabela[a] = linha
+                        linha.append("")
+
+                    tabela[ano] = linha
 
         return {"tabela": tabela, "colunas": colunas}
+
     finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception:
-            pass
+        cursor.close()
+        conn.close()
 
 
 def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
@@ -175,7 +253,6 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
     erro = None
 
     if not nome_ele or not nome_ela:
-        erro = "Informe ambos os nomes para realizar a busca."
         return {
             "dados_encontrista": None,
             "dados_encontreiros": [],
@@ -183,7 +260,7 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
             "anos": [],
             "por_ano_trabalhos": defaultdict(list),
             "por_ano_palestras": defaultdict(list),
-            "erro": erro,
+            "erro": "Informe ambos os nomes para realizar a busca.",
         }
 
     conn = db_conn()
@@ -191,68 +268,92 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
 
     try:
         cursor.execute("""
-            SELECT ano, endereco, telefone_ele, telefone_ela
-              FROM encontristas
-             WHERE nome_usual_ele = %s AND nome_usual_ela = %s
-             ORDER BY ano DESC
-             LIMIT 1
+            SELECT id, ano, endereco, telefone_ele, telefone_ela
+            FROM encontristas
+            WHERE nome_usual_ele = %s
+              AND nome_usual_ela = %s
+            ORDER BY ano DESC, id DESC
+            LIMIT 1
         """, (nome_ele, nome_ela))
-        e = cursor.fetchone()
-        if e:
+
+        encontrista = cursor.fetchone()
+        casal_id = None
+
+        if encontrista:
+            casal_id = encontrista["id"]
             dados_encontrista = {
-                "ano_encontro": e["ano"],
-                "endereco": e.get("endereco") or "",
-                "telefones": f"{e.get('telefone_ele') or ''} / {e.get('telefone_ela') or ''}".strip(" /")
+                "ano_encontro": encontrista["ano"],
+                "endereco": encontrista.get("endereco") or "",
+                "telefones": _telefones_encontrista(encontrista)
             }
 
-        cursor.execute("""
-            SELECT ano, equipe, coordenador, endereco, telefones, status, observacao
-              FROM encontreiros
-             WHERE nome_ele = %s AND nome_ela = %s
-             ORDER BY ano DESC, equipe ASC
-        """, (nome_ele, nome_ela))
-        dados_encontreiros = cursor.fetchall() or []
+        if casal_id:
+            cursor.execute("""
+                SELECT
+                    e.ano,
+                    e.equipe,
+                    e.coordenador,
+                    i.endereco AS endereco,
+                    CONCAT_WS(' / ',
+                        NULLIF(TRIM(i.telefone_ele), ''),
+                        NULLIF(TRIM(i.telefone_ela), '')
+                    ) AS telefones,
+                    e.status,
+                    e.observacao
+                FROM encontreiros e
+                JOIN encontristas i ON i.id = e.casal_id
+                WHERE e.casal_id = %s
+                ORDER BY e.ano DESC, e.equipe ASC, e.id ASC
+            """, (casal_id,))
+
+            dados_encontreiros = cursor.fetchall() or []
 
         format_titles = tuple(t for t in PALESTRAS_TITULOS if t not in PALESTRAS_SOLO)
+
         if format_titles:
             in_clause = ", ".join(["%s"] * len(format_titles))
+
             sql = f"""
                 SELECT ano, palestra
-                  FROM palestras
-                 WHERE LOWER(nome_ele) = LOWER(%s)
-                   AND LOWER(COALESCE(nome_ela,'')) = LOWER(%s)
-                   AND palestra IN ({in_clause})
-                 ORDER BY ano DESC
+                FROM palestras
+                WHERE LOWER(nome_ele) = LOWER(%s)
+                  AND LOWER(COALESCE(nome_ela, '')) = LOWER(%s)
+                  AND palestra IN ({in_clause})
+                ORDER BY ano DESC
             """
+
             params = [nome_ele, nome_ela] + list(format_titles)
             cursor.execute(sql, params)
             dados_palestras = cursor.fetchall() or []
 
-        if not e and not dados_encontreiros and not dados_palestras:
+        if not encontrista and not dados_encontreiros and not dados_palestras:
             erro = "Casal não encontrado."
 
     finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception:
-            pass
+        cursor.close()
+        conn.close()
 
     por_ano_trabalhos = defaultdict(list)
-    for r in (dados_encontreiros or []):
-        por_ano_trabalhos[r["ano"]].append({
-            "equipe": r.get("equipe") or "",
-            "coordenador": r.get("coordenador") or "",
-            "status": r.get("status") or "",
-            "observacao": r.get("observacao") or ""
+
+    for row in dados_encontreiros:
+        por_ano_trabalhos[row["ano"]].append({
+            "equipe": row.get("equipe") or "",
+            "coordenador": row.get("coordenador") or "",
+            "status": row.get("status") or "",
+            "observacao": row.get("observacao") or ""
         })
 
     por_ano_palestras = defaultdict(list)
-    for p in (dados_palestras or []):
-        por_ano_palestras[p["ano"]].append({"palestra": p.get("palestra") or ""})
 
-    anos_set = set(por_ano_trabalhos.keys()) | set(por_ano_palestras.keys())
-    anos = sorted(anos_set, reverse=True)
+    for row in dados_palestras:
+        por_ano_palestras[row["ano"]].append({
+            "palestra": row.get("palestra") or ""
+        })
+
+    anos = sorted(
+        set(por_ano_trabalhos.keys()) | set(por_ano_palestras.keys()),
+        reverse=True
+    )
 
     return {
         "dados_encontrista": dados_encontrista if dados_encontrista else None,
@@ -266,124 +367,148 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
 
 
 def buscar_relatorio_casais(entrada, titulo, DB_CONFIG, safe_fetch_one):
-    def split_casal(line: str):
-        raw = (line or '').strip()
+    def split_casal(line):
+        raw = (line or "").strip()
+
         if not raw:
             return None, None
+
         if ";" in raw:
             a, b = raw.split(";", 1)
             return a.strip(), b.strip()
+
         if re.search(r"\s+e\s+", raw, flags=re.I):
             a, b = re.split(r"\s+e\s+", raw, maxsplit=1, flags=re.I)
             return a.strip(), b.strip()
+
         if " " in raw:
             a, b = raw.split(" ", 1)
             return a.strip(), b.strip()
+
         return None, None
 
-    resultados_ok, resultados_fail = [], []
+    resultados_ok = []
+    resultados_fail = []
 
-    linhas = [l.strip() for l in (entrada or "").splitlines() if l.strip()]
+    linhas = [linha.strip() for linha in (entrada or "").splitlines() if linha.strip()]
+
     if not linhas:
-        return {"resultados": [], "titulo": titulo, "entrada": entrada}
+        return {
+            "resultados": [],
+            "titulo": titulo,
+            "entrada": entrada
+        }
 
     try:
         conn = mysql.connector.connect(
-            host=DB_CONFIG['host'],
-            user=DB_CONFIG['user'],
-            password=DB_CONFIG['password'],
-            database=DB_CONFIG['database'],
+            host=DB_CONFIG["host"],
+            user=DB_CONFIG["user"],
+            password=DB_CONFIG["password"],
+            database=DB_CONFIG["database"],
             connection_timeout=5
         )
         cur = conn.cursor(dictionary=True)
+
     except mysql_errors.Error:
         for linha in linhas:
-            resultados_fail.append({"nome": linha, "endereco": "Erro de conexão com o banco", "telefones": "— / —"})
-        return {"resultados": resultados_fail, "titulo": titulo, "entrada": entrada}
+            resultados_fail.append({
+                "nome": linha,
+                "endereco": "Erro de conexão com o banco",
+                "telefones": "— / —"
+            })
+
+        return {
+            "resultados": resultados_fail,
+            "titulo": titulo,
+            "entrada": entrada
+        }
 
     try:
-        def consulta_prefix_like(a: str, b: str):
+        def consulta_prefix_like(a, b):
             a = (a or "").strip()
             b = (b or "").strip()
+
             if not a or not b:
                 return None
-            a_pref, b_pref = f"{a}%", f"{b}%"
 
-            work = safe_fetch_one(
-                cur,
-                "SELECT endereco, telefones "
-                "FROM encontreiros "
-                "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                "ORDER BY ano DESC LIMIT 1",
-                (a_pref, b_pref, b_pref, a_pref)
-            )
-            if work is None:
-                work = safe_fetch_one(
-                    cur,
-                    "SELECT endereco, telefones "
-                    "FROM encontreiros "
-                    "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                    "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                    "ORDER BY ano DESC LIMIT 1",
-                    (a_pref, b_pref, b_pref, a_pref)
-                )
+            a_pref = f"{a}%"
+            b_pref = f"{b}%"
 
             base = safe_fetch_one(
                 cur,
-                "SELECT endereco, telefone_ele, telefone_ela "
-                "FROM encontristas "
-                "WHERE (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                "   OR (nome_usual_ele LIKE %s AND nome_usual_ela LIKE %s) "
-                "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                "LIMIT 1",
-                (a_pref, b_pref, b_pref, a_pref, a_pref, b_pref, b_pref, a_pref)
+                """
+                SELECT
+                    i.endereco,
+                    i.telefone_ele,
+                    i.telefone_ela
+                FROM encontristas i
+                WHERE (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                   OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                ORDER BY i.ano DESC, i.id DESC
+                LIMIT 1
+                """,
+                (a_pref, b_pref, b_pref, a_pref)
             )
+
             if base is None:
                 base = safe_fetch_one(
                     cur,
-                    "SELECT endereco, telefone_ele, telefone_ela "
-                    "FROM encontristas "
-                    "WHERE (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                    "   OR (nome_ele LIKE %s AND nome_ela LIKE %s) "
-                    "LIMIT 1",
+                    """
+                    SELECT
+                        i.endereco,
+                        i.telefone_ele,
+                        i.telefone_ela
+                    FROM encontreiros e
+                    JOIN encontristas i ON i.id = e.casal_id
+                    WHERE (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                       OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                    ORDER BY e.ano DESC, e.id DESC
+                    LIMIT 1
+                    """,
                     (a_pref, b_pref, b_pref, a_pref)
                 )
 
-            if work or base:
-                if work:
-                    endereco = (work.get('endereco') if work else None) or (base.get('endereco') if base else "")
-                    telefones = work.get('telefones')
-                    if not telefones:
-                        if base:
-                            telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                        else:
-                            telefones = "— / —"
-                else:
-                    endereco = base.get('endereco') or "—"
-                    telefones = f"{(base.get('telefone_ele') or '—')} / {(base.get('telefone_ela') or '—')}"
-                return {"endereco": endereco or "—", "telefones": telefones or "— / —"}
+            if base:
+                telefones = f"{base.get('telefone_ele') or '—'} / {base.get('telefone_ela') or '—'}"
+
+                return {
+                    "endereco": base.get("endereco") or "—",
+                    "telefones": telefones
+                }
 
             return None
 
         for linha in linhas:
             ele, ela = split_casal(linha)
+
             if not ele or not ela:
-                resultados_fail.append({"nome": linha, "endereco": "Formato não reconhecido", "telefones": "— / —"})
+                resultados_fail.append({
+                    "nome": linha,
+                    "endereco": "Formato não reconhecido",
+                    "telefones": "— / —"
+                })
                 continue
 
             dados = consulta_prefix_like(ele, ela)
-            if dados:
-                resultados_ok.append({"nome": f"{ele} e {ela}", **dados})
-            else:
-                resultados_fail.append({"nome": f"{ele} e {ela}", "endereco": "Não encontrado", "telefones": "— / —"})
-    finally:
-        try:
-            cur.close()
-            conn.close()
-        except Exception:
-            pass
 
-    resultados = resultados_ok + resultados_fail
-    return {"resultados": resultados, "titulo": titulo, "entrada": entrada}
+            if dados:
+                resultados_ok.append({
+                    "nome": f"{ele} e {ela}",
+                    **dados
+                })
+            else:
+                resultados_fail.append({
+                    "nome": f"{ele} e {ela}",
+                    "endereco": "Não encontrado",
+                    "telefones": "— / —"
+                })
+
+    finally:
+        cur.close()
+        conn.close()
+
+    return {
+        "resultados": resultados_ok + resultados_fail,
+        "titulo": titulo,
+        "entrada": entrada
+    }
