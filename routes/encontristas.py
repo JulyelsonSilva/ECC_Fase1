@@ -3,7 +3,7 @@ import math
 import time
 
 from db import db_conn
-from utils import _parse_id_list, _ids_to_str
+from utils import _parse_id_list
 from services.geocoding import normalize_address, addr_hash, geocode_br_smart
 from services.encontristas_service import (
     listar_encontristas,
@@ -63,7 +63,6 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             num_ecc = request.form.get('num_ecc', '').strip()
             ano_raw = request.form.get('ano', '').strip()
             data_casamento = request.form.get('data_casamento', '').strip() or None
-            cor_circulo = request.form.get('cor_circulo', '').strip()
             casal_visitacao = request.form.get('casal_visitacao', '').strip()
             ficha_num = request.form.get('ficha_num', '').strip()
             aceitou = request.form.get('aceitou', '').strip()
@@ -86,7 +85,6 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 "num_ecc": num_ecc,
                 "ano": ano,
                 "data_casamento": data_casamento,
-                "cor_circulo": cor_circulo,
                 "casal_visitacao": casal_visitacao,
                 "ficha_num": ficha_num,
                 "aceitou": aceitou,
@@ -184,7 +182,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             "endereco": r.get("endereco") or ""
         })
 
-    # --- Auditoria: contagens + pendentes (JOIN nova tabela) ---
+    # --- Auditoria: contagens + pendentes ---
     @app.route("/relatorios/auditoria-enderecos")
     def auditoria_enderecos():
         resumo = []
@@ -227,13 +225,9 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             faltantes=faltantes
         )
 
-    # --- Lote de normalização + geocodificação (apenas nova tabela) ---
+    # --- Lote de normalização + geocodificação ---
     @app.route("/admin/normalizar-geocodificar", methods=["POST"])
     def normalizar_geocodificar():
-        """
-        Normaliza + geocodifica em lotes curtos, sem manter cursor/tx abertos durante chamadas externas.
-        Reprocessa 'not_found' apenas quando NÃO há endereco_normalizado.
-        """
         try:
             lote = max(1, int(request.args.get("lote", 50)))
         except ValueError:
@@ -296,6 +290,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                         pass
 
                     cur_up = conn_up.cursor()
+                    endereco_normalizado = normalize_address(raw)
                     cur_up.execute("""
                       INSERT INTO encontristas_geo
                         (encontrista_id, endereco_original, endereco_normalizado, endereco_hash,
@@ -313,8 +308,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     """, (
                         r["encontrista_id"],
                         raw or None,
-                        normalize_address(raw) or None,
-                        addr_hash(normalize_address(raw)) if normalize_address(raw) else None,
+                        endereco_normalizado or None,
+                        addr_hash(endereco_normalizado) if endereco_normalizado else None,
                         display, lat, lng, status, "smart"
                     ))
                     cur_up.close()
