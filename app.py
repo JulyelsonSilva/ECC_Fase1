@@ -21,7 +21,7 @@ from routes.montagem import register_montagem_routes
 from routes.palestras import register_palestras_routes
 from routes.core import register_core_routes
 from routes.admin import register_admin_routes
-from routes.vinculos import register_vinculos_routes
+
 
 
 app = Flask(__name__)
@@ -34,7 +34,7 @@ register_montagem_routes(app, TEAM_MAP, TEAM_LIMITS, _team_label)
 register_palestras_routes(app, PALESTRAS_TITULOS, PALESTRAS_SOLO)
 register_core_routes(app, TEAM_MAP, TEAM_LIMITS, _q)
 register_admin_routes(app, _admin_ok)
-register_vinculos_routes(app, _admin_ok, _norm, _sim)
+
 
 
 if __name__ == "__main__":
