@@ -274,17 +274,12 @@
           <div class="divider"></div>
           <div class="section-title">Informações complementares</div>
           <div class="form-grid">
-            <div class="field col-4">
-              <label for="cor_circulo">Cor do círculo</label>
-              <input id="cor_circulo" name="cor_circulo" value="{{ r.cor_circulo or '' }}">
-            </div>
-
-            <div class="field col-4">
+            <div class="field col-6">
               <label for="casal_visitacao">Casal de visitação</label>
               <input id="casal_visitacao" name="casal_visitacao" value="{{ r.casal_visitacao or '' }}">
             </div>
 
-            <div class="field col-4">
+            <div class="field col-6">
               <label for="aceitou">Aceitou</label>
               <select id="aceitou" name="aceitou">
                 <option value="" {% if not r.aceitou %}selected{% endif %}>Selecione</option>
