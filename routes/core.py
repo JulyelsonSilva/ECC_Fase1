@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, redirect, url_for, session
 
 from db import db_conn
 
@@ -9,9 +9,83 @@ def register_core_routes(
     TEAM_LIMITS,
     _q,
 ):
+    def paroquia_id_atual():
+        return session.get("paroquia_id")
+
+    def exigir_paroquia():
+        if not paroquia_id_atual():
+            return redirect(url_for("selecionar_paroquia"))
+        return None
+
+    # =========================
+    # Seleção de paróquia
+    # =========================
+    @app.route("/selecionar-paroquia")
+    def selecionar_paroquia():
+        conn = db_conn()
+        cur = conn.cursor(dictionary=True)
+
+        try:
+            cur.execute("""
+                SELECT id, nome, cidade, estado, diocese
+                FROM paroquias
+                WHERE ativa = 1
+                ORDER BY nome
+            """)
+            paroquias = cur.fetchall() or []
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
+        return render_template(
+            "selecionar_paroquia.html",
+            paroquias=paroquias
+        )
+
+    @app.route("/definir-paroquia/<int:paroquia_id>")
+    def definir_paroquia(paroquia_id):
+        conn = db_conn()
+        cur = conn.cursor(dictionary=True)
+
+        try:
+            cur.execute("""
+                SELECT id, nome
+                FROM paroquias
+                WHERE id = %s
+                  AND ativa = 1
+            """, (paroquia_id,))
+            paroquia = cur.fetchone()
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
+        if not paroquia:
+            return redirect(url_for("selecionar_paroquia"))
+
+        session["paroquia_id"] = paroquia["id"]
+        session["paroquia_nome"] = paroquia["nome"]
+
+        return redirect(url_for("index"))
+
+    @app.route("/trocar-paroquia")
+    def trocar_paroquia():
+        session.pop("paroquia_id", None)
+        session.pop("paroquia_nome", None)
+        return redirect(url_for("selecionar_paroquia"))
+
     # --- KPI: contagem de integrantes por equipe (exclui Coordenador; exclui Recusou/Desistiu) ---
     @app.route('/api/team-kpis')
     def api_team_kpis():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+
         ano = request.args.get('ano', type=int)
         if not ano:
             return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
@@ -28,10 +102,11 @@ def register_core_routes(
                 SELECT equipe, COUNT(*) AS n
                   FROM encontreiros
                  WHERE ano = %s
+                   AND paroquia_id = %s
                    AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
                    AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
                  GROUP BY equipe
-            """, (ano,))
+            """, (ano, paroquia_id))
             for r in cur.fetchall():
                 rot = (r.get("equipe") or "").strip()
                 n = int(r.get("n") or 0)
@@ -52,10 +127,20 @@ def register_core_routes(
     # =========================
     @app.route('/')
     def index():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
         return render_template('index.html')
 
     @app.route('/fichas', methods=['GET', 'POST'])
     def fichas():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         form = {
             "ano": "",
             "num_ecc": "",
@@ -97,6 +182,7 @@ def register_core_routes(
                 try:
                     cur.execute("""
                         INSERT INTO encontristas (
+                            paroquia_id,
                             ano,
                             num_ecc,
                             data_casamento,
@@ -112,8 +198,9 @@ def register_core_routes(
                             aceitou,
                             observacao,
                             observacao_extra
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
+                        paroquia_id,
                         ano,
                         form["num_ecc"],
                         data_casamento,
@@ -146,9 +233,10 @@ def register_core_routes(
             cur.execute("""
                 SELECT id, ano, num_ecc, nome_usual_ele, nome_usual_ela
                 FROM encontristas
+                WHERE paroquia_id = %s
                 ORDER BY id DESC
                 LIMIT 15
-            """)
+            """, (paroquia_id,))
             ultimos = cur.fetchall() or []
         finally:
             try:
@@ -169,6 +257,12 @@ def register_core_routes(
 
     @app.route('/palestrantes')
     def palestrantes():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         nome_ele = (request.args.get('nome_ele') or '').strip()
         nome_ela = (request.args.get('nome_ela') or '').strip()
         ano_filtro = (request.args.get('ano') or '').strip()
@@ -179,9 +273,9 @@ def register_core_routes(
         sql = """
             SELECT id, ano, palestra, nome_ele, nome_ela
               FROM palestras
-             WHERE 1=1
+             WHERE paroquia_id = %s
         """
-        params = []
+        params = [paroquia_id]
 
         if nome_ele:
             sql += " AND LOWER(nome_ele) LIKE LOWER(%s)"
@@ -248,6 +342,12 @@ def register_core_routes(
     # ============================================
     @app.route("/relatorios")
     def relatorios():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
 
@@ -255,10 +355,11 @@ def register_core_routes(
             cur.execute("""
                 SELECT DISTINCT ano
                 FROM encontreiros
-                WHERE ano IS NOT NULL
+                WHERE paroquia_id = %s
+                  AND ano IS NOT NULL
                   AND ano NOT IN (2020, 2021)
                 ORDER BY ano DESC
-            """)
+            """, (paroquia_id,))
             anos = [r["ano"] for r in cur.fetchall()]
         finally:
             try:
@@ -271,6 +372,10 @@ def register_core_routes(
 
     @app.route("/api/trabalhos_por_ano")
     def api_trabalhos_por_ano():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify([])
+
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
 
@@ -280,11 +385,12 @@ def register_core_routes(
                     ano,
                     COUNT(DISTINCT casal_id) AS qtd
                 FROM encontreiros
-                WHERE casal_id IS NOT NULL
+                WHERE paroquia_id = %s
+                  AND casal_id IS NOT NULL
                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
                 GROUP BY ano
                 ORDER BY ano
-            """)
+            """, (paroquia_id,))
             data = cur.fetchall()
         finally:
             try:
@@ -297,6 +403,10 @@ def register_core_routes(
 
     @app.route("/api/ano_origem_dos_trabalhadores")
     def api_ano_origem_dos_trabalhadores():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"dist": []})
+
         ano = request.args.get("ano", type=int)
 
         if not ano:
@@ -313,11 +423,13 @@ def register_core_routes(
                 FROM encontreiros e
                 JOIN encontristas i ON i.id = e.casal_id
                 WHERE e.ano = %s
+                  AND e.paroquia_id = %s
+                  AND i.paroquia_id = %s
                   AND e.casal_id IS NOT NULL
                   AND (e.status IS NULL OR UPPER(TRIM(e.status)) NOT IN ('RECUSOU','DESISTIU'))
                 GROUP BY i.ano
                 ORDER BY i.ano
-            """, (ano,))
+            """, (ano, paroquia_id, paroquia_id))
             dist = cur.fetchall()
         finally:
             try:
@@ -330,6 +442,10 @@ def register_core_routes(
 
     @app.route("/api/encontreiros_por_ano")
     def api_encontreiros_por_ano():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify([])
+
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
 
@@ -337,10 +453,11 @@ def register_core_routes(
             cur.execute("""
                 SELECT ano, COUNT(*) AS qtd
                 FROM encontreiros
-                WHERE (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+                WHERE paroquia_id = %s
+                  AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
                 GROUP BY ano
                 ORDER BY ano
-            """)
+            """, (paroquia_id,))
             data = cur.fetchall()
         finally:
             try:
@@ -353,6 +470,12 @@ def register_core_routes(
 
     @app.route("/docs")
     def docs_index():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
 
@@ -360,18 +483,21 @@ def register_core_routes(
             cur.execute("""
                 SELECT DISTINCT ano
                 FROM encontreiros
-                WHERE ano IS NOT NULL
+                WHERE paroquia_id = %s
+                  AND ano IS NOT NULL
                   AND ano NOT IN (2020, 2021)
                 ORDER BY ano DESC
-            """)
+            """, (paroquia_id,))
             anos = [r["ano"] for r in cur.fetchall()]
 
             cur.execute("""
                 SELECT DISTINCT equipe
                 FROM encontreiros
-                WHERE equipe IS NOT NULL AND equipe <> ''
+                WHERE paroquia_id = %s
+                  AND equipe IS NOT NULL
+                  AND equipe <> ''
                 ORDER BY equipe
-            """)
+            """, (paroquia_id,))
             equipes = [r["equipe"] for r in cur.fetchall()]
 
         finally:
@@ -385,6 +511,11 @@ def register_core_routes(
 
     @app.get("/imprimir/coordenadores")
     def imprimir_coordenadores():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
         ano = request.args.get("ano", type=int)
 
         if not ano:
@@ -406,6 +537,8 @@ def register_core_routes(
             FROM encontreiros e
             JOIN encontristas i ON i.id = e.casal_id
             WHERE e.ano = %s
+              AND e.paroquia_id = %s
+              AND i.paroquia_id = %s
               AND e.casal_id IS NOT NULL
               AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
               AND LOWER(TRIM(COALESCE(e.coordenador,''))) IN (
@@ -417,7 +550,7 @@ def register_core_routes(
                     'sim - coordenador'
               )
             ORDER BY e.equipe, ele, ela
-        """, [ano])
+        """, [ano, paroquia_id, paroquia_id])
 
         cur.close()
         conn.close()
@@ -426,13 +559,18 @@ def register_core_routes(
 
     @app.get("/imprimir/equipes")
     def imprimir_equipes():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
         ano = request.args.get("ano", type=int)
         equipe = request.args.get("equipe")
 
         if not ano:
             return "Informe ?ano=YYYY", 400
 
-        params = [ano]
+        params = [ano, paroquia_id, paroquia_id]
         where_equipe = ""
 
         if equipe:
@@ -466,6 +604,8 @@ def register_core_routes(
             FROM encontreiros e
             JOIN encontristas i ON i.id = e.casal_id
             WHERE e.ano = %s
+              AND e.paroquia_id = %s
+              AND i.paroquia_id = %s
               {where_equipe}
               AND e.casal_id IS NOT NULL
               AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
@@ -479,6 +619,11 @@ def register_core_routes(
 
     @app.get("/imprimir/vigilia")
     def imprimir_vigilia():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
         ano = request.args.get("ano", type=int)
         qtd = request.args.get("qtd", default=56, type=int)
         ids = request.args.get("ids")
@@ -509,9 +654,10 @@ def register_core_routes(
                     telefone_ele,
                     telefone_ela
                 FROM encontristas
-                WHERE id IN ({placeholders})
+                WHERE paroquia_id = %s
+                  AND id IN ({placeholders})
                 ORDER BY FIELD(id, {placeholders})
-            """, lista_ids + lista_ids)
+            """, [paroquia_id] + lista_ids + lista_ids)
 
         else:
             rows = _q(cur, """
@@ -528,11 +674,13 @@ def register_core_routes(
                 LEFT JOIN encontreiros e
                   ON e.casal_id = i.id
                  AND e.ano = %s
+                 AND e.paroquia_id = %s
                  AND LOWER(TRIM(COALESCE(e.status,''))) NOT IN ('desistiu','recusou')
-                WHERE e.id IS NULL
+                WHERE i.paroquia_id = %s
+                  AND e.id IS NULL
                 ORDER BY MD5(CONCAT_WS('#', i.id, %s))
                 LIMIT %s
-            """, [ano, seed, qtd])
+            """, [ano, paroquia_id, paroquia_id, seed, qtd])
 
         cur.close()
         conn.close()
