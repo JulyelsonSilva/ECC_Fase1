@@ -36,6 +36,14 @@
     font-size:16px;
     font-weight:700;
   }
+  .candidate-name{
+    font-weight:800;
+    color:var(--ink);
+  }
+  .candidate-sub{
+    margin-top:4px;
+    line-height:1.35;
+  }
   @media (max-width: 980px){
     .vc-grid{ grid-template-columns:1fr; }
   }
@@ -50,7 +58,7 @@
         <i class="bi bi-heart"></i>
         <span>Visão do Casal</span>
       </h1>
-      <p class="subtitle">Pesquise um casal e visualize seu histórico de encontro, equipes e palestras.</p>
+      <p class="subtitle">Pesquise por nome, parte do nome ou apelido. Se houver mais de um resultado, escolha o casal correto.</p>
     </div>
 
     <div class="actions">
@@ -64,7 +72,7 @@
   <section class="card">
     <div class="card-head">
       <h2>Pesquisar casal</h2>
-      <p>Informe os dois nomes para montar a visão consolidada.</p>
+      <p>Você pode informar apenas o nome dele, apenas o nome dela, ou ambos. A busca considera nome usual, nome completo e apelidos.</p>
     </div>
 
     <div class="card-body">
@@ -72,13 +80,13 @@
         <div class="filters">
           <div class="field col-6">
             <label for="nome_ele">Nome Ele</label>
-            <input id="nome_ele" name="nome_ele" list="sugestoes_ele" value="{{ nome_ele or '' }}" placeholder="Digite o nome dele">
+            <input id="nome_ele" name="nome_ele" list="sugestoes_ele" value="{{ nome_ele or '' }}" placeholder="Digite nome, parte do nome ou apelido dele">
             <datalist id="sugestoes_ele"></datalist>
           </div>
 
           <div class="field col-6">
             <label for="nome_ela">Nome Ela</label>
-            <input id="nome_ela" name="nome_ela" list="sugestoes_ela" value="{{ nome_ela or '' }}" placeholder="Digite o nome dela">
+            <input id="nome_ela" name="nome_ela" list="sugestoes_ela" value="{{ nome_ela or '' }}" placeholder="Digite nome, parte do nome ou apelido dela">
             <datalist id="sugestoes_ela"></datalist>
           </div>
 
@@ -103,6 +111,68 @@
     <div class="flash info">{{ erro }}</div>
   {% endif %}
 
+  {% if candidatos %}
+    <section class="card">
+      <div class="card-head">
+        <h2>Resultados encontrados</h2>
+        <p>Mais de um casal corresponde ao filtro informado. Escolha o casal correto para visualizar o histórico.</p>
+      </div>
+
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Casal</th>
+                <th>Ano</th>
+                <th>Apelidos</th>
+                <th>Telefone</th>
+                <th>Endereço</th>
+                <th>Trabalhos</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in candidatos %}
+                <tr>
+                  <td>
+                    <div class="candidate-name">{{ c.nome_usual_ele }} e {{ c.nome_usual_ela }}</div>
+                    <div class="small candidate-sub">
+                      {{ c.nome_completo_ele or '—' }}<br>
+                      {{ c.nome_completo_ela or '—' }}
+                    </div>
+                  </td>
+                  <td>{{ c.ano or '—' }}</td>
+                  <td>
+                    {% if c.apelidos_ele %}
+                      <div><strong>Ele:</strong> {{ c.apelidos_ele }}</div>
+                    {% endif %}
+                    {% if c.apelidos_ela %}
+                      <div><strong>Ela:</strong> {{ c.apelidos_ela }}</div>
+                    {% endif %}
+                    {% if not c.apelidos_ele and not c.apelidos_ela %}
+                      <span class="small">—</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ c.telefones or '—' }}</td>
+                  <td>{{ c.endereco or '—' }}</td>
+                  <td>{{ c.qtd_trabalhos }}</td>
+                  <td>
+                    <a class="btn btn-primary"
+                       href="{{ url_for('visao_casal', casal_id=c.id, nome_ele=nome_ele, nome_ela=nome_ela) }}">
+                      <i class="bi bi-eye"></i>
+                      <span>Ver</span>
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
   {% if dados_encontrista or dados_encontreiros or dados_palestras %}
     <div class="vc-grid">
       <section class="card">
@@ -113,6 +183,31 @@
         <div class="card-body">
           {% if dados_encontrista %}
             <div class="box-list">
+              <div class="box-item">
+                <div class="small">Casal</div>
+                <strong>{{ dados_encontrista.nome_usual_ele }} e {{ dados_encontrista.nome_usual_ela }}</strong>
+              </div>
+
+              {% if dados_encontrista.nome_completo_ele or dados_encontrista.nome_completo_ela %}
+                <div class="box-item">
+                  <div class="small">Nomes completos</div>
+                  <div>{{ dados_encontrista.nome_completo_ele or '—' }}</div>
+                  <div>{{ dados_encontrista.nome_completo_ela or '—' }}</div>
+                </div>
+              {% endif %}
+
+              {% if dados_encontrista.apelidos_ele or dados_encontrista.apelidos_ela %}
+                <div class="box-item">
+                  <div class="small">Apelidos registrados</div>
+                  {% if dados_encontrista.apelidos_ele %}
+                    <div><strong>Ele:</strong> {{ dados_encontrista.apelidos_ele }}</div>
+                  {% endif %}
+                  {% if dados_encontrista.apelidos_ela %}
+                    <div><strong>Ela:</strong> {{ dados_encontrista.apelidos_ela }}</div>
+                  {% endif %}
+                </div>
+              {% endif %}
+
               <div class="box-item">
                 <div class="small">Ano do encontro</div>
                 <strong>{{ dados_encontrista.ano_encontro or '—' }}</strong>
@@ -236,7 +331,11 @@
 
   function buscarNomes(input, datalist) {
     const valor = (input.value || '').trim();
-    if (valor.length < 3) { datalist.innerHTML = ''; return; }
+    if (valor.length < 3) {
+      datalist.innerHTML = '';
+      return;
+    }
+
     fetch(`/autocomplete-nomes?q=${encodeURIComponent(valor)}`)
       .then(res => res.json())
       .then(data => {
