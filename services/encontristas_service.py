@@ -6,7 +6,28 @@ def listar_encontristas(nome_ele="", nome_ela="", ano="", pagina=1, por_pagina=5
     cursor = conn.cursor(dictionary=True)
 
     try:
-        query = "SELECT * FROM encontristas WHERE 1=1"
+        query = """
+            SELECT
+                id,
+                ano,
+                num_ecc,
+                data_casamento,
+                nome_completo_ele,
+                nome_completo_ela,
+                nome_usual_ele,
+                nome_usual_ela,
+                apelidos,
+                telefone_ele,
+                telefone_ela,
+                endereco,
+                casal_visitacao,
+                ficha_num,
+                aceitou,
+                observacao,
+                observacao_extra
+            FROM encontristas
+            WHERE 1=1
+        """
         params = []
 
         if nome_ele:
@@ -20,6 +41,8 @@ def listar_encontristas(nome_ele="", nome_ela="", ano="", pagina=1, por_pagina=5
         if ano:
             query += " AND ano = %s"
             params.append(ano)
+
+        query += " ORDER BY ano DESC, id DESC"
 
         cursor.execute(query, params)
         todos = cursor.fetchall() or []
@@ -47,7 +70,28 @@ def buscar_encontrista_por_id(encontrista_id):
     cursor = conn.cursor(dictionary=True)
 
     try:
-        cursor.execute("SELECT * FROM encontristas WHERE id = %s", (encontrista_id,))
+        cursor.execute("""
+            SELECT
+                id,
+                ano,
+                num_ecc,
+                data_casamento,
+                nome_completo_ele,
+                nome_completo_ela,
+                nome_usual_ele,
+                nome_usual_ela,
+                apelidos,
+                telefone_ele,
+                telefone_ela,
+                endereco,
+                casal_visitacao,
+                ficha_num,
+                aceitou,
+                observacao,
+                observacao_extra
+            FROM encontristas
+            WHERE id = %s
+        """, (encontrista_id,))
         return cursor.fetchone()
     finally:
         try:
@@ -74,7 +118,6 @@ def atualizar_encontrista(encontrista_id, payload):
                 num_ecc = %s,
                 ano = %s,
                 data_casamento = %s,
-                cor_circulo = %s,
                 casal_visitacao = %s,
                 ficha_num = %s,
                 aceitou = %s,
@@ -93,7 +136,6 @@ def atualizar_encontrista(encontrista_id, payload):
             payload["num_ecc"],
             payload["ano"],
             payload["data_casamento"],
-            payload["cor_circulo"],
             payload["casal_visitacao"],
             payload["ficha_num"],
             payload["aceitou"],
