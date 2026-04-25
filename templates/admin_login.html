@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Administração</title>
+</head>
+<body>
+  <h1>Área administrativa</h1>
+
+  {% if erro %}
+    <p style="color:red;">{{ erro }}</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('admin_login') }}">
+    <label>Token administrativo</label><br>
+    <input type="password" name="token" required>
+    <button type="submit">Entrar</button>
+  </form>
+
+  <p>
+    <a href="{{ url_for('selecionar_paroquia') }}">Voltar</a>
+  </p>
+</body>
+</html>
