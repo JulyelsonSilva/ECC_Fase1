@@ -17,6 +17,13 @@ def register_core_routes(
             return redirect(url_for("selecionar_paroquia"))
         return None
 
+    @app.context_processor
+    def inject_paroquia_atual():
+        return {
+            "paroquia_id": session.get("paroquia_id"),
+            "paroquia_nome": session.get("paroquia_nome"),
+        }
+
     # =========================
     # Seleção de paróquia
     # =========================
