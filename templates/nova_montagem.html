@@ -790,31 +790,40 @@ input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; b
 
 const btnPrincipal = document.getElementById("btn-continuar");
 
-function atualizarBotaoPrincipal() {
+async function atualizarBotaoPrincipal() {
     const ano = document.getElementById("ano").value;
-
     if (!ano) return;
 
-    fetch(`/api/equipe-counts?ano=${ano}`)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.ok) return;
-
-            let total = 0;
-            Object.values(data.counts).forEach(v => total += v);
-
-            // Regra simples: já montou algo → pode concluir
-            if (total > 0) {
-                btnPrincipal.dataset.mode = "concluir";
-                btnPrincipal.innerText = "Concluir";
-                btnPrincipal.classList.remove("primary");
-                btnPrincipal.classList.add("success");
-            }
+    try {
+        const res = await fetch("/api/validar-montagem-ano", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ano})
         });
+
+        const data = await res.json();
+
+        if (data.ok) {
+            btnPrincipal.dataset.mode = "concluir";
+            btnPrincipal.innerText = "Concluir";
+            btnPrincipal.classList.remove("primary");
+            btnPrincipal.classList.add("success");
+        } else {
+            btnPrincipal.dataset.mode = "continuar";
+            btnPrincipal.innerText = "Continuar";
+            btnPrincipal.classList.remove("success");
+            btnPrincipal.classList.add("primary");
+        }
+    } catch (e) {
+        console.error("Erro ao atualizar botão principal:", e);
+    }
 }
 
 // Chamar após ações importantes
-setTimeout(atualizarBotaoPrincipal, 800);
+setTimeout(atualizarBotaoPrincipal, 
+setInterval(atualizarBotaoPrincipal, 3000);
+
+
 
 btnPrincipal.addEventListener("click", async function (e) {
     const modo = this.dataset.mode;
