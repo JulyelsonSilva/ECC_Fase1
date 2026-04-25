@@ -73,7 +73,7 @@ input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; b
           <input id="ano" placeholder="Ex.: 2025" value="{{ ano_preselecionado or '' }}">
         </div>
         <div style="align-self:end;">
-          <button class="btn primary" id="btn-continuar">Continuar</button>
+          <button class="btn primary" id="btn-continuar" data-mode="continuar">Continuar</button>
         </div>
       </div>
       <div id="ano-msg" class="status"></div>
@@ -783,5 +783,82 @@ input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; b
         btnContinuar.click();
       }
     });
+    
+// =========================
+// CONTROLE DO BOTÃO PRINCIPAL
+// =========================
+
+const btnPrincipal = document.getElementById("btn-continuar");
+
+function atualizarBotaoPrincipal() {
+    const ano = document.getElementById("ano").value;
+
+    if (!ano) return;
+
+    fetch(`/api/equipe-counts?ano=${ano}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) return;
+
+            let total = 0;
+            Object.values(data.counts).forEach(v => total += v);
+
+            // Regra simples: já montou algo → pode concluir
+            if (total > 0) {
+                btnPrincipal.dataset.mode = "concluir";
+                btnPrincipal.innerText = "Concluir";
+                btnPrincipal.classList.remove("primary");
+                btnPrincipal.classList.add("success");
+            }
+        });
+}
+
+// Chamar após ações importantes
+setTimeout(atualizarBotaoPrincipal, 800);
+
+btnPrincipal.addEventListener("click", async function (e) {
+    const modo = this.dataset.mode;
+    const ano = document.getElementById("ano").value;
+
+    if (modo !== "concluir") return; // mantém comportamento atual
+
+    e.preventDefault();
+
+    // 1. validar
+    const validar = await fetch("/api/validar-montagem-ano", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ano})
+    });
+
+    const valData = await validar.json();
+
+    if (!valData.ok) {
+        alert("Pendências:\n\n" + valData.pendencias.join("\n"));
+        return;
+    }
+
+    // 2. confirmar
+    if (!confirm("Deseja concluir a montagem?")) return;
+
+    // 3. concluir
+    const res = await fetch("/api/concluir-montagem-ano", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ano})
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+        alert("Erro:\n" + data.pendencias.join("\n"));
+        return;
+    }
+
+    alert("Montagem concluída!");
+    location.reload();
+});
+
 </script>
+
 {% endblock %}
