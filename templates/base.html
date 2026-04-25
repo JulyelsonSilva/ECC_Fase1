@@ -24,7 +24,13 @@
 
         <div>
           <div class="brand-title">Sistema ECC Divino</div>
-          <div class="brand-subtitle">Encontro de Casais com Cristo</div>
+          <div class="brand-subtitle">
+            {% if paroquia_nome %}
+              {{ paroquia_nome }}
+            {% else %}
+              Encontro de Casais com Cristo
+            {% endif %}
+          </div>
         </div>
       </a>
 
@@ -91,12 +97,33 @@
           <i class="bi bi-bar-chart"></i>
           <span>Relatórios</span>
         </a>
+
+        {% if paroquia_nome %}
+          <a
+            href="{{ url_for('trocar_paroquia') }}"
+            class="nav-link"
+            title="Trocar paróquia"
+          >
+            <i class="bi bi-arrow-left-right"></i>
+            <span>Trocar</span>
+          </a>
+        {% endif %}
       </nav>
     </div>
   </header>
 
   <main class="page-shell">
     <div class="container">
+      {% if paroquia_nome %}
+        <div class="page-context" style="margin-bottom: 16px;">
+          <span class="eyebrow">Paróquia selecionada</span>
+          <strong>{{ paroquia_nome }}</strong>
+          <a href="{{ url_for('trocar_paroquia') }}" style="margin-left: 10px;">
+            Trocar
+          </a>
+        </div>
+      {% endif %}
+
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="stack" style="margin-bottom: 16px;">
