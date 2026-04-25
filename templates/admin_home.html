@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Configurações</title>
+</head>
+<body>
+  <h1>Configurações do sistema</h1>
+
+  <ul>
+    <li>
+      <a href="{{ url_for('admin_paroquias', token=token) }}">
+        Paróquias
+      </a>
+    </li>
+  </ul>
+
+  <p>
+    <a href="{{ url_for('selecionar_paroquia') }}">Voltar para seleção de paróquia</a>
+  </p>
+</body>
+</html>
