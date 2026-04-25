@@ -1,4 +1,5 @@
-from flask import render_template, request, redirect, url_for
+
+from flask import render_template, request, redirect, url_for, session
 
 from services.encontreiros_service import (
     listar_encontreiros,
@@ -15,16 +16,28 @@ def register_encontreiros_routes(
     DB_CONFIG,
     safe_fetch_one
 ):
-    # =========================
-    # ENCONTREIROS (listagem – sem edição)
-    # =========================
+    def paroquia_id_atual():
+        return session.get("paroquia_id")
+
+    def exigir_paroquia():
+        if not paroquia_id_atual():
+            return redirect(url_for("selecionar_paroquia"))
+        return None
+
     @app.route('/encontreiros')
     def encontreiros():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         nome_ele = (request.args.get('nome_ele', '') or '').strip()
         nome_ela = (request.args.get('nome_ela', '') or '').strip()
         ano_filtro = (request.args.get('ano', '') or '').strip()
 
         dados = listar_encontreiros(
+            paroquia_id=paroquia_id,
             nome_ele=nome_ele,
             nome_ela=nome_ela,
             ano_filtro=ano_filtro
@@ -36,16 +49,22 @@ def register_encontreiros_routes(
             colunas_visiveis=dados["colunas_visiveis"]
         )
 
-    # =========================
-    # VISÃO DE EQUIPES
-    # =========================
     @app.route('/visao-equipes')
     def visao_equipes():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         equipe = request.args.get('equipe', '')
         target = request.args.get('target', '')
         ano_montagem = request.args.get('ano_montagem', '')
 
-        dados = montar_visao_equipes(equipe)
+        dados = montar_visao_equipes(
+            equipe=equipe,
+            paroquia_id=paroquia_id
+        )
 
         return render_template(
             'visao_equipes.html',
@@ -58,6 +77,10 @@ def register_encontreiros_routes(
 
     @app.route('/visao-equipes/select')
     def visao_equipes_select():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
         ano_montagem = request.args.get('ano_montagem', type=int) or request.args.get('ano', type=int)
         target = (request.args.get('target') or request.args.get('ret_target') or '').strip()
 
@@ -90,16 +113,20 @@ def register_encontreiros_routes(
             selecionar_ela=ela
         ))
 
-    # =========================
-    # VISÃO DO CASAL
-    # =========================
     @app.route('/visao-casal')
     def visao_casal():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         nome_ele = (request.args.get("nome_ele") or "").strip()
         nome_ela = (request.args.get("nome_ela") or "").strip()
         casal_id = request.args.get("casal_id", type=int)
 
         dados = buscar_visao_casal(
+            paroquia_id=paroquia_id,
             nome_ele=nome_ele,
             nome_ela=nome_ela,
             casal_id=casal_id,
@@ -122,11 +149,14 @@ def register_encontreiros_routes(
             erro=dados["erro"]
         )
 
-    # =========================
-    # RELATÓRIO DE CASAIS
-    # =========================
     @app.route('/relatorio-casais', methods=['GET', 'POST'])
     def relatorio_casais():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         titulo = (
             request.form.get("titulo") or "Relatório de Casais"
         ) if request.method == 'POST' else "Relatório de Casais"
@@ -139,6 +169,7 @@ def register_encontreiros_routes(
 
         if request.method == 'POST' and entrada.strip():
             dados = buscar_relatorio_casais(
+                paroquia_id=paroquia_id,
                 entrada=entrada,
                 titulo=titulo,
                 DB_CONFIG=DB_CONFIG,
