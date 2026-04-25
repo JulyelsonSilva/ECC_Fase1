@@ -40,7 +40,7 @@ def _apelidos_texto(valor, lado):
     return ", ".join(nomes)
 
 
-def listar_encontreiros(nome_ele="", nome_ela="", ano_filtro=""):
+def listar_encontreiros(paroquia_id, nome_ele="", nome_ela="", ano_filtro=""):
     conn = db_conn()
     cursor = conn.cursor(dictionary=True)
 
@@ -63,9 +63,11 @@ def listar_encontreiros(nome_ele="", nome_ela="", ano_filtro=""):
                 e.observacao
             FROM encontreiros e
             JOIN encontristas i ON i.id = e.casal_id
-            WHERE (e.status IS NULL OR UPPER(TRIM(e.status)) IN ('ABERTO','CONCLUIDO'))
+            WHERE e.paroquia_id = %s
+              AND i.paroquia_id = %s
+              AND (e.status IS NULL OR UPPER(TRIM(e.status)) IN ('ABERTO','CONCLUIDO'))
         """
-        params = []
+        params = [paroquia_id, paroquia_id]
 
         if nome_ele:
             query += " AND i.nome_usual_ele LIKE %s"
@@ -105,7 +107,7 @@ def listar_encontreiros(nome_ele="", nome_ela="", ano_filtro=""):
         conn.close()
 
 
-def montar_visao_equipes(equipe):
+def montar_visao_equipes(equipe, paroquia_id):
     tabela = {}
     colunas = []
 
@@ -129,7 +131,8 @@ def montar_visao_equipes(equipe):
                 e.observacao
             FROM encontreiros e
             JOIN encontristas i ON i.id = e.casal_id
-            WHERE 1=1
+            WHERE e.paroquia_id = %s
+              AND i.paroquia_id = %s
         """
 
         if equipe == "Dirigentes":
@@ -143,7 +146,7 @@ def montar_visao_equipes(equipe):
                     AND UPPER(e.equipe) LIKE %s
                     ORDER BY e.ano ASC, e.id ASC
                     """,
-                    (f"%{pasta.upper()}%",)
+                    (paroquia_id, paroquia_id, f"%{pasta.upper()}%")
                 )
 
                 for row in cursor.fetchall() or []:
@@ -169,7 +172,7 @@ def montar_visao_equipes(equipe):
                 AND e.equipe LIKE %s
                 ORDER BY e.ano ASC, e.equipe ASC, e.id ASC
                 """,
-                (f"%{equipe}%",)
+                (paroquia_id, paroquia_id, f"%{equipe}%")
             )
 
             all_rows = cursor.fetchall() or []
@@ -274,7 +277,7 @@ def montar_visao_equipes(equipe):
         conn.close()
 
 
-def buscar_candidatos_visao_casal(nome_ele="", nome_ela="", limite=50):
+def buscar_candidatos_visao_casal(paroquia_id, nome_ele="", nome_ela="", limite=50):
     nome_ele = (nome_ele or "").strip()
     nome_ela = (nome_ela or "").strip()
 
@@ -286,7 +289,7 @@ def buscar_candidatos_visao_casal(nome_ele="", nome_ela="", limite=50):
 
     try:
         where = []
-        params = []
+        params = [paroquia_id, paroquia_id]
 
         if nome_ele:
             like_ele = f"%{nome_ele}%"
@@ -326,9 +329,11 @@ def buscar_candidatos_visao_casal(nome_ele="", nome_ela="", limite=50):
                     SELECT COUNT(*)
                     FROM encontreiros e
                     WHERE e.casal_id = i.id
+                      AND e.paroquia_id = %s
                 ) AS qtd_trabalhos
             FROM encontristas i
-            WHERE {' AND '.join(where)}
+            WHERE i.paroquia_id = %s
+              AND {' AND '.join(where)}
             ORDER BY
                 i.ano DESC,
                 i.nome_usual_ele ASC,
@@ -362,7 +367,14 @@ def buscar_candidatos_visao_casal(nome_ele="", nome_ela="", limite=50):
         conn.close()
 
 
-def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, casal_id=None):
+def buscar_visao_casal(
+    paroquia_id,
+    nome_ele,
+    nome_ela,
+    PALESTRAS_TITULOS,
+    PALESTRAS_SOLO,
+    casal_id=None
+):
     dados_encontrista = {}
     dados_encontreiros = []
     dados_palestras = []
@@ -385,7 +397,11 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, ca
                 "erro": None,
             }
 
-        candidatos = buscar_candidatos_visao_casal(nome_ele, nome_ela)
+        candidatos = buscar_candidatos_visao_casal(
+            paroquia_id=paroquia_id,
+            nome_ele=nome_ele,
+            nome_ela=nome_ela
+        )
 
         if len(candidatos) == 0:
             return {
@@ -431,8 +447,9 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, ca
                 telefone_ela
             FROM encontristas
             WHERE id = %s
+              AND paroquia_id = %s
             LIMIT 1
-        """, (casal_id,))
+        """, (casal_id, paroquia_id))
 
         encontrista = cursor.fetchone()
 
@@ -464,8 +481,9 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, ca
                     e.observacao
                 FROM encontreiros e
                 WHERE e.casal_id = %s
+                  AND e.paroquia_id = %s
                 ORDER BY e.ano DESC, e.equipe ASC, e.id ASC
-            """, (casal_id,))
+            """, (casal_id, paroquia_id))
 
             dados_encontreiros = cursor.fetchall() or []
 
@@ -477,13 +495,14 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, ca
                 sql = f"""
                     SELECT ano, palestra
                     FROM palestras
-                    WHERE LOWER(TRIM(nome_ele)) = LOWER(TRIM(%s))
+                    WHERE paroquia_id = %s
+                      AND LOWER(TRIM(nome_ele)) = LOWER(TRIM(%s))
                       AND LOWER(TRIM(COALESCE(nome_ela, ''))) = LOWER(TRIM(%s))
                       AND palestra IN ({in_clause})
                     ORDER BY ano DESC
                 """
 
-                params = [nome_ele_oficial, nome_ela_oficial] + list(format_titles)
+                params = [paroquia_id, nome_ele_oficial, nome_ela_oficial] + list(format_titles)
                 cursor.execute(sql, params)
                 dados_palestras = cursor.fetchall() or []
 
@@ -525,7 +544,7 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, ca
     }
 
 
-def buscar_relatorio_casais(entrada, titulo, DB_CONFIG, safe_fetch_one):
+def buscar_relatorio_casais(paroquia_id, entrada, titulo, DB_CONFIG, safe_fetch_one):
     def split_casal(line):
         raw = (line or "").strip()
 
@@ -601,12 +620,15 @@ def buscar_relatorio_casais(entrada, titulo, DB_CONFIG, safe_fetch_one):
                     i.telefone_ele,
                     i.telefone_ela
                 FROM encontristas i
-                WHERE (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
-                   OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                WHERE i.paroquia_id = %s
+                  AND (
+                        (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                     OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                  )
                 ORDER BY i.ano DESC, i.id DESC
                 LIMIT 1
                 """,
-                (a_pref, b_pref, b_pref, a_pref)
+                (paroquia_id, a_pref, b_pref, b_pref, a_pref)
             )
 
             if base is None:
@@ -619,12 +641,16 @@ def buscar_relatorio_casais(entrada, titulo, DB_CONFIG, safe_fetch_one):
                         i.telefone_ela
                     FROM encontreiros e
                     JOIN encontristas i ON i.id = e.casal_id
-                    WHERE (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
-                       OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                    WHERE e.paroquia_id = %s
+                      AND i.paroquia_id = %s
+                      AND (
+                            (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                         OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                      )
                     ORDER BY e.ano DESC, e.id DESC
                     LIMIT 1
                     """,
-                    (a_pref, b_pref, b_pref, a_pref)
+                    (paroquia_id, paroquia_id, a_pref, b_pref, b_pref, a_pref)
                 )
 
             if base:
