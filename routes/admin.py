@@ -9,9 +9,6 @@ def register_admin_routes(app, _admin_ok):
     def admin_token():
         return request.args.get("token") or request.form.get("token") or ""
 
-    # =========================
-    # INIT DB
-    # =========================
     @app.route("/__init_db__")
     def init_db_route():
         if not _admin_ok():
@@ -23,13 +20,24 @@ def register_admin_routes(app, _admin_ok):
         except Exception as e:
             return jsonify({"ok": False, "msg": str(e)}), 500
 
-    # =========================
-    # ADMINISTRAÇÃO DE PARÓQUIAS
-    # =========================
+    @app.route("/admin")
+    def admin_home():
+        if not _admin_ok():
+            return render_template("admin_login.html", erro=None)
+
+        return render_template("admin_home.html", token=admin_token())
+
+    @app.route("/admin/login", methods=["POST"])
+    def admin_login():
+        if not _admin_ok():
+            return render_template("admin_login.html", erro="Token administrativo inválido.")
+
+        return redirect(url_for("admin_home", token=admin_token()))
+
     @app.route("/admin/paroquias")
     def admin_paroquias():
         if not _admin_ok():
-            return "Acesso negado. Informe o token administrativo.", 403
+            return redirect(url_for("admin_home"))
 
         token = admin_token()
 
@@ -38,15 +46,7 @@ def register_admin_routes(app, _admin_ok):
 
         try:
             cur.execute("""
-                SELECT
-                    id,
-                    nome,
-                    cidade,
-                    estado,
-                    diocese,
-                    ativa,
-                    created_at,
-                    updated_at
+                SELECT id, nome, cidade, estado, diocese, ativa, created_at, updated_at
                 FROM paroquias
                 ORDER BY ativa DESC, nome ASC
             """)
@@ -82,16 +82,9 @@ def register_admin_routes(app, _admin_ok):
 
         try:
             cur.execute("""
-                INSERT INTO paroquias
-                    (nome, cidade, estado, diocese, ativa)
-                VALUES
-                    (%s, %s, %s, %s, 1)
-            """, (
-                nome,
-                cidade or None,
-                estado or None,
-                diocese or None
-            ))
+                INSERT INTO paroquias (nome, cidade, estado, diocese, ativa)
+                VALUES (%s, %s, %s, %s, 1)
+            """, (nome, cidade or None, estado or None, diocese or None))
             conn.commit()
         finally:
             cur.close()
@@ -111,13 +104,7 @@ def register_admin_routes(app, _admin_ok):
 
         try:
             cur.execute("""
-                SELECT
-                    id,
-                    nome,
-                    cidade,
-                    estado,
-                    diocese,
-                    ativa
+                SELECT id, nome, cidade, estado, diocese, ativa
                 FROM paroquias
                 WHERE id = %s
             """, (paroquia_id,))
@@ -127,15 +114,7 @@ def register_admin_routes(app, _admin_ok):
                 return "Paróquia não encontrada.", 404
 
             cur.execute("""
-                SELECT
-                    id,
-                    nome,
-                    cidade,
-                    estado,
-                    diocese,
-                    ativa,
-                    created_at,
-                    updated_at
+                SELECT id, nome, cidade, estado, diocese, ativa, created_at, updated_at
                 FROM paroquias
                 ORDER BY ativa DESC, nome ASC
             """)
@@ -172,19 +151,12 @@ def register_admin_routes(app, _admin_ok):
         try:
             cur.execute("""
                 UPDATE paroquias
-                SET
-                    nome = %s,
+                SET nome = %s,
                     cidade = %s,
                     estado = %s,
                     diocese = %s
                 WHERE id = %s
-            """, (
-                nome,
-                cidade or None,
-                estado or None,
-                diocese or None,
-                paroquia_id
-            ))
+            """, (nome, cidade or None, estado or None, diocese or None, paroquia_id))
             conn.commit()
         finally:
             cur.close()
