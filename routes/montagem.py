@@ -14,7 +14,6 @@ from services.montagem_service import (
     marcar_status_dirigente,
     marcar_status_membro,
     concluir_montagem_ano,
-    validar_requisitos_montagem_ano,
     buscar_dados_organograma,
     buscar_relatorio_montagem,
 )
@@ -239,27 +238,15 @@ def register_montagem_routes(
 
         return jsonify({"ok": True})
 
-    @app.route('/api/validar-montagem-ano', methods=['POST'])
-    def api_validar_montagem_ano():
-        data = request.get_json(silent=True) or {}
-        ano = data.get('ano')
-        if not ano:
-            return jsonify({"ok": False, "msg": "Ano obrigatório.", "pendencias": []}), 400
-
-        resultado = validar_requisitos_montagem_ano(ano, TEAM_MAP, TEAM_LIMITS)
-        status_code = 200 if resultado["ok"] else 409
-        return jsonify(resultado), status_code
-
     @app.route('/api/concluir-montagem-ano', methods=['POST'])
     def api_concluir_montagem_ano():
         data = request.get_json(silent=True) or {}
         ano = data.get('ano')
         if not ano:
-            return jsonify({"ok": False, "msg": "Ano obrigatório.", "pendencias": []}), 400
+            return jsonify({"ok": False, "msg": "Ano obrigatório."}), 400
 
-        resultado = concluir_montagem_ano(ano, TEAM_MAP, TEAM_LIMITS)
-        status_code = 200 if resultado["ok"] else 409
-        return jsonify(resultado), status_code
+        alterados = concluir_montagem_ano(ano)
+        return jsonify({"ok": True, "alterados": alterados})
 
     # =========================
     # Organograma
