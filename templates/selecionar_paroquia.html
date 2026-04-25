@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Selecionar Paróquia</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .topbar {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .config-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 50px auto;
+        }
+
+        .titulo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            background: #eef3ff;
+        }
+
+        .nome {
+            font-weight: bold;
+        }
+
+        .cidade {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div>Escolha a Paróquia</div>
+    <a href="#" class="config-btn">⚙ Configurações</a>
+</div>
+
+<div class="container">
+    <h2 class="titulo">Selecione a paróquia</h2>
+
+    {% for p in paroquias %}
+        <div class="card" onclick="window.location.href='/definir-paroquia/{{ p.id }}'">
+            <div class="nome">{{ p.nome }}</div>
+            <div class="cidade">{{ p.cidade }} - {{ p.estado }}</div>
+        </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>
