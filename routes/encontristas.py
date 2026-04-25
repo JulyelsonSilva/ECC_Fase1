@@ -1,32 +1,259 @@
-from flask import render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, redirect, url_for, session
 import math
 import time
 
 from db import db_conn
 from utils import _parse_id_list
 from services.geocoding import normalize_address, addr_hash, geocode_br_smart
-from services.encontristas_service import (
-    listar_encontristas,
-    buscar_encontrista_por_id,
-    atualizar_encontrista,
-    contar_encontristas_por_ano,
-    buscar_encontrista_por_nomes_e_ano,
-)
 
 
 def register_encontristas_routes(app, _encontrista_name_by_id):
+
+    def paroquia_id_atual():
+        return session.get("paroquia_id")
+
+    def exigir_paroquia():
+        if not paroquia_id_atual():
+            return redirect(url_for("selecionar_paroquia"))
+        return None
+
+    def listar_encontristas_paroquia(paroquia_id, nome_ele="", nome_ela="", ano="", pagina=1, por_pagina=50):
+        conn = db_conn()
+        cursor = conn.cursor(dictionary=True)
+
+        try:
+            query = """
+                SELECT
+                    id,
+                    ano,
+                    num_ecc,
+                    data_casamento,
+                    nome_completo_ele,
+                    nome_completo_ela,
+                    nome_usual_ele,
+                    nome_usual_ela,
+                    apelidos,
+                    telefone_ele,
+                    telefone_ela,
+                    endereco,
+                    casal_visitacao,
+                    ficha_num,
+                    aceitou,
+                    observacao,
+                    observacao_extra
+                FROM encontristas
+                WHERE paroquia_id = %s
+            """
+            params = [paroquia_id]
+
+            if nome_ele:
+                query += " AND nome_usual_ele LIKE %s"
+                params.append(f"%{nome_ele}%")
+
+            if nome_ela:
+                query += " AND nome_usual_ela LIKE %s"
+                params.append(f"%{nome_ela}%")
+
+            if ano:
+                query += " AND ano = %s"
+                params.append(ano)
+
+            query += " ORDER BY ano DESC, id DESC"
+
+            cursor.execute(query, params)
+            todos = cursor.fetchall() or []
+
+            inicio = (pagina - 1) * por_pagina
+            fim = pagina * por_pagina
+            dados = todos[inicio:fim]
+
+            return {
+                "dados": dados,
+                "total": len(todos),
+                "pagina": pagina,
+                "por_pagina": por_pagina,
+            }
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
+
+    def buscar_encontrista_por_id_paroquia(encontrista_id, paroquia_id):
+        conn = db_conn()
+        cursor = conn.cursor(dictionary=True)
+
+        try:
+            cursor.execute("""
+                SELECT
+                    id,
+                    ano,
+                    num_ecc,
+                    data_casamento,
+                    nome_completo_ele,
+                    nome_completo_ela,
+                    nome_usual_ele,
+                    nome_usual_ela,
+                    apelidos,
+                    telefone_ele,
+                    telefone_ela,
+                    endereco,
+                    casal_visitacao,
+                    ficha_num,
+                    aceitou,
+                    observacao,
+                    observacao_extra
+                FROM encontristas
+                WHERE id = %s
+                  AND paroquia_id = %s
+            """, (encontrista_id, paroquia_id))
+            return cursor.fetchone()
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
+
+    def atualizar_encontrista_paroquia(encontrista_id, paroquia_id, payload):
+        conn = db_conn()
+        cursor = conn.cursor()
+
+        try:
+            sql = """
+                UPDATE encontristas SET
+                    nome_completo_ele = %s,
+                    nome_completo_ela = %s,
+                    nome_usual_ele = %s,
+                    nome_usual_ela = %s,
+                    telefone_ele = %s,
+                    telefone_ela = %s,
+                    endereco = %s,
+                    num_ecc = %s,
+                    ano = %s,
+                    data_casamento = %s,
+                    casal_visitacao = %s,
+                    ficha_num = %s,
+                    aceitou = %s,
+                    observacao = %s,
+                    observacao_extra = %s
+                WHERE id = %s
+                  AND paroquia_id = %s
+            """
+            cursor.execute(sql, (
+                payload["nome_completo_ele"],
+                payload["nome_completo_ela"],
+                payload["nome_usual_ele"],
+                payload["nome_usual_ela"],
+                payload["telefone_ele"],
+                payload["telefone_ela"],
+                payload["endereco"],
+                payload["num_ecc"],
+                payload["ano"],
+                payload["data_casamento"],
+                payload["casal_visitacao"],
+                payload["ficha_num"],
+                payload["aceitou"],
+                payload["observacao"],
+                payload["observacao_extra"],
+                encontrista_id,
+                paroquia_id
+            ))
+            conn.commit()
+            return True
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
+
+    def contar_encontristas_por_ano_paroquia(paroquia_id, ano_min=None, ano_max=None):
+        conn = db_conn()
+        cur = conn.cursor(dictionary=True)
+
+        try:
+            sql = """
+                SELECT ano, COUNT(*) AS qtd
+                  FROM encontristas
+                 WHERE paroquia_id = %s
+                   AND ano IS NOT NULL
+            """
+            params = [paroquia_id]
+
+            if ano_min is not None:
+                sql += " AND ano >= %s"
+                params.append(ano_min)
+
+            if ano_max is not None:
+                sql += " AND ano <= %s"
+                params.append(ano_max)
+
+            sql += " GROUP BY ano ORDER BY ano ASC"
+
+            cur.execute(sql, params)
+            rows = cur.fetchall() or []
+
+            out = []
+            for r in rows:
+                a = r.get("ano")
+                q = r.get("qtd") or 0
+                if a is not None:
+                    out.append({
+                        "ano": int(a),
+                        "qtd": int(q)
+                    })
+
+            return out
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
+    def buscar_encontrista_por_nomes_e_ano_paroquia(paroquia_id, ele, ela, ano):
+        conn = db_conn()
+        cur = conn.cursor(dictionary=True)
+
+        try:
+            cur.execute("""
+                SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
+                FROM encontristas
+                WHERE paroquia_id = %s
+                  AND ano = %s
+                  AND LOWER(TRIM(nome_usual_ele)) = LOWER(TRIM(%s))
+                  AND LOWER(TRIM(nome_usual_ela)) = LOWER(TRIM(%s))
+                LIMIT 1
+            """, (paroquia_id, ano, ele, ela))
+            return cur.fetchone()
+        finally:
+            try:
+                cur.close()
+                conn.close()
+            except Exception:
+                pass
+
     # =========================
-    # ENCONTRISTAS (listagem + edição)
+    # ENCONTRISTAS
     # =========================
     @app.route('/encontristas')
     def encontristas():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         nome_ele = request.args.get('nome_usual_ele', '')
         nome_ela = request.args.get('nome_usual_ela', '')
         ano = request.args.get('ano', '')
         pagina = int(request.args.get('pagina', 1))
         por_pagina = 50
 
-        resultado = listar_encontristas(
+        resultado = listar_encontristas_paroquia(
+            paroquia_id=paroquia_id,
             nome_ele=nome_ele,
             nome_ela=nome_ela,
             ano=ano,
@@ -52,6 +279,12 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
 
     @app.route('/encontristas/<int:encontrista_id>/editar', methods=['GET', 'POST'])
     def editar_encontrista(encontrista_id):
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         if request.method == 'POST':
             nome_completo_ele = request.form.get('nome_completo_ele', '').strip()
             nome_completo_ela = request.form.get('nome_completo_ela', '').strip()
@@ -92,19 +325,23 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 "observacao_extra": observacao_extra,
             }
 
-            atualizar_encontrista(encontrista_id, payload)
+            atualizar_encontrista_paroquia(encontrista_id, paroquia_id, payload)
             return redirect(url_for('encontristas') + '?updated=1')
 
-        registro = buscar_encontrista_por_id(encontrista_id)
+        registro = buscar_encontrista_por_id_paroquia(encontrista_id, paroquia_id)
 
         if not registro:
             return redirect(url_for('encontristas') + '?notfound=1')
 
         return render_template('editar_encontrista.html', r=registro)
 
-    # Encontristas por ano (para listas laterais)
+    # Encontristas por ano
     @app.route("/api/encontristas/ano/<int:ano>")
     def api_encontristas_por_ano(ano):
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+
         livres = request.args.get("livres", "").strip() in ("1", "true", "True")
 
         conn = db_conn()
@@ -112,20 +349,29 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
         try:
             usados = set()
             if livres:
-                cur.execute("SELECT integrantes_atual FROM circulos WHERE ano=%s", (ano,))
+                cur.execute("""
+                    SELECT integrantes_atual
+                    FROM circulos
+                    WHERE ano = %s
+                      AND paroquia_id = %s
+                """, (ano, paroquia_id))
+
                 for r in cur.fetchall() or []:
                     usados.update(_parse_id_list(r.get("integrantes_atual")))
 
             cur.execute("""
                 SELECT id, nome_usual_ele, nome_usual_ela, telefone_ele, telefone_ela, endereco
                 FROM encontristas
-                WHERE ano=%s
+                WHERE ano = %s
+                  AND paroquia_id = %s
                 ORDER BY nome_usual_ele, nome_usual_ela
-            """, (ano,))
+            """, (ano, paroquia_id))
+
             lista = []
             for r in cur.fetchall() or []:
                 if livres and r["id"] in usados:
                     continue
+
                 lista.append({
                     "id": r["id"],
                     "nome_usual_ele": r["nome_usual_ele"],
@@ -134,26 +380,37 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     "telefone_ela": r.get("telefone_ela") or "",
                     "endereco": r.get("endereco") or "",
                 })
+
             return jsonify({"ok": True, "lista": lista})
         finally:
             cur.close()
             conn.close()
 
-    # Rota para contagem de encontristas em um ano
     @app.route("/api/encontristas_por_ano", methods=["GET"])
     def api_encontristas_por_ano_count():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"ok": False, "error": "Paróquia não selecionada."}), 400
+
         ano_min = request.args.get("ano_min", type=int)
         ano_max = request.args.get("ano_max", type=int)
 
         try:
-            out = contar_encontristas_por_ano(ano_min=ano_min, ano_max=ano_max)
+            out = contar_encontristas_por_ano_paroquia(
+                paroquia_id=paroquia_id,
+                ano_min=ano_min,
+                ano_max=ano_max
+            )
             return jsonify(out), 200
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
-    # Busca encontrista (por nome) validando ano do círculo
     @app.route("/api/encontristas/busca")
     def api_encontrista_busca():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+
         ele = (request.args.get("ele") or "").strip()
         ela = (request.args.get("ela") or "").strip()
         ano = request.args.get("ano", type=int)
@@ -161,7 +418,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
         if not (ele and ela and ano):
             return jsonify({"ok": False, "msg": "Parâmetros insuficientes."}), 400
 
-        r = buscar_encontrista_por_nomes_e_ano(ele, ela, ano)
+        r = buscar_encontrista_por_nomes_e_ano_paroquia(paroquia_id, ele, ela, ano)
 
         if not r:
             return jsonify({"ok": False, "msg": "Casal não encontrado para este ano."}), 404
@@ -182,9 +439,17 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             "endereco": r.get("endereco") or ""
         })
 
-    # --- Auditoria: contagens + pendentes ---
+    # =========================
+    # AUDITORIA / MAPA
+    # =========================
     @app.route("/relatorios/auditoria-enderecos")
     def auditoria_enderecos():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
+        paroquia_id = paroquia_id_atual()
+
         resumo = []
         faltantes = []
 
@@ -192,10 +457,12 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute("""
-              SELECT geocode_status AS status, COUNT(*) AS qtd
-                FROM encontristas_geo
-               GROUP BY geocode_status
-            """)
+              SELECT g.geocode_status AS status, COUNT(*) AS qtd
+                FROM encontristas_geo g
+                JOIN encontristas e ON e.id = g.encontrista_id
+               WHERE e.paroquia_id = %s
+               GROUP BY g.geocode_status
+            """, (paroquia_id,))
             resumo = cur.fetchall() or []
 
             cur.execute("""
@@ -203,14 +470,16 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                      g.endereco_normalizado, g.geocode_status, g.formatted_address
                 FROM encontristas e
                 JOIN encontristas_geo g ON g.encontrista_id = e.id
-               WHERE
-                     g.geocode_status IS NULL
-                OR   g.geocode_status IN ('pending','error')
-                OR   g.endereco_normalizado IS NULL
-                OR  (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+               WHERE e.paroquia_id = %s
+                 AND (
+                       g.geocode_status IS NULL
+                    OR g.geocode_status IN ('pending','error')
+                    OR g.endereco_normalizado IS NULL
+                    OR (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+                 )
                ORDER BY e.id DESC
                LIMIT 200
-            """)
+            """, (paroquia_id,))
             faltantes = cur.fetchall() or []
         finally:
             try:
@@ -225,9 +494,12 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             faltantes=faltantes
         )
 
-    # --- Lote de normalização + geocodificação ---
     @app.route("/admin/normalizar-geocodificar", methods=["POST"])
     def normalizar_geocodificar():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+
         try:
             lote = max(1, int(request.args.get("lote", 50)))
         except ValueError:
@@ -243,11 +515,13 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                        g.geocode_status
                   FROM encontristas e
                   JOIN encontristas_geo g ON g.encontrista_id = e.id
-                 WHERE
-                       g.geocode_status IS NULL
-                  OR   g.geocode_status IN ('pending','error')
-                  OR   g.endereco_normalizado IS NULL
-                  OR  (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+                 WHERE e.paroquia_id = %s
+                   AND (
+                         g.geocode_status IS NULL
+                      OR g.geocode_status IN ('pending','error')
+                      OR g.endereco_normalizado IS NULL
+                      OR (g.geocode_status='not_found' AND (g.endereco_normalizado IS NULL OR g.endereco_normalizado=''))
+                   )
                  ORDER BY
                        CASE
                          WHEN g.geocode_status IS NULL THEN 0
@@ -258,7 +532,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                        END,
                        e.id ASC
                  LIMIT {lote}
-            """)
+            """, (paroquia_id,))
             rows = cur_sel.fetchall() or []
         finally:
             try:
@@ -284,6 +558,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                         conn_up.autocommit = True
                     except Exception:
                         pass
+
                     try:
                         conn_up.ping(reconnect=True, attempts=2, delay=0.2)
                     except Exception:
@@ -291,6 +566,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
 
                     cur_up = conn_up.cursor()
                     endereco_normalizado = normalize_address(raw)
+
                     cur_up.execute("""
                       INSERT INTO encontristas_geo
                         (encontrista_id, endereco_original, endereco_normalizado, endereco_hash,
@@ -301,7 +577,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                         endereco_normalizado=VALUES(endereco_normalizado),
                         endereco_hash=VALUES(endereco_hash),
                         formatted_address=VALUES(formatted_address),
-                        geo_lat=VALUES(geo_lat), geo_lng=VALUES(geo_lng),
+                        geo_lat=VALUES(geo_lat),
+                        geo_lng=VALUES(geo_lng),
                         geocode_status=VALUES(geocode_status),
                         geocode_source=VALUES(geocode_source),
                         geocode_updated_at=VALUES(geocode_updated_at)
@@ -310,7 +587,11 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                         raw or None,
                         endereco_normalizado or None,
                         addr_hash(endereco_normalizado) if endereco_normalizado else None,
-                        display, lat, lng, status, "smart"
+                        display,
+                        lat,
+                        lng,
+                        status,
+                        "smart"
                     ))
                     cur_up.close()
                 finally:
@@ -320,6 +601,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                         pass
 
                 processados += 1
+
                 if status == "ok":
                     ok += 1
                 elif status == "partial":
@@ -345,6 +627,10 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
 
     @app.route("/api/encontristas/geo")
     def api_encontristas_geo():
+        paroquia_id = paroquia_id_atual()
+        if not paroquia_id:
+            return jsonify({"type": "FeatureCollection", "features": []})
+
         features = []
 
         conn = db_conn()
@@ -356,10 +642,12 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                      g.formatted_address, g.geo_lat, g.geo_lng, g.geocode_status
                 FROM encontristas e
                 JOIN encontristas_geo g ON g.encontrista_id = e.id
-               WHERE g.geo_lat IS NOT NULL
+               WHERE e.paroquia_id = %s
+                 AND g.geo_lat IS NOT NULL
                  AND g.geo_lng IS NOT NULL
                  AND g.geocode_status IN ('ok','partial')
-            """)
+            """, (paroquia_id,))
+
             for r in cur.fetchall() or []:
                 features.append({
                     "type": "Feature",
@@ -384,7 +672,10 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
 
         return jsonify({"type": "FeatureCollection", "features": features})
 
-    # --- Página do mapa ---
     @app.route("/relatorios/mapa-encontristas")
     def relatorio_mapa_encontristas():
+        bloqueio = exigir_paroquia()
+        if bloqueio:
+            return bloqueio
+
         return render_template("relatorio_mapa_encontristas.html")
