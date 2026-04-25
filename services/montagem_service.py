@@ -794,24 +794,6 @@ def marcar_status_membro(_id, novo_status, observacao):
             pass
 
 
-def concluir_montagem_ano(ano):
-    conn = db_conn()
-    cur = conn.cursor()
-    try:
-        cur.execute("""
-            UPDATE encontreiros
-               SET status = 'Concluido'
-             WHERE ano = %s
-               AND UPPER(status) = 'ABERTO'
-        """, (int(ano),))
-        conn.commit()
-        return cur.rowcount
-    finally:
-        try:
-            cur.close()
-            conn.close()
-        except Exception:
-            pass
 
 
 def buscar_dados_organograma(ano):
@@ -875,3 +857,132 @@ def buscar_relatorio_montagem(ano):
             conn.close()
         except Exception:
             pass
+
+def validar_requisitos_montagem_ano(ano, TEAM_MAP, TEAM_LIMITS):
+    ano = int(ano)
+    pendencias = []
+
+    equipes_dir = [
+        "Equipe Dirigente - MONTAGEM",
+        "Equipe Dirigente -FICHAS",
+        "Equipe Dirigente - FINANÇAS",
+        "Equipe Dirigente - PALESTRA",
+        "Equipe Dirigente - PÓS ENCONTRO",
+    ]
+
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        for equipe in equipes_dir:
+            cur.execute("""
+                SELECT COUNT(*) AS total
+                  FROM encontreiros
+                 WHERE ano = %s
+                   AND equipe = %s
+                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+            """, (ano, equipe))
+            total = int((cur.fetchone() or {}).get("total") or 0)
+            if total < 1:
+                pendencias.append(f"Dirigente não definido: {equipe}")
+
+        cur.execute("""
+            SELECT COUNT(*) AS total
+              FROM encontreiros
+             WHERE ano = %s
+               AND UPPER(TRIM(equipe)) = 'CASAL COORDENADOR GERAL'
+               AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+        """, (ano,))
+        total_cg = int((cur.fetchone() or {}).get("total") or 0)
+        if total_cg < 1:
+            pendencias.append("Casal Coordenador Geral não definido")
+
+        for key, info in TEAM_MAP.items():
+            rotulo = info["rotulo"]
+            filtro = info["filtro"]
+
+            cur.execute("""
+                SELECT COUNT(*) AS total
+                  FROM encontreiros
+                 WHERE ano = %s
+                   AND equipe IN (%s, %s)
+                   AND UPPER(TRIM(coordenador)) = 'SIM'
+                   AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+            """, (ano, rotulo, filtro))
+            total_coord = int((cur.fetchone() or {}).get("total") or 0)
+            if total_coord < 1:
+                pendencias.append(f"Coordenador não definido: {filtro}")
+
+            limites_cfg = TEAM_LIMITS.get(filtro, TEAM_LIMITS.get(rotulo, {}))
+            minimo = int(limites_cfg.get("min", 0) or 0)
+
+            if filtro.lower() == "sala":
+                equipes_sala = (
+                    "Equipe de Sala - Canto",
+                    "Equipe de Sala - Som e Projeção",
+                    "Equipe de Sala - Boa Vontade",
+                    "Equipe de Sala - Recepção Palestrantes",
+                )
+                cur.execute("""
+                    SELECT COUNT(*) AS total
+                      FROM encontreiros
+                     WHERE ano = %s
+                       AND equipe IN (%s, %s, %s, %s)
+                       AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
+                       AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+                """, (ano, *equipes_sala))
+            else:
+                cur.execute("""
+                    SELECT COUNT(*) AS total
+                      FROM encontreiros
+                     WHERE ano = %s
+                       AND equipe = %s
+                       AND (coordenador IS NULL OR UPPER(TRIM(coordenador)) <> 'SIM')
+                       AND (status IS NULL OR UPPER(TRIM(status)) NOT IN ('RECUSOU','DESISTIU'))
+                """, (ano, rotulo))
+
+            total_integrantes = int((cur.fetchone() or {}).get("total") or 0)
+            if total_integrantes < minimo:
+                pendencias.append(f"{filtro}: mínimo {minimo}, atual {total_integrantes}")
+
+        return {
+            "ok": len(pendencias) == 0,
+            "pendencias": pendencias,
+        }
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+def concluir_montagem_ano(ano, TEAM_MAP=None, TEAM_LIMITS=None):
+    if TEAM_MAP is not None and TEAM_LIMITS is not None:
+        validacao = validar_requisitos_montagem_ano(ano, TEAM_MAP, TEAM_LIMITS)
+        if not validacao["ok"]:
+            return validacao
+
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE encontreiros
+               SET status = 'Concluido'
+             WHERE ano = %s
+               AND UPPER(status) = 'ABERTO'
+        """, (int(ano),))
+        conn.commit()
+        return {
+            "ok": True,
+            "alterados": cur.rowcount,
+            "msg": "Montagem concluída com sucesso."
+        }
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
+
