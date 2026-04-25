@@ -61,15 +61,26 @@ def register_encontreiros_routes(
         ano_montagem = request.args.get('ano_montagem', type=int) or request.args.get('ano', type=int)
         target = (request.args.get('target') or request.args.get('ret_target') or '').strip()
 
-        ele = (request.args.get('ele')
-               or request.args.get('selecionar_ele')
-               or request.args.get('nome_ele') or '').strip()
-        ela = (request.args.get('ela')
-               or request.args.get('selecionar_ela')
-               or request.args.get('nome_ela') or '').strip()
+        ele = (
+            request.args.get('ele')
+            or request.args.get('selecionar_ele')
+            or request.args.get('nome_ele')
+            or ''
+        ).strip()
+
+        ela = (
+            request.args.get('ela')
+            or request.args.get('selecionar_ela')
+            or request.args.get('nome_ela')
+            or ''
+        ).strip()
 
         if not (ano_montagem and target and ele and ela):
-            return redirect(url_for('visao_equipes', target=target, ano_montagem=ano_montagem))
+            return redirect(url_for(
+                'visao_equipes',
+                target=target,
+                ano_montagem=ano_montagem
+            ))
 
         return redirect(url_for(
             'nova_montagem',
@@ -80,16 +91,18 @@ def register_encontreiros_routes(
         ))
 
     # =========================
-    # Visão do Casal
+    # VISÃO DO CASAL
     # =========================
     @app.route('/visao-casal')
     def visao_casal():
         nome_ele = (request.args.get("nome_ele") or "").strip()
         nome_ela = (request.args.get("nome_ela") or "").strip()
+        casal_id = request.args.get("casal_id", type=int)
 
         dados = buscar_visao_casal(
             nome_ele=nome_ele,
             nome_ela=nome_ela,
+            casal_id=casal_id,
             PALESTRAS_TITULOS=PALESTRAS_TITULOS,
             PALESTRAS_SOLO=PALESTRAS_SOLO
         )
@@ -98,6 +111,8 @@ def register_encontreiros_routes(
             "visao_casal.html",
             nome_ele=nome_ele,
             nome_ela=nome_ela,
+            casal_id=casal_id,
+            candidatos=dados["candidatos"],
             dados_encontrista=dados["dados_encontrista"],
             dados_encontreiros=dados["dados_encontreiros"],
             dados_palestras=dados["dados_palestras"],
@@ -108,14 +123,20 @@ def register_encontreiros_routes(
         )
 
     # =========================
-    # Relatório de Casais
+    # RELATÓRIO DE CASAIS
     # =========================
     @app.route('/relatorio-casais', methods=['GET', 'POST'])
     def relatorio_casais():
-        titulo = (request.form.get("titulo") or "Relatório de Casais") if request.method == 'POST' else "Relatório de Casais"
-        entrada = (request.form.get("lista_nomes", "") or "") if request.method == 'POST' else ""
+        titulo = (
+            request.form.get("titulo") or "Relatório de Casais"
+        ) if request.method == 'POST' else "Relatório de Casais"
+
+        entrada = (
+            request.form.get("lista_nomes", "") or ""
+        ) if request.method == 'POST' else ""
 
         resultados = []
+
         if request.method == 'POST' and entrada.strip():
             dados = buscar_relatorio_casais(
                 entrada=entrada,
