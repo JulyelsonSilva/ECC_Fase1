@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Administração de Paróquias</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    .topbar {
+      background: #1f2937;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar a {
+      color: #facc15;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 28px auto;
+      padding: 0 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #374151;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+
+    button, .btn {
+      display: inline-block;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-success {
+      background: #16a34a;
+      color: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .actions form {
+      display: inline;
+      margin: 0;
+    }
+
+    .small {
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    @media (max-width: 850px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div>
+      <strong>Administração de Paróquias</strong>
+    </div>
+
+    <div>
+      <a href="{{ url_for('selecionar_paroquia') }}">Voltar para seleção</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Paróquias cadastradas</h1>
+
+    <div class="grid">
+
+      <div class="card">
+        {% if editando %}
+          <h2>Editar paróquia</h2>
+
+          <form method="post" action="{{ url_for('admin_paroquias_atualizar', paroquia_id=editando.id) }}">
+            <input type="hidden" name="token" value="{{ token }}">
+
+            <label>Nome da paróquia</label>
+            <input type="text" name="nome" value="{{ editando.nome or '' }}" required>
+
+            <label>Cidade</label>
+            <input type="text" name="cidade" value="{{ editando.cidade or '' }}">
+
+            <label>Estado / UF</label>
+            <input type="text" name="estado" maxlength="2" value="{{ editando.estado or '' }}">
+
+            <label>Diocese / Arquidiocese</label>
+            <input type="text" name="diocese" value="{{ editando.diocese or '' }}">
+
+            <button type="submit" class="btn-primary">Salvar alterações</button>
+            <a class="btn btn-secondary" href="{{ url_for('admin_paroquias', token=token) }}">Cancelar</a>
+          </form>
+
+        {% else %}
+          <h2>Cadastrar nova paróquia</h2>
+
+          <form method="post" action="{{ url_for('admin_paroquias_criar') }}">
+            <input type="hidden" name="token" value="{{ token }}">
+
+            <label>Nome da paróquia</label>
+            <input type="text" name="nome" placeholder="Ex: Paróquia São José" required>
+
+            <label>Cidade</label>
+            <input type="text" name="cidade" placeholder="Ex: Maceió">
+
+            <label>Estado / UF</label>
+            <input type="text" name="estado" maxlength="2" placeholder="Ex: AL">
+
+            <label>Diocese / Arquidiocese</label>
+            <input type="text" name="diocese" placeholder="Ex: Arquidiocese de Maceió">
+
+            <button type="submit" class="btn-primary">Cadastrar paróquia</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Paróquia</th>
+              <th>Localização</th>
+              <th>Diocese</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for p in paroquias %}
+              <tr>
+                <td>{{ p.id }}</td>
+
+                <td>
+                  <strong>{{ p.nome }}</strong>
+                  <div class="small">
+                    Criada em: {{ p.created_at or '—' }}
+                  </div>
+                </td>
+
+                <td>
+                  {{ p.cidade or '—' }}
+                  {% if p.estado %}
+                    - {{ p.estado }}
+                  {% endif %}
+                </td>
+
+                <td>{{ p.diocese or '—' }}</td>
+
+                <td>
+                  {% if p.ativa %}
+                    <span class="status active">Ativa</span>
+                  {% else %}
+                    <span class="status inactive">Inativa</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <div class="actions">
+                    <a class="btn btn-secondary"
+                       href="{{ url_for('admin_paroquias_editar', paroquia_id=p.id, token=token) }}">
+                      Editar
+                    </a>
+
+                    <form method="post" action="{{ url_for('admin_paroquias_alternar', paroquia_id=p.id) }}">
+                      <input type="hidden" name="token" value="{{ token }}">
+
+                      {% if p.ativa %}
+                        <button type="submit" class="btn-warning">Desativar</button>
+                      {% else %}
+                        <button type="submit" class="btn-success">Ativar</button>
+                      {% endif %}
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6">Nenhuma paróquia cadastrada.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
