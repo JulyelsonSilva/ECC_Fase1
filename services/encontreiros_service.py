@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 import re
 import mysql.connector
 from mysql.connector import errors as mysql_errors
@@ -10,6 +11,33 @@ def _telefones_encontrista(row):
     tel_ele = (row.get("telefone_ele") or "").strip()
     tel_ela = (row.get("telefone_ela") or "").strip()
     return " / ".join([t for t in [tel_ele, tel_ela] if t])
+
+
+def _json_apelidos(valor):
+    if not valor:
+        return {"ele": [], "ela": []}
+
+    if isinstance(valor, dict):
+        return {
+            "ele": valor.get("ele") or [],
+            "ela": valor.get("ela") or [],
+        }
+
+    try:
+        data = json.loads(valor)
+        return {
+            "ele": data.get("ele") or [],
+            "ela": data.get("ela") or [],
+        }
+    except Exception:
+        return {"ele": [], "ela": []}
+
+
+def _apelidos_texto(valor, lado):
+    data = _json_apelidos(valor)
+    nomes = data.get(lado) or []
+    nomes = [str(n).strip() for n in nomes if str(n).strip()]
+    return ", ".join(nomes)
 
 
 def listar_encontreiros(nome_ele="", nome_ela="", ano_filtro=""):
@@ -246,88 +274,218 @@ def montar_visao_equipes(equipe):
         conn.close()
 
 
-def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
+def buscar_candidatos_visao_casal(nome_ele="", nome_ela="", limite=50):
+    nome_ele = (nome_ele or "").strip()
+    nome_ela = (nome_ela or "").strip()
+
+    if not nome_ele and not nome_ela:
+        return []
+
+    conn = db_conn()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        where = []
+        params = []
+
+        if nome_ele:
+            like_ele = f"%{nome_ele}%"
+            where.append("""
+                (
+                    i.nome_usual_ele LIKE %s
+                    OR i.nome_completo_ele LIKE %s
+                    OR JSON_SEARCH(i.apelidos, 'one', %s, NULL, '$.ele[*]') IS NOT NULL
+                )
+            """)
+            params.extend([like_ele, like_ele, like_ele])
+
+        if nome_ela:
+            like_ela = f"%{nome_ela}%"
+            where.append("""
+                (
+                    i.nome_usual_ela LIKE %s
+                    OR i.nome_completo_ela LIKE %s
+                    OR JSON_SEARCH(i.apelidos, 'one', %s, NULL, '$.ela[*]') IS NOT NULL
+                )
+            """)
+            params.extend([like_ela, like_ela, like_ela])
+
+        sql = f"""
+            SELECT
+                i.id,
+                i.ano,
+                i.nome_completo_ele,
+                i.nome_completo_ela,
+                i.nome_usual_ele,
+                i.nome_usual_ela,
+                i.apelidos,
+                i.telefone_ele,
+                i.telefone_ela,
+                i.endereco,
+                (
+                    SELECT COUNT(*)
+                    FROM encontreiros e
+                    WHERE e.casal_id = i.id
+                ) AS qtd_trabalhos
+            FROM encontristas i
+            WHERE {' AND '.join(where)}
+            ORDER BY
+                i.ano DESC,
+                i.nome_usual_ele ASC,
+                i.nome_usual_ela ASC
+            LIMIT %s
+        """
+
+        params.append(int(limite))
+        cursor.execute(sql, params)
+
+        candidatos = []
+        for r in cursor.fetchall() or []:
+            candidatos.append({
+                "id": r["id"],
+                "ano": r.get("ano"),
+                "nome_completo_ele": r.get("nome_completo_ele") or "",
+                "nome_completo_ela": r.get("nome_completo_ela") or "",
+                "nome_usual_ele": r.get("nome_usual_ele") or "",
+                "nome_usual_ela": r.get("nome_usual_ela") or "",
+                "apelidos_ele": _apelidos_texto(r.get("apelidos"), "ele"),
+                "apelidos_ela": _apelidos_texto(r.get("apelidos"), "ela"),
+                "telefones": _telefones_encontrista(r),
+                "endereco": r.get("endereco") or "",
+                "qtd_trabalhos": int(r.get("qtd_trabalhos") or 0),
+            })
+
+        return candidatos
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO, casal_id=None):
     dados_encontrista = {}
     dados_encontreiros = []
     dados_palestras = []
+    candidatos = []
     erro = None
 
-    if not nome_ele or not nome_ela:
-        return {
-            "dados_encontrista": None,
-            "dados_encontreiros": [],
-            "dados_palestras": [],
-            "anos": [],
-            "por_ano_trabalhos": defaultdict(list),
-            "por_ano_palestras": defaultdict(list),
-            "erro": "Informe ambos os nomes para realizar a busca.",
-        }
+    nome_ele = (nome_ele or "").strip()
+    nome_ela = (nome_ela or "").strip()
+
+    if not casal_id:
+        if not nome_ele and not nome_ela:
+            return {
+                "candidatos": [],
+                "dados_encontrista": None,
+                "dados_encontreiros": [],
+                "dados_palestras": [],
+                "anos": [],
+                "por_ano_trabalhos": defaultdict(list),
+                "por_ano_palestras": defaultdict(list),
+                "erro": None,
+            }
+
+        candidatos = buscar_candidatos_visao_casal(nome_ele, nome_ela)
+
+        if len(candidatos) == 0:
+            return {
+                "candidatos": [],
+                "dados_encontrista": None,
+                "dados_encontreiros": [],
+                "dados_palestras": [],
+                "anos": [],
+                "por_ano_trabalhos": defaultdict(list),
+                "por_ano_palestras": defaultdict(list),
+                "erro": "Nenhum casal encontrado para o filtro informado.",
+            }
+
+        if len(candidatos) > 1:
+            return {
+                "candidatos": candidatos,
+                "dados_encontrista": None,
+                "dados_encontreiros": [],
+                "dados_palestras": [],
+                "anos": [],
+                "por_ano_trabalhos": defaultdict(list),
+                "por_ano_palestras": defaultdict(list),
+                "erro": None,
+            }
+
+        casal_id = candidatos[0]["id"]
 
     conn = db_conn()
     cursor = conn.cursor(dictionary=True)
 
     try:
         cursor.execute("""
-            SELECT id, ano, endereco, telefone_ele, telefone_ela
+            SELECT
+                id,
+                ano,
+                nome_completo_ele,
+                nome_completo_ela,
+                nome_usual_ele,
+                nome_usual_ela,
+                apelidos,
+                endereco,
+                telefone_ele,
+                telefone_ela
             FROM encontristas
-            WHERE nome_usual_ele = %s
-              AND nome_usual_ela = %s
-            ORDER BY ano DESC, id DESC
+            WHERE id = %s
             LIMIT 1
-        """, (nome_ele, nome_ela))
+        """, (casal_id,))
 
         encontrista = cursor.fetchone()
-        casal_id = None
 
-        if encontrista:
-            casal_id = encontrista["id"]
+        if not encontrista:
+            erro = "Casal não encontrado."
+        else:
+            nome_ele_oficial = encontrista.get("nome_usual_ele") or ""
+            nome_ela_oficial = encontrista.get("nome_usual_ela") or ""
+
             dados_encontrista = {
+                "id": encontrista["id"],
                 "ano_encontro": encontrista["ano"],
+                "nome_completo_ele": encontrista.get("nome_completo_ele") or "",
+                "nome_completo_ela": encontrista.get("nome_completo_ela") or "",
+                "nome_usual_ele": nome_ele_oficial,
+                "nome_usual_ela": nome_ela_oficial,
+                "apelidos_ele": _apelidos_texto(encontrista.get("apelidos"), "ele"),
+                "apelidos_ela": _apelidos_texto(encontrista.get("apelidos"), "ela"),
                 "endereco": encontrista.get("endereco") or "",
-                "telefones": _telefones_encontrista(encontrista)
+                "telefones": _telefones_encontrista(encontrista),
             }
 
-        if casal_id:
             cursor.execute("""
                 SELECT
                     e.ano,
                     e.equipe,
                     e.coordenador,
-                    i.endereco AS endereco,
-                    CONCAT_WS(' / ',
-                        NULLIF(TRIM(i.telefone_ele), ''),
-                        NULLIF(TRIM(i.telefone_ela), '')
-                    ) AS telefones,
                     e.status,
                     e.observacao
                 FROM encontreiros e
-                JOIN encontristas i ON i.id = e.casal_id
                 WHERE e.casal_id = %s
                 ORDER BY e.ano DESC, e.equipe ASC, e.id ASC
             """, (casal_id,))
 
             dados_encontreiros = cursor.fetchall() or []
 
-        format_titles = tuple(t for t in PALESTRAS_TITULOS if t not in PALESTRAS_SOLO)
+            format_titles = tuple(t for t in PALESTRAS_TITULOS if t not in PALESTRAS_SOLO)
 
-        if format_titles:
-            in_clause = ", ".join(["%s"] * len(format_titles))
+            if format_titles:
+                in_clause = ", ".join(["%s"] * len(format_titles))
 
-            sql = f"""
-                SELECT ano, palestra
-                FROM palestras
-                WHERE LOWER(nome_ele) = LOWER(%s)
-                  AND LOWER(COALESCE(nome_ela, '')) = LOWER(%s)
-                  AND palestra IN ({in_clause})
-                ORDER BY ano DESC
-            """
+                sql = f"""
+                    SELECT ano, palestra
+                    FROM palestras
+                    WHERE LOWER(TRIM(nome_ele)) = LOWER(TRIM(%s))
+                      AND LOWER(TRIM(COALESCE(nome_ela, ''))) = LOWER(TRIM(%s))
+                      AND palestra IN ({in_clause})
+                    ORDER BY ano DESC
+                """
 
-            params = [nome_ele, nome_ela] + list(format_titles)
-            cursor.execute(sql, params)
-            dados_palestras = cursor.fetchall() or []
-
-        if not encontrista and not dados_encontreiros and not dados_palestras:
-            erro = "Casal não encontrado."
+                params = [nome_ele_oficial, nome_ela_oficial] + list(format_titles)
+                cursor.execute(sql, params)
+                dados_palestras = cursor.fetchall() or []
 
     finally:
         cursor.close()
@@ -356,6 +514,7 @@ def buscar_visao_casal(nome_ele, nome_ela, PALESTRAS_TITULOS, PALESTRAS_SOLO):
     )
 
     return {
+        "candidatos": [],
         "dados_encontrista": dados_encontrista if dados_encontrista else None,
         "dados_encontreiros": dados_encontreiros,
         "dados_palestras": dados_palestras,
