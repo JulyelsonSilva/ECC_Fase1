@@ -26,10 +26,10 @@ def ensure_database_schema():
               nome_completo_ela VARCHAR(250) NULL,
               nome_usual_ele VARCHAR(120) NULL,
               nome_usual_ela VARCHAR(120) NULL,
+              apelidos JSON NULL,
               telefone_ele VARCHAR(40) NULL,
               telefone_ela VARCHAR(40) NULL,
               endereco VARCHAR(255) NULL,
-              cor_circulo VARCHAR(100) NULL,
               casal_visitacao VARCHAR(255) NULL,
               ficha_num VARCHAR(100) NULL,
               aceitou VARCHAR(20) NULL,
@@ -46,37 +46,17 @@ def ensure_database_schema():
               id INT NOT NULL AUTO_INCREMENT,
               ano INT NOT NULL,
               equipe VARCHAR(120) NOT NULL,
-              casal VARCHAR(255) NULL,
-              nome_ele VARCHAR(120) NOT NULL,
-              nome_ela VARCHAR(120) NOT NULL,
+              casal_id INT NULL,
               coordenador VARCHAR(10) NOT NULL DEFAULT 'Não',
-              telefones VARCHAR(120) NULL,
-              endereco VARCHAR(255) NULL,
               observacao TEXT NULL,
               status VARCHAR(40) NULL,
               PRIMARY KEY (id),
               INDEX idx_encontreiros_ano (ano),
               INDEX idx_encontreiros_equipe (equipe),
-              INDEX idx_encontreiros_nome (nome_ele, nome_ela)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        """)
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS implantacao (
-              id INT NOT NULL AUTO_INCREMENT,
-              ano INT NOT NULL,
-              equipe VARCHAR(120) NOT NULL,
-              nome_ele VARCHAR(120) NOT NULL,
-              nome_ela VARCHAR(120) NOT NULL,
-              coordenador VARCHAR(10) NOT NULL DEFAULT 'Não',
-              telefones VARCHAR(120) NULL,
-              endereco VARCHAR(255) NULL,
-              observacao TEXT NULL,
-              status VARCHAR(40) NULL,
-              PRIMARY KEY (id),
-              INDEX idx_implantacao_ano (ano),
-              INDEX idx_implantacao_equipe (equipe),
-              INDEX idx_implantacao_nome (nome_ele, nome_ela)
+              INDEX idx_encontreiros_casal_id (casal_id),
+              CONSTRAINT fk_encontreiros_encontrista
+                FOREIGN KEY (casal_id) REFERENCES encontristas(id)
+                ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
 
@@ -107,24 +87,6 @@ def ensure_database_schema():
               coord_atual_ela VARCHAR(120) NULL,
               PRIMARY KEY (id),
               INDEX idx_circulos_ano (ano)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        """)
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS pendencias_encontreiros (
-              id INT NOT NULL AUTO_INCREMENT,
-              encontreiros_id INT NOT NULL,
-              nome_ele VARCHAR(120) NOT NULL,
-              nome_ela VARCHAR(120) NOT NULL,
-              candidato_id INT NULL,
-              candidato_nome_usual_ele VARCHAR(120) NULL,
-              candidato_nome_usual_ela VARCHAR(120) NULL,
-              score_ele DECIMAL(10,6) NULL,
-              score_ela DECIMAL(10,6) NULL,
-              score_medio DECIMAL(10,6) NULL,
-              PRIMARY KEY (id),
-              INDEX idx_pend_encontreiros_id (encontreiros_id),
-              INDEX idx_pend_candidato_id (candidato_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
 
@@ -167,6 +129,26 @@ def ensure_database_schema():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
 
+        encontristas_missing = {
+            "apelidos": "ALTER TABLE encontristas ADD COLUMN apelidos JSON NULL AFTER nome_usual_ela",
+        }
+        for col, stmt in encontristas_missing.items():
+            if not _column_exists(cur, "encontristas", col):
+                cur.execute(stmt)
+
+        encontreiros_missing = {
+            "casal_id": "ALTER TABLE encontreiros ADD COLUMN casal_id INT NULL AFTER equipe",
+        }
+        for col, stmt in encontreiros_missing.items():
+            if not _column_exists(cur, "encontreiros", col):
+                cur.execute(stmt)
+
+        if not _index_exists(cur, "encontreiros", "idx_encontreiros_casal_id"):
+            cur.execute("""
+                ALTER TABLE encontreiros
+                ADD INDEX idx_encontreiros_casal_id (casal_id)
+            """)
+
         circulos_missing = {
             "coord_orig_ele": "ALTER TABLE circulos ADD COLUMN coord_orig_ele VARCHAR(120) NULL",
             "coord_orig_ela": "ALTER TABLE circulos ADD COLUMN coord_orig_ela VARCHAR(120) NULL",
@@ -178,22 +160,9 @@ def ensure_database_schema():
             if not _column_exists(cur, "circulos", col):
                 cur.execute(stmt)
 
-        pend_missing = {
-            "status": "ALTER TABLE pendencias_encontreiros ADD COLUMN status VARCHAR(30) DEFAULT 'PENDENTE'",
-            "created_at": "ALTER TABLE pendencias_encontreiros ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
-        }
-        for col, stmt in pend_missing.items():
-            if not _column_exists(cur, "pendencias_encontreiros", col):
-                cur.execute(stmt)
-
-        if not _index_exists(cur, "pendencias_encontreiros", "uniq_sug"):
-            cur.execute("""
-                ALTER TABLE pendencias_encontreiros
-                ADD UNIQUE KEY uniq_sug (encontreiros_id, candidato_id)
-            """)
-
         conn.commit()
         return {"ok": True, "msg": "Schema verificado/atualizado com sucesso."}
+
     finally:
         try:
             cur.close()
