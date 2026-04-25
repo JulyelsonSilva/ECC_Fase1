@@ -1097,6 +1097,11 @@ tbody tr:last-child td {
   }
 }
 
+.success {
+    background: #16a34a !important;
+    color: white !important;
+}
+
 @media (max-width: 640px) {
   .container {
     padding: 0 14px;
