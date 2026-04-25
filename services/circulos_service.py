@@ -707,7 +707,7 @@ def transferir_casal_circulo(from_id, to_id, pid, paroquia_id, _encontrista_name
         src_ids = [i for i in src_ids if i != pid]
         dst_ids.append(int(pid))
 
-        ne, na = _encontrista_name_by_id(conn, pid)
+        ne, na = _encontrista_name_by_id(conn, pid, paroquia_id)
         cleared_coord = False
 
         if ne and na and src.get("coord_atual_ele") and src.get("coord_atual_ela"):
@@ -836,7 +836,7 @@ def remove_integrante_circulo(cid, pid, paroquia_id, _encontrista_name_by_id):
         ids = [i for i in ids if i != pid]
 
         cleared_coord = False
-        ne, na = _encontrista_name_by_id(conn, pid)
+        ne, na = _encontrista_name_by_id(conn, pid, paroquia_id)
 
         if ne and na and circ.get("coord_atual_ele") and circ.get("coord_atual_ela"):
             if (
@@ -943,7 +943,7 @@ def definir_coord_circulo(cid, pid, paroquia_id, _encontrista_name_by_id):
         if pid not in ids:
             return {"ok": False, "status_code": 409, "msg": "Casal não está na lista de integrantes atuais."}
 
-        ne, na = _encontrista_name_by_id(conn, pid)
+        ne, na = _encontrista_name_by_id(conn, pid, paroquia_id)
 
         if not (ne and na):
             return {"ok": False, "status_code": 404, "msg": "Casal não encontrado."}
