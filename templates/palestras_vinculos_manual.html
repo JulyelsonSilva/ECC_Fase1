@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+  <h2 class="mb-4">Vínculo Manual de Palestras</h2>
+
+  <!-- FILTROS -->
+  <form method="get" class="mb-4">
+    <input type="hidden" name="token" value="{{ filtros.token }}">
+
+    <div class="row">
+      <div class="col-md-3">
+        <label>Nome Ele (Palestra)</label>
+        <input type="text" name="p_nome_ele" class="form-control" value="{{ filtros.p_nome_ele }}">
+      </div>
+
+      <div class="col-md-3">
+        <label>Nome Ela (Palestra)</label>
+        <input type="text" name="p_nome_ela" class="form-control" value="{{ filtros.p_nome_ela }}">
+      </div>
+
+      <div class="col-md-2">
+        <label>Ano</label>
+        <input type="text" name="p_ano" class="form-control" value="{{ filtros.p_ano }}">
+      </div>
+
+      <div class="col-md-4">
+        <label>Palestra</label>
+        <input type="text" name="p_palestra" class="form-control" value="{{ filtros.p_palestra }}">
+      </div>
+    </div>
+
+    <hr>
+
+    <div class="row">
+      <div class="col-md-3">
+        <label>Nome Completo Ele</label>
+        <input type="text" name="c_nome_completo_ele" class="form-control" value="{{ filtros.c_nome_completo_ele }}">
+      </div>
+
+      <div class="col-md-3">
+        <label>Nome Completo Ela</label>
+        <input type="text" name="c_nome_completo_ela" class="form-control" value="{{ filtros.c_nome_completo_ela }}">
+      </div>
+
+      <div class="col-md-3">
+        <label>Nome Usual Ele</label>
+        <input type="text" name="c_nome_usual_ele" class="form-control" value="{{ filtros.c_nome_usual_ele }}">
+      </div>
+
+      <div class="col-md-3">
+        <label>Nome Usual Ela</label>
+        <input type="text" name="c_nome_usual_ela" class="form-control" value="{{ filtros.c_nome_usual_ela }}">
+      </div>
+    </div>
+
+    <div class="row mt-2">
+      <div class="col-md-3">
+        <label>Ano Encontro</label>
+        <input type="text" name="c_ano" class="form-control" value="{{ filtros.c_ano }}">
+      </div>
+
+      <div class="col-md-6">
+        <label>Endereço</label>
+        <input type="text" name="c_endereco" class="form-control" value="{{ filtros.c_endereco }}">
+      </div>
+
+      <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- FORM PRINCIPAL -->
+  <form method="post" action="{{ url_for('admin_palestras_vinculos_manual_vincular') }}">
+    <input type="hidden" name="token" value="{{ filtros.token }}">
+
+    <!-- manter filtros após POST -->
+    {% for key, value in filtros.items() %}
+      {% if key != 'token' %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+      {% endif %}
+    {% endfor %}
+
+    <div class="row">
+
+      <!-- PALESTRAS (ESQUERDA) -->
+      <div class="col-md-6">
+        <h5>Palestras sem vínculo</h5>
+
+        <div style="max-height: 600px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+
+          {% if palestras %}
+            {% for p in palestras %}
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="palestras_ids" value="{{ p.id }}">
+
+                <label class="form-check-label">
+                  <strong>{{ p.nome_ele }}{% if p.nome_ela %} e {{ p.nome_ela }}{% endif %}</strong><br>
+                  <small>
+                    Ano: {{ p.ano }} |
+                    Palestra: {{ p.palestra }} |
+                    Status: {{ p.status or '—' }}
+                  </small>
+                </label>
+              </div>
+              <hr>
+            {% endfor %}
+          {% else %}
+            <p>Nenhuma palestra encontrada.</p>
+          {% endif %}
+
+        </div>
+      </div>
+
+      <!-- ENCONTRISTAS (DIREITA) -->
+      <div class="col-md-6">
+        <h5>Selecionar casal</h5>
+
+        <div style="max-height: 600px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+
+          {% if encontristas %}
+            {% for c in encontristas %}
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="casal_id" value="{{ c.id }}">
+
+                <label class="form-check-label">
+                  <strong>{{ c.nome_usual_ele }} e {{ c.nome_usual_ela }}</strong><br>
+                  <small>
+                    Ano: {{ c.ano }} |
+                    ECC: {{ c.num_ecc }}<br>
+                    {{ c.nome_completo_ele }} e {{ c.nome_completo_ela }}<br>
+                    Tel: {{ c.telefone_ele }} / {{ c.telefone_ela }}<br>
+                    {{ c.endereco }}
+                  </small>
+                </label>
+              </div>
+              <hr>
+            {% endfor %}
+          {% else %}
+            <p>Nenhum encontrista encontrado.</p>
+          {% endif %}
+
+        </div>
+      </div>
+
+    </div>
+
+    <div class="mt-3">
+      <button type="submit" class="btn btn-success">
+        Vincular selecionados ao casal
+      </button>
+    </div>
+
+  </form>
+
+</div>
+
+{% endblock %}
