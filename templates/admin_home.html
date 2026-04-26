@@ -2,21 +2,63 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Configurações</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configurações | Sistema ECC</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
+
 <body>
-  <h1>Configurações do sistema</h1>
+  <main class="page-shell">
+    <div class="container">
 
-  <ul>
-    <li>
-      <a href="{{ url_for('admin_paroquias', token=token) }}">
-        Paróquias
-      </a>
-    </li>
-  </ul>
+      <section class="page-header">
+        <div>
+          <div class="eyebrow">Administração</div>
+          <h1 class="page-title">Configurações do Sistema</h1>
+          <p class="page-subtitle">
+            Gerencie os cadastros estruturais do sistema.
+          </p>
+        </div>
 
-  <p>
-    <a href="{{ url_for('selecionar_paroquia') }}">Voltar para seleção de paróquia</a>
-  </p>
+        <a href="{{ url_for('selecionar_paroquia') }}" class="btn btn-soft">
+          <i class="bi bi-arrow-left"></i>
+          Voltar
+        </a>
+      </section>
+
+      <section class="cards-grid">
+
+        <a class="feature-card" href="{{ url_for('admin_paroquias', token=token) }}">
+          <div class="feature-icon">
+            <i class="bi bi-buildings"></i>
+          </div>
+
+          <div>
+            <h2>Paróquias</h2>
+            <p>
+              Cadastrar, editar, ativar ou desativar paróquias disponíveis no sistema.
+            </p>
+          </div>
+        </a>
+
+        <div class="feature-card is-disabled">
+          <div class="feature-icon">
+            <i class="bi bi-people-gear"></i>
+          </div>
+
+          <div>
+            <h2>Usuários</h2>
+            <p>
+              Controle de usuários e permissões será implementado na próxima etapa.
+            </p>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
 </body>
 </html>
