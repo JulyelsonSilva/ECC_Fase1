@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Sistema ECC{% endblock %}</title>
+  <title>{% block title %}Sistema do ECC{% endblock %}</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -13,7 +13,7 @@
 <body>
   <header class="topbar">
     <div class="container topbar-inner">
-      <a href="{{ url_for('index') }}" class="brand-link" aria-label="Ir para a página inicial do Sistema ECC Divino">
+      <a href="{{ url_for('index') }}" class="brand-link" aria-label="Ir para a página inicial do Sistema do ECC">
         <span class="brand-mark">
           <img
             src="{{ url_for('static', filename='img/brasao_divino.jpg') }}"
@@ -23,7 +23,7 @@
         </span>
 
         <div>
-          <div class="brand-title">Sistema ECC Divino</div>
+          <div class="brand-title">Sistema do ECC</div>
           <div class="brand-subtitle">
             {% if paroquia_nome %}
               {{ paroquia_nome }}
