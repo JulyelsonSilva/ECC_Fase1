@@ -21,7 +21,7 @@ from routes.montagem import register_montagem_routes
 from routes.palestras import register_palestras_routes
 from routes.core import register_core_routes
 from routes.admin import register_admin_routes
-
+from routes.palestras_vinculos import register_palestras_vinculos_routes
 
 
 app = Flask(__name__)
