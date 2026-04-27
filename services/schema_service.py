@@ -157,16 +157,20 @@ def ensure_database_schema():
               paroquia_id INT NOT NULL DEFAULT 1,
               ano INT NOT NULL,
               palestra VARCHAR(255) NOT NULL,
-              nome_ele VARCHAR(120) NOT NULL,
-              nome_ela VARCHAR(120) NOT NULL,
+              casal_id INT NULL,
+              palestrante VARCHAR(255) NULL,
               observacao TEXT NULL,
               status VARCHAR(40) NULL,
               PRIMARY KEY (id),
               INDEX idx_palestras_paroquia (paroquia_id),
               INDEX idx_palestras_ano (ano),
               INDEX idx_palestras_palestra (palestra),
+              INDEX idx_palestras_casal_id (casal_id),
               CONSTRAINT fk_palestras_paroquia
-                FOREIGN KEY (paroquia_id) REFERENCES paroquias(id)
+                FOREIGN KEY (paroquia_id) REFERENCES paroquias(id),
+              CONSTRAINT fk_palestras_encontrista
+                FOREIGN KEY (casal_id) REFERENCES encontristas(id)
+                ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
 
@@ -271,6 +275,8 @@ def ensure_database_schema():
         # =========================
         palestras_missing = {
             "paroquia_id": "ALTER TABLE palestras ADD COLUMN paroquia_id INT NULL AFTER id",
+            "casal_id": "ALTER TABLE palestras ADD COLUMN casal_id INT NULL AFTER palestra",
+            "palestrante": "ALTER TABLE palestras ADD COLUMN palestrante VARCHAR(255) NULL AFTER casal_id",
         }
 
         for col, stmt in palestras_missing.items():
@@ -310,6 +316,12 @@ def ensure_database_schema():
                 ADD INDEX idx_encontreiros_casal_id (casal_id)
             """)
 
+        if not _index_exists(cur, "palestras", "idx_palestras_casal_id"):
+            cur.execute("""
+                ALTER TABLE palestras
+                ADD INDEX idx_palestras_casal_id (casal_id)
+            """)
+
         if not _index_exists(cur, "encontristas", "idx_encontristas_paroquia"):
             cur.execute("""
                 ALTER TABLE encontristas
@@ -341,6 +353,27 @@ def ensure_database_schema():
         _ensure_paroquia_fk(cur, "encontreiros", "fk_encontreiros_paroquia")
         _ensure_paroquia_fk(cur, "palestras", "fk_palestras_paroquia")
         _ensure_paroquia_fk(cur, "circulos", "fk_circulos_paroquia")
+
+        # =========================
+        # FOREIGN KEYS ESPECÍFICAS
+        # =========================
+        if _column_exists(cur, "palestras", "casal_id"):
+            if not _foreign_key_exists(cur, "palestras", "fk_palestras_encontrista"):
+                cur.execute("""
+                    ALTER TABLE palestras
+                    ADD CONSTRAINT fk_palestras_encontrista
+                    FOREIGN KEY (casal_id) REFERENCES encontristas(id)
+                    ON DELETE SET NULL
+                """)
+
+        if _column_exists(cur, "encontreiros", "casal_id"):
+            if not _foreign_key_exists(cur, "encontreiros", "fk_encontreiros_encontrista"):
+                cur.execute("""
+                    ALTER TABLE encontreiros
+                    ADD CONSTRAINT fk_encontreiros_encontrista
+                    FOREIGN KEY (casal_id) REFERENCES encontristas(id)
+                    ON DELETE SET NULL
+                """)
 
         conn.commit()
         return {"ok": True, "msg": "Schema verificado/atualizado com sucesso."}
