@@ -1,494 +1,578 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <title>Detalhe do Círculo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{ --bg:#f6f7fb; --ink:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e5e7eb; --brand:#2563eb; }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 80% -10%, #e0ebff 0, rgba(224,235,255,0) 60%),
-        radial-gradient(1000px 600px at -10% 110%, #fff3d6 0, rgba(255,243,214,0) 60%),
-        var(--bg);
-    }
-    .wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
-    .header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px}
-    a.btn, button.btn{height:36px; border:1px solid var(--border); border-radius:10px; padding:0 12px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; background:#fff; cursor:pointer;}
-    .btn-primary{background:var(--brand); color:#fff; border:none}
-    h1{margin:0; font-size:20px}
-    .muted{color:var(--muted)}
-    .grid-2{display:grid; gap:14px; grid-template-columns: 1.5fr .8fr}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 8px 20px rgba(15,23,42,.05)}
-    .row{display:grid; grid-template-columns: 160px 1fr auto; gap:10px; align-items:center; padding:6px 0; border-bottom:1px dashed var(--border)}
-    .row.full{grid-template-columns: 160px 1fr auto}
-    .row:last-child{border-bottom:none}
-    .label{color:#475569; font-size:13px}
-    input[type="text"], input[type="color"], select, textarea{
-      width:100%; height:36px; border:1px solid var(--border); border-radius:10px; padding:0 10px; background:#fff; color:inherit;
-    }
-    textarea{height:90px; padding:8px 10px; resize:vertical}
-    .inline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-    .hint{color:var(--muted); font-size:12px}
-    .list{display:flex; gap:6px; flex-wrap:wrap}
-    .chip{
-      display:inline-block;
-      padding:6px 10px;
-      border:1px solid #cbd5e1;
-      border-radius:999px;
-      font-size:12px;
-      background:#ffffff;
-      color:#0f172a;
-      font-weight:600;
-    }
-    .pill{display:inline-block; font-size:12px; border:1px solid rgba(0,0,0,.08); padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.6); margin:2px 6px 2px 0}
-    .two-col{display:grid; grid-template-columns: 1fr 1fr; gap:8px}
-    .side-list{max-height:380px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:8px; background:#fff}
-    .side-item{display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed var(--border); padding:6px 2px}
-    .side-item:last-child{border-bottom:none}
-    .mini{font-size:12px}
-    .side-actions .btn{height:28px; border-radius:8px; padding:0 8px}
-    .title-bar{border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:10px}
-    .title-bar[data-color]{ background: rgba(var(--c), .10); border-color: rgba(var(--c), .35) }
-    @media (prefers-color-scheme: dark){
-      :root{ --bg:#0b1220; --card:#0f172a; --border:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --brand:#3b82f6; }
-      .card{box-shadow:none}
-      a.btn,button.btn{background:transparent}
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header">
-      <div class="inline">
-        <a class="btn" href="{{ url_for('circulos_list') }}">← Voltar</a>
-        <a class="btn" href="{{ url_for('circulos_transferir') }}">🔁 Transferir casal</a>
-        <a class="btn" href="{{ url_for('pesquisa_circulos') }}">🔎 Pesquisa</a>
-      </div>
-      <h1>Detalhe do Círculo</h1>
-      <div></div>
+{% extends "base.html" %}
+
+{% block title %}Detalhe do Círculo{% endblock %}
+
+{% block extra_head %}
+<style>
+.wrap{max-width:1100px; margin:0 auto; padding:24px 16px 64px;}
+.header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px}
+h1{margin:0; font-size:20px}
+.muted{color:var(--muted)}
+.grid-2{display:grid; gap:14px; grid-template-columns: 1.5fr .8fr}
+.card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:var(--shadow)}
+.row{display:grid; grid-template-columns: 160px 1fr auto; gap:10px; align-items:center; padding:6px 0; border-bottom:1px dashed var(--border)}
+.row.full{grid-template-columns: 160px 1fr auto}
+.row:last-child{border-bottom:none}
+.label{color:#475569; font-size:13px}
+input[type="text"], input[type="color"], select, textarea{
+  width:100%; height:36px; border:1px solid var(--border); border-radius:10px; padding:0 10px; background:#fff; color:inherit;
+}
+textarea{height:90px; padding:8px 10px; resize:vertical}
+.inline{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.hint{color:var(--muted); font-size:12px}
+.list{display:flex; gap:6px; flex-wrap:wrap}
+.chip{
+  display:inline-block;
+  padding:6px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:999px;
+  font-size:12px;
+  background:#ffffff;
+  color:#0f172a;
+  font-weight:600;
+}
+.pill{display:inline-block; font-size:12px; border:1px solid rgba(0,0,0,.08); padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.6); margin:2px 6px 2px 0}
+.two-col{display:grid; grid-template-columns: 1fr 1fr; gap:8px}
+.side-list{max-height:380px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:8px; background:#fff}
+.side-item{display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed var(--border); padding:6px 2px}
+.side-item:last-child{border-bottom:none}
+.mini{font-size:12px}
+.side-actions .btn{height:28px; border-radius:8px; padding:0 8px}
+.title-bar{border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:10px}
+.title-bar[data-color]{ background: rgba(var(--c), .10); border-color: rgba(var(--c), .35) }
+@media (max-width: 900px){
+  .grid-2{grid-template-columns:1fr}
+  .row,.row.full{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="header">
+    <div class="inline">
+      <a class="btn" href="{{ url_for('circulos_list') }}">← Voltar</a>
+      <a class="btn" href="{{ url_for('circulos_transferir') }}">🔁 Transferir casal</a>
+      <a class="btn" href="{{ url_for('pesquisa_circulos') }}">🔎 Pesquisa</a>
     </div>
+    <h1>Detalhe do Círculo</h1>
+    <div></div>
+  </div>
 
-    <!-- Barra de título com cor -->
-    <div id="title_bar" class="title-bar" {% if rgb_triplet %} data-color="1" style="--c: {{ rgb_triplet }}"{% endif %}>
-      <div class="inline" style="justify-content:space-between">
-        <div>
-          <div><strong>Nome:</strong> <span id="nome_view">{{ r.nome_circulo or '— Sem nome —' }}</span></div>
-          <div class="muted mini">Ano {{ r.ano }} • Cor: <span id="cor_view">{{ r.cor_circulo or '—' }}</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <!-- Coluna principal -->
-      <div class="card">
-        <!-- ANO (fixo) -->
-        <div class="row">
-          <div class="label">Ano</div>
-          <div><strong>{{ r.ano }}</strong></div>
-          <div class="hint">Campo fixo</div>
-        </div>
-
-        <!-- Nome do círculo (editável) -->
-        <div class="row">
-          <div class="label">Nome do Círculo</div>
-          <div>
-            <div id="nome_area_view"><strong id="nome_txt">{{ r.nome_circulo or '—' }}</strong></div>
-            <div id="nome_area_edit" class="inline" style="display:none; margin-top:6px">
-              <input type="text" id="nome_input" value="{{ r.nome_circulo or '' }}" />
-              <button class="btn btn-primary" onclick="saveSimple('nome_circulo', document.getElementById('nome_input').value)">Salvar</button>
-              <button class="btn" onclick="toggleEdit('nome', false)">Cancelar</button>
-            </div>
-          </div>
-          <div><button class="btn" onclick="toggleEdit('nome', true)">Editar</button></div>
-        </div>
-
-        <!-- Cor do círculo (editável; aceita nome ou #hex) -->
-        <div class="row">
-          <div class="label">Cor do Círculo</div>
-          <div>
-            <div id="cor_area_view"><span id="cor_txt">{{ r.cor_circulo or '—' }}</span></div>
-            <div id="cor_area_edit" class="inline" style="display:none; margin-top:6px">
-              <input type="text" id="cor_input" placeholder="Ex.: Azul ou #2563eb" value="{{ r.cor_circulo or '' }}" />
-              <button class="btn btn-primary" onclick="saveCor()">Salvar</button>
-              <button class="btn" onclick="toggleEdit('cor', false)">Cancelar</button>
-            </div>
-          </div>
-          <div><button class="btn" onclick="toggleEdit('cor', true)">Editar</button></div>
-        </div>
-
-        <!-- Coordenadores Originais (fixos) -->
-        <div class="row">
-          <div class="label">Coord. Originais</div>
-          <div><strong>{{ r.coord_orig_ele or '—' }} & {{ r.coord_orig_ela or '—' }}</strong></div>
-          <div class="hint">Campos fixos</div>
-        </div>
-
-        <!-- Coordenadores Atuais (combo dos integrantes atuais) -->
-        <div class="row">
-          <div class="label">Coord. Atuais</div>
-          <div>
-            <div id="coord_atual_view">
-              <span id="coord_atual_txt">
-                {% if r.coord_atual_ele and r.coord_atual_ela %}
-                  {{ r.coord_atual_ele }} & {{ r.coord_atual_ela }}
-                {% else %}
-                  — (não definido)
-                {% endif %}
-              </span>
-            </div>
-
-            <div id="coord_atual_edit" class="inline" style="display:none; margin-top:6px">
-              <select id="coord_select">
-                <option value="">— Selecionar casal (dos integrantes atuais) —</option>
-              </select>
-              <button class="btn btn-primary" onclick="saveCoordAtual()">Salvar</button>
-              <button class="btn" onclick="toggleEdit('coord', false)">Cancelar</button>
-            </div>
-          </div>
-          <div><button class="btn" onclick="toggleEdit('coord', true)">Editar</button></div>
-        </div>
-
-        <!-- Integrantes (Atual): ver + adicionar + remover -->
-        <div class="row full">
-          <div class="label">Integrantes (Atual)</div>
-          <div>
-            <div id="integrantes_atual_list" class="list"></div>
-            <div class="hint">Os nomes são resolvidos a partir dos IDs cadastrados.</div>
-
-            <!-- Painel ADICIONAR -->
-            <div id="integrantes_add_panel" class="card" style="display:none; margin-top:10px; padding:12px">
-              <div class="small muted" style="margin-bottom:6px">Adicionar integrantes</div>
-              <div class="two-col">
-                <div>
-                  <div class="mini muted" style="margin-bottom:4px">Procure por nomes</div>
-                  <div class="inline">
-                    <input type="text" id="inp_ele" placeholder="Nome (Ele)" />
-                    <input type="text" id="inp_ela" placeholder="Nome (Ela)" />
-                    <button class="btn" onclick="buscarCasal()">Buscar</button>
-                  </div>
-                  <div id="busca_info" class="mini muted" style="margin-top:6px"></div>
-                  <div class="inline" style="margin-top:8px">
-                    <button class="btn btn-primary" onclick="confirmarAdicionar()">Confirmar inclusão</button>
-                    <button class="btn" onclick="toggleAddIntegrantes(false)">Fechar</button>
-                  </div>
-                </div>
-                <div>
-                  <div class="mini" style="margin-bottom:6px"><strong>Encontristas de {{ r.ano }}</strong> (clique para preencher)</div>
-                  <div id="side_list" class="side-list mini"></div>
-                </div>
-              </div>
-              <div class="inline" style="margin-top:10px">
-                <button class="btn" onclick="concluirIntegrantes()">Concluir e copiar para “Originais”</button>
-              </div>
-            </div>
-
-            <!-- Painel REMOVER -->
-            <div id="integrantes_remove_panel" class="card" style="display:none; margin-top:10px; padding:12px">
-              <div class="small muted" style="margin-bottom:6px">Remover integrantes deste círculo</div>
-              <div id="integrantes_remove_list" class="list"></div>
-              <div class="inline" style="margin-top:8px">
-                <button class="btn" onclick="toggleRemoveIntegrantes(false)">Fechar</button>
-              </div>
-            </div>
-          </div>
-          <div class="inline">
-            <button class="btn" onclick="toggleAddIntegrantes(true)">Editar (adicionar)</button>
-            <button class="btn" onclick="toggleRemoveIntegrantes(true)">Alterar (remover)</button>
-          </div>
-        </div>
-
-        <!-- Integrantes (Originais) — visual -->
-        <div class="row full">
-          <div class="label">Integrantes (Originais)</div>
-          <div><div id="integrantes_orig_list" class="list"></div></div>
-          <div class="hint">Atualizado ao clicar “Concluir” acima</div>
-        </div>
-
-        <!-- Situação (editável) -->
-        <div class="row">
-          <div class="label">Situação</div>
-          <div>
-            <div id="sit_area_view"><strong id="sit_txt">{{ r.situacao or '—' }}</strong></div>
-            <div id="sit_area_edit" class="inline" style="display:none; margin-top:6px">
-              <input type="text" id="sit_input" value="{{ r.situacao or '' }}" />
-              <button class="btn btn-primary" onclick="saveSimple('situacao', document.getElementById('sit_input').value)">Salvar</button>
-              <button class="btn" onclick="toggleEdit('sit', false)">Cancelar</button>
-            </div>
-          </div>
-          <div><button class="btn" onclick="toggleEdit('sit', true)">Editar</button></div>
-        </div>
-
-        <!-- Observação (editável) -->
-        <div class="row">
-          <div class="label">Observação</div>
-          <div>
-            <div id="obs_area_view"><span id="obs_txt">{{ r.observacao or '—' }}</span></div>
-            <div id="obs_area_edit" class="inline" style="display:none; margin-top:6px">
-              <textarea id="obs_input">{{ r.observacao or '' }}</textarea>
-              <div class="inline">
-                <button class="btn btn-primary" onclick="saveSimple('observacao', document.getElementById('obs_input').value)">Salvar</button>
-                <button class="btn" onclick="toggleEdit('obs', false)">Cancelar</button>
-              </div>
-            </div>
-          </div>
-          <div><button class="btn" onclick="toggleEdit('obs', true)">Editar</button></div>
-        </div>
-      </div>
-
-      <!-- Coluna lateral: Ajuda / Ações rápidas -->
-      <div class="card">
-        <div class="muted mini">Ações</div>
-        <div class="list" style="margin-top:6px">
-          <a class="btn" href="{{ url_for('circulos_transferir') }}">🔁 Transferir casal</a>
-          <a class="btn" href="{{ url_for('pesquisa_circulos') }}">🔎 Pesquisa</a>
-          <a class="btn" href="{{ url_for('circulos_list') }}">📚 Lista de círculos</a>
-        </div>
-        <hr style="border:none; border-top:1px dashed var(--border); margin:14px 0">
-        <div class="mini muted">Dica</div>
-        <p class="mini" style="margin:6px 0 0">
-          “Coord. Atuais” é uma seleção <em>entre os integrantes atuais</em>. Se remover o casal coordenador, o campo será limpo.
-        </p>
+  <div id="title_bar" class="title-bar" {% if rgb_triplet %} data-color="1" style="--c: {{ rgb_triplet }}"{% endif %}>
+    <div class="inline" style="justify-content:space-between">
+      <div>
+        <div><strong>Nome:</strong> <span id="nome_view">{{ r.nome_circulo or '— Sem nome —' }}</span></div>
+        <div class="muted mini">Ano {{ r.ano }} • Cor: <span id="cor_view">{{ r.cor_circulo or '—' }}</span></div>
       </div>
     </div>
   </div>
 
-  <script>
-    const CIRC_ID = {{ r.id }};
-    const CIRC_ANO = {{ r.ano }};
-    let INTEGRANTES_ATUAL = [];   // [{id, nome_ele, nome_ela}]
-    let INTEGRANTES_ORIG  = [];
+  <div class="grid-2">
+    <div class="card">
+      <div class="row">
+        <div class="label">Ano</div>
+        <div><strong>{{ r.ano }}</strong></div>
+        <div class="hint">Campo fixo</div>
+      </div>
 
-    function toggleEdit(which, show){
-      const map = {
-        'nome': ['nome_area_view','nome_area_edit'],
-        'cor': ['cor_area_view','cor_area_edit'],
-        'coord': ['coord_atual_view','coord_atual_edit'],
-        'sit': ['sit_area_view','sit_area_edit'],
-        'obs': ['obs_area_view','obs_area_edit'],
-      };
-      const ids = map[which];
-      if(!ids) return;
-      document.getElementById(ids[0]).style.display = show ? 'none':'';
-      document.getElementById(ids[1]).style.display = show ? '':'none';
+      <div class="row">
+        <div class="label">Nome do Círculo</div>
+        <div>
+          <div id="nome_area_view"><strong id="nome_txt">{{ r.nome_circulo or '—' }}</strong></div>
+          <div id="nome_area_edit" class="inline" style="display:none; margin-top:6px">
+            <input type="text" id="nome_input" value="{{ r.nome_circulo or '' }}" />
+            <button class="btn btn-primary" onclick="saveSimple('nome_circulo', document.getElementById('nome_input').value)">Salvar</button>
+            <button class="btn" onclick="toggleEdit('nome', false)">Cancelar</button>
+          </div>
+        </div>
+        <div><button class="btn" onclick="toggleEdit('nome', true)">Editar</button></div>
+      </div>
+
+      <div class="row">
+        <div class="label">Cor do Círculo</div>
+        <div>
+          <div id="cor_area_view"><span id="cor_txt">{{ r.cor_circulo or '—' }}</span></div>
+          <div id="cor_area_edit" class="inline" style="display:none; margin-top:6px">
+            <input type="text" id="cor_input" placeholder="Ex.: Azul ou #2563eb" value="{{ r.cor_circulo or '' }}" />
+            <button class="btn btn-primary" onclick="saveCor()">Salvar</button>
+            <button class="btn" onclick="toggleEdit('cor', false)">Cancelar</button>
+          </div>
+        </div>
+        <div><button class="btn" onclick="toggleEdit('cor', true)">Editar</button></div>
+      </div>
+
+      <div class="row">
+        <div class="label">Coord. Originais</div>
+        <div><strong>{{ r.coord_orig_ele or '—' }} & {{ r.coord_orig_ela or '—' }}</strong></div>
+        <div class="hint">Campos fixos</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Coord. Atuais</div>
+        <div>
+          <div id="coord_atual_view">
+            <span id="coord_atual_txt">
+              {% if r.coord_atual_ele and r.coord_atual_ela %}
+                {{ r.coord_atual_ele }} & {{ r.coord_atual_ela }}
+              {% else %}
+                — (não definido)
+              {% endif %}
+            </span>
+          </div>
+
+          <div id="coord_atual_edit" class="inline" style="display:none; margin-top:6px">
+            <select id="coord_select">
+              <option value="">— Selecionar casal (dos integrantes atuais) —</option>
+            </select>
+            <button class="btn btn-primary" onclick="saveCoordAtual()">Salvar</button>
+            <button class="btn" onclick="toggleEdit('coord', false)">Cancelar</button>
+          </div>
+        </div>
+        <div><button class="btn" onclick="toggleEdit('coord', true)">Editar</button></div>
+      </div>
+
+      <div class="row full">
+        <div class="label">Integrantes (Atual)</div>
+        <div>
+          <div id="integrantes_atual_list" class="list"></div>
+          <div class="hint">Os nomes são resolvidos a partir dos IDs cadastrados.</div>
+
+          <div id="integrantes_add_panel" class="card" style="display:none; margin-top:10px; padding:12px">
+            <div class="small muted" style="margin-bottom:6px">Adicionar integrantes</div>
+
+            <div class="two-col">
+              <div data-casal-grupo>
+                <input type="hidden" id="inp_casal_id" data-casal-id>
+
+                <div class="mini muted" style="margin-bottom:4px">Procure por nomes</div>
+                <div class="inline">
+                  <input type="text" id="inp_ele" data-casal-ele placeholder="Nome (Ele)" />
+                  <input type="text" id="inp_ela" data-casal-ela placeholder="Nome (Ela)" />
+                  <button class="btn" type="button" data-casal-buscar>Buscar</button>
+                </div>
+
+                <div id="busca_info" class="mini muted" style="margin-top:6px"></div>
+
+                <div class="inline" style="margin-top:8px">
+                  <button class="btn btn-primary" onclick="confirmarAdicionar()">Confirmar inclusão</button>
+                  <button class="btn" onclick="toggleAddIntegrantes(false)">Fechar</button>
+                </div>
+              </div>
+
+              <div>
+                <div class="mini" style="margin-bottom:6px"><strong>Encontristas de {{ r.ano }}</strong> (clique para preencher)</div>
+                <div id="side_list" class="side-list mini"></div>
+              </div>
+            </div>
+
+            <div class="inline" style="margin-top:10px">
+              <button class="btn" onclick="concluirIntegrantes()">Concluir e copiar para “Originais”</button>
+            </div>
+          </div>
+
+          <div id="integrantes_remove_panel" class="card" style="display:none; margin-top:10px; padding:12px">
+            <div class="small muted" style="margin-bottom:6px">Remover integrantes deste círculo</div>
+            <div id="integrantes_remove_list" class="list"></div>
+            <div class="inline" style="margin-top:8px">
+              <button class="btn" onclick="toggleRemoveIntegrantes(false)">Fechar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="inline">
+          <button class="btn" onclick="toggleAddIntegrantes(true)">Editar (adicionar)</button>
+          <button class="btn" onclick="toggleRemoveIntegrantes(true)">Alterar (remover)</button>
+        </div>
+      </div>
+
+      <div class="row full">
+        <div class="label">Integrantes (Originais)</div>
+        <div><div id="integrantes_orig_list" class="list"></div></div>
+        <div class="hint">Atualizado ao clicar “Concluir” acima</div>
+      </div>
+
+      <div class="row">
+        <div class="label">Situação</div>
+        <div>
+          <div id="sit_area_view"><strong id="sit_txt">{{ r.situacao or '—' }}</strong></div>
+          <div id="sit_area_edit" class="inline" style="display:none; margin-top:6px">
+            <input type="text" id="sit_input" value="{{ r.situacao or '' }}" />
+            <button class="btn btn-primary" onclick="saveSimple('situacao', document.getElementById('sit_input').value)">Salvar</button>
+            <button class="btn" onclick="toggleEdit('sit', false)">Cancelar</button>
+          </div>
+        </div>
+        <div><button class="btn" onclick="toggleEdit('sit', true)">Editar</button></div>
+      </div>
+
+      <div class="row">
+        <div class="label">Observação</div>
+        <div>
+          <div id="obs_area_view"><span id="obs_txt">{{ r.observacao or '—' }}</span></div>
+          <div id="obs_area_edit" class="inline" style="display:none; margin-top:6px">
+            <textarea id="obs_input">{{ r.observacao or '' }}</textarea>
+            <div class="inline">
+              <button class="btn btn-primary" onclick="saveSimple('observacao', document.getElementById('obs_input').value)">Salvar</button>
+              <button class="btn" onclick="toggleEdit('obs', false)">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div><button class="btn" onclick="toggleEdit('obs', true)">Editar</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted mini">Ações</div>
+      <div class="list" style="margin-top:6px">
+        <a class="btn" href="{{ url_for('circulos_transferir') }}">🔁 Transferir casal</a>
+        <a class="btn" href="{{ url_for('pesquisa_circulos') }}">🔎 Pesquisa</a>
+        <a class="btn" href="{{ url_for('circulos_list') }}">📚 Lista de círculos</a>
+      </div>
+
+      <hr style="border:none; border-top:1px dashed var(--border); margin:14px 0">
+
+      <div class="mini muted">Dica</div>
+      <p class="mini" style="margin:6px 0 0">
+        “Coord. Atuais” é uma seleção <em>entre os integrantes atuais</em>. Se remover o casal coordenador, o campo será limpo.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CIRC_ID = {{ r.id }};
+const CIRC_ANO = {{ r.ano }};
+
+let INTEGRANTES_ATUAL = [];
+let INTEGRANTES_ORIG  = [];
+let LAST_FOUND = null;
+
+function toggleEdit(which, show){
+  const map = {
+    'nome': ['nome_area_view','nome_area_edit'],
+    'cor': ['cor_area_view','cor_area_edit'],
+    'coord': ['coord_atual_view','coord_atual_edit'],
+    'sit': ['sit_area_view','sit_area_edit'],
+    'obs': ['obs_area_view','obs_area_edit'],
+  };
+
+  const ids = map[which];
+  if(!ids) return;
+
+  document.getElementById(ids[0]).style.display = show ? 'none':'';
+  document.getElementById(ids[1]).style.display = show ? '':'none';
+}
+
+async function saveSimple(field, value){
+  const js = await fetch(`/api/circulos/${CIRC_ID}/update`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ field, value })
+  }).then(r=>r.json());
+
+  if(!js.ok){
+    alert(js.msg || 'Erro ao salvar');
+    return;
+  }
+
+  if(field === 'nome_circulo'){
+    document.getElementById('nome_txt').innerText = value || '—';
+    document.getElementById('nome_view').innerText = value || '— Sem nome —';
+    toggleEdit('nome', false);
+  } else if(field === 'situacao'){
+    document.getElementById('sit_txt').innerText = value || '—';
+    toggleEdit('sit', false);
+  } else if(field === 'observacao'){
+    document.getElementById('obs_txt').innerText = value || '—';
+    toggleEdit('obs', false);
+  }
+}
+
+async function saveCor(){
+  const value = document.getElementById('cor_input').value.trim();
+
+  const js = await fetch(`/api/circulos/${CIRC_ID}/update`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ field:'cor_circulo', value })
+  }).then(r=>r.json());
+
+  if(!js.ok){
+    alert(js.msg || 'Erro ao salvar');
+    return;
+  }
+
+  document.getElementById('cor_txt').innerText = value || '—';
+  document.getElementById('cor_view').innerText = value || '—';
+  toggleEdit('cor', false);
+  location.reload();
+}
+
+async function loadIntegrantes(){
+  const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes`).then(r=>r.json());
+
+  if(!js.ok) return;
+
+  INTEGRANTES_ATUAL = js.atual || [];
+  INTEGRANTES_ORIG  = js.original || [];
+
+  const boxA = document.getElementById('integrantes_atual_list');
+  const boxO = document.getElementById('integrantes_orig_list');
+
+  boxA.innerHTML = '';
+  boxO.innerHTML = '';
+
+  if(INTEGRANTES_ATUAL.length === 0){
+    boxA.innerHTML = '<span class="muted">— vazio —</span>';
+  }
+
+  if(INTEGRANTES_ORIG.length === 0){
+    boxO.innerHTML = '<span class="muted">— vazio —</span>';
+  }
+
+  INTEGRANTES_ATUAL.forEach(p=>{
+    const el = document.createElement('span');
+    el.className = 'chip';
+    el.textContent = `${p.nome_ele} & ${p.nome_ela}`;
+    boxA.appendChild(el);
+  });
+
+  INTEGRANTES_ORIG.forEach(p=>{
+    const el = document.createElement('span');
+    el.className = 'chip';
+    el.textContent = `${p.nome_ele} & ${p.nome_ela}`;
+    boxO.appendChild(el);
+  });
+
+  const sel = document.getElementById('coord_select');
+  const currText = (document.getElementById('coord_atual_txt').innerText || '').trim().toLowerCase();
+
+  sel.innerHTML = '<option value="">— Selecionar casal (dos integrantes atuais) —</option>';
+
+  INTEGRANTES_ATUAL.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.nome_ele} & ${p.nome_ela}`;
+
+    if(currText && opt.textContent.toLowerCase() === currText){
+      opt.selected = true;
     }
 
-    async function saveSimple(field, value){
-      const js = await fetch(`/api/circulos/${CIRC_ID}/update`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ field, value })
-      }).then(r=>r.json());
-      if(!js.ok){ alert(js.msg||'Erro ao salvar'); return; }
-      if(field==='nome_circulo'){
-        document.getElementById('nome_txt').innerText = value || '—';
-        document.getElementById('nome_view').innerText = value || '— Sem nome —';
-        toggleEdit('nome', false);
-      }else if(field==='situacao'){
-        document.getElementById('sit_txt').innerText = value || '—';
-        toggleEdit('sit', false);
-      }else if(field==='observacao'){
-        document.getElementById('obs_txt').innerText = value || '—';
-        toggleEdit('obs', false);
-      }
-    }
+    sel.appendChild(opt);
+  });
+}
 
-    async function saveCor(){
-      const value = document.getElementById('cor_input').value.trim();
-      const js = await fetch(`/api/circulos/${CIRC_ID}/update`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ field:'cor_circulo', value })
-      }).then(r=>r.json());
-      if(!js.ok){ alert(js.msg||'Erro ao salvar'); return; }
-      document.getElementById('cor_txt').innerText = value || '—';
-      document.getElementById('cor_view').innerText = value || '—';
-      // servidor já calcula var(--c) na view ao recarregar; aqui apenas fecha
-      toggleEdit('cor', false);
-      // opcional: recarregue para recalcular tonalização
-      location.reload();
-    }
+function toggleAddIntegrantes(show){
+  document.getElementById('integrantes_add_panel').style.display = show ? '' : 'none';
 
-    async function loadIntegrantes(){
-      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes`).then(r=>r.json());
-      if(!js.ok){ return; }
-      INTEGRANTES_ATUAL = js.atual || [];
-      INTEGRANTES_ORIG  = js.original || [];
+  if(show){
+    document.getElementById('busca_info').innerText = '';
+    loadCandidatos();
+  }
+}
 
-      // Render listas
-      const boxA = document.getElementById('integrantes_atual_list');
-      const boxO = document.getElementById('integrantes_orig_list');
-      boxA.innerHTML = ''; boxO.innerHTML = '';
-      if(INTEGRANTES_ATUAL.length===0){ boxA.innerHTML = '<span class="muted">— vazio —</span>'; }
-      if(INTEGRANTES_ORIG.length===0){  boxO.innerHTML = '<span class="muted">— vazio —</span>'; }
+function toggleRemoveIntegrantes(show){
+  const panel = document.getElementById('integrantes_remove_panel');
+  panel.style.display = show ? '' : 'none';
 
-      INTEGRANTES_ATUAL.forEach(p=>{
-        const el = document.createElement('span');
-        el.className='chip';
-        el.textContent = `${p.nome_ele} & ${p.nome_ela}`;
-        boxA.appendChild(el);
-      });
-      INTEGRANTES_ORIG.forEach(p=>{
-        const el = document.createElement('span');
-        el.className='chip';
-        el.textContent = `${p.nome_ele} & ${p.nome_ela}`;
-        boxO.appendChild(el);
-      });
+  if(show){
+    renderRemoveList();
+  }
+}
 
-      // Popular combo de coordenadores com integrantes atuais
-      const sel = document.getElementById('coord_select');
-      const currText = (document.getElementById('coord_atual_txt').innerText || '').trim().toLowerCase();
-      sel.innerHTML = '<option value="">— Selecionar casal (dos integrantes atuais) —</option>';
-      INTEGRANTES_ATUAL.forEach(p=>{
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = `${p.nome_ele} & ${p.nome_ela}`;
-        // se já for o coordenador atual, deixa selecionado
-        if(currText && opt.textContent.toLowerCase() === currText){ opt.selected = true; }
-        sel.appendChild(opt);
-      });
-    }
+function renderRemoveList(){
+  const box = document.getElementById('integrantes_remove_list');
+  box.innerHTML = '';
 
-    function toggleAddIntegrantes(show){
-      document.getElementById('integrantes_add_panel').style.display = show ? '' : 'none';
-      if(show){
-        document.getElementById('busca_info').innerText = '';
-        loadCandidatos();
-      }
-    }
-    function toggleRemoveIntegrantes(show){
-      const panel = document.getElementById('integrantes_remove_panel');
-      panel.style.display = show ? '' : 'none';
-      if(show){ renderRemoveList(); }
-    }
+  if(!INTEGRANTES_ATUAL || INTEGRANTES_ATUAL.length === 0){
+    box.innerHTML = '<span class="muted">— sem integrantes —</span>';
+    return;
+  }
 
-    function renderRemoveList(){
-      const box = document.getElementById('integrantes_remove_list');
-      box.innerHTML = '';
-      if(!INTEGRANTES_ATUAL || INTEGRANTES_ATUAL.length===0){
-        box.innerHTML = '<span class="muted">— sem integrantes —</span>';
-        return;
-      }
-      INTEGRANTES_ATUAL.forEach(item=>{
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.style.display = 'inline-flex';
-        chip.style.alignItems = 'center';
-        chip.style.gap = '6px';
-        chip.textContent = `${item.nome_ele} & ${item.nome_ela}`;
-        const btn = document.createElement('button');
-        btn.className='btn'; btn.style.marginLeft='6px'; btn.textContent='−';
-        btn.title='Remover deste círculo';
-        btn.onclick = ()=> removerIntegrante(item.id);
-        chip.appendChild(btn);
-        box.appendChild(chip);
-      });
-    }
+  INTEGRANTES_ATUAL.forEach(item=>{
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.style.display = 'inline-flex';
+    chip.style.alignItems = 'center';
+    chip.style.gap = '6px';
+    chip.textContent = `${item.nome_ele} & ${item.nome_ela}`;
 
-    async function removerIntegrante(id){
-      if(!confirm('Remover este casal do círculo?')) return;
-      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/remove`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({encontrista_id: id})
-      }).then(r=>r.json());
-      if(!js.ok){ alert(js.msg||'Erro ao remover.'); return; }
-      await loadIntegrantes();
-      loadCandidatos();          // volta para a lista lateral
-      renderRemoveList();
-      // se limpou coord, atualize texto
-      if(js.cleared_coord){
-        document.getElementById('coord_atual_txt').innerText = '— (não definido)';
-      }
-    }
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.style.marginLeft = '6px';
+    btn.textContent = '−';
+    btn.title = 'Remover deste círculo';
+    btn.onclick = ()=> removerIntegrante(item.id);
 
-    async function loadCandidatos(){
-      const side = document.getElementById('side_list');
-      side.innerHTML = '<div class="muted">Carregando…</div>';
-      // lista de encontristas do ano, livres (sem círculo)
-      const js = await fetch(`/api/encontristas/ano/${CIRC_ANO}?livres=1`).then(r=>r.json());
-      if(!js.ok){ side.innerHTML = '<div class="muted">Erro ao carregar.</div>'; return; }
-      const arr = js.lista || [];
-      if(arr.length===0){ side.innerHTML = '<div class="muted">Não há casais livres para este ano.</div>'; return; }
-      side.innerHTML = '';
-      arr.forEach(p=>{
-        const row = document.createElement('div');
-        row.className='side-item';
-        const left = document.createElement('div');
-        left.innerHTML = `<strong>${p.nome_usual_ele}</strong> & ${p.nome_usual_ela}<div class="mini muted">${p.telefone_ele||''} ${p.telefone_ele&&p.telefone_ela?' / ':''} ${p.telefone_ela||''}</div>`;
-        const right = document.createElement('div'); right.className='side-actions';
-        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Usar';
-        btn.onclick = ()=>{
-          document.getElementById('inp_ele').value = p.nome_usual_ele;
-          document.getElementById('inp_ela').value = p.nome_usual_ela;
-          buscarCasal();
-        };
-        right.appendChild(btn);
-        row.appendChild(left); row.appendChild(right);
-        side.appendChild(row);
-      });
-    }
+    chip.appendChild(btn);
+    box.appendChild(chip);
+  });
+}
 
-    let LAST_FOUND = null; // {id, ele, ela, tel, end}
-    async function buscarCasal(){
-      const ele = document.getElementById('inp_ele').value.trim();
-      const ela = document.getElementById('inp_ela').value.trim();
-      if(!ele || !ela){ alert('Preencha Ele e Ela.'); return; }
-      const info = document.getElementById('busca_info');
-      info.textContent = 'Buscando…';
-      const js = await fetch(`/api/encontristas/busca?ele=${encodeURIComponent(ele)}&ela=${encodeURIComponent(ela)}&ano=${CIRC_ANO}`).then(r=>r.json());
-      if(!js.ok){ info.textContent = js.msg || 'Não encontrado.'; LAST_FOUND = null; return; }
-      LAST_FOUND = js;
-      info.innerHTML = `<strong>OK</strong> — ${js.nome_ele} & ${js.nome_ela} • <span class="muted">${js.telefones||'—'}</span><br><span class="muted">${js.endereco||''}</span>`;
-    }
+async function removerIntegrante(id){
+  if(!confirm('Remover este casal do círculo?')) return;
 
-    async function confirmarAdicionar(){
-      if(!LAST_FOUND || !LAST_FOUND.id){ alert('Busque e selecione um casal válido primeiro.'); return; }
-      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/add`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ encontrista_id: LAST_FOUND.id })
-      }).then(r=>r.json());
-      if(!js.ok){ alert(js.msg||'Erro ao adicionar.'); return; }
-      // refresh lists
-      await loadIntegrantes();
-      loadCandidatos(); // remove da lateral
-      // mantém campos prontos para o próximo
-      document.getElementById('inp_ele').value = '';
-      document.getElementById('inp_ela').value = '';
-      document.getElementById('busca_info').innerText = 'Adicionado. Selecione o próximo casal…';
+  const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/remove`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({encontrista_id: id})
+  }).then(r=>r.json());
+
+  if(!js.ok){
+    alert(js.msg || 'Erro ao remover.');
+    return;
+  }
+
+  await loadIntegrantes();
+  loadCandidatos();
+  renderRemoveList();
+
+  if(js.cleared_coord){
+    document.getElementById('coord_atual_txt').innerText = '— (não definido)';
+  }
+}
+
+async function loadCandidatos(){
+  const side = document.getElementById('side_list');
+  side.innerHTML = '<div class="muted">Carregando…</div>';
+
+  const js = await fetch(`/api/encontristas/ano/${CIRC_ANO}?livres=1`).then(r=>r.json());
+
+  if(!js.ok){
+    side.innerHTML = '<div class="muted">Erro ao carregar.</div>';
+    return;
+  }
+
+  const arr = js.lista || [];
+
+  if(arr.length === 0){
+    side.innerHTML = '<div class="muted">Não há casais livres para este ano.</div>';
+    return;
+  }
+
+  side.innerHTML = '';
+
+  arr.forEach(p=>{
+    const row = document.createElement('div');
+    row.className = 'side-item';
+
+    const left = document.createElement('div');
+    left.innerHTML = `<strong>${p.nome_usual_ele}</strong> & ${p.nome_usual_ela}<div class="mini muted">${p.telefone_ele || ''} ${p.telefone_ele && p.telefone_ela ? ' / ' : ''} ${p.telefone_ela || ''}</div>`;
+
+    const right = document.createElement('div');
+    right.className = 'side-actions';
+
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = 'Usar';
+    btn.onclick = ()=>{
+      document.getElementById('inp_casal_id').value = '';
+      document.getElementById('inp_ele').value = p.nome_usual_ele || '';
+      document.getElementById('inp_ela').value = p.nome_usual_ela || '';
       LAST_FOUND = null;
-    }
 
-    async function concluirIntegrantes(){
-      // copia 'atual' para 'original'
-      const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/copy-atual-para-original`, {
-        method:'POST'
-      }).then(r=>r.json());
-      if(!js.ok){ alert(js.msg||'Erro ao concluir.'); return; }
-      await loadIntegrantes();
-      alert('Integrantes originais atualizados.');
-    }
+      document.getElementById('busca_info').innerText = 'Sugestão aplicada. Clique em Buscar para confirmar o casal.';
+    };
 
-    async function saveCoordAtual(){
-      const sel = document.getElementById('coord_select');
-      const id = parseInt(sel.value||'');
-      const js = await fetch(`/api/circulos/${CIRC_ID}/definir-coord`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ encontrista_id: id || null })
-      }).then(r=>r.json());
-      if(!js.ok){ alert(js.msg||'Erro ao salvar coordenador.'); return; }
-      if(id){
-        const opt = sel.options[sel.selectedIndex].text;
-        document.getElementById('coord_atual_txt').innerText = opt;
-      }else{
-        document.getElementById('coord_atual_txt').innerText = '— (não definido)';
-      }
-      toggleEdit('coord', false);
-    }
+    right.appendChild(btn);
+    row.appendChild(left);
+    row.appendChild(right);
+    side.appendChild(row);
+  });
+}
 
-    // init
-    document.addEventListener('DOMContentLoaded', ()=>{
-      loadIntegrantes();
+function atualizarLastFound(casal){
+  LAST_FOUND = {
+    id: casal.id,
+    nome_ele: casal.nome_usual_ele || '',
+    nome_ela: casal.nome_usual_ela || '',
+    telefones: casal.telefones || '',
+    endereco: casal.endereco || ''
+  };
+
+  document.getElementById('busca_info').innerHTML =
+    `<strong>OK</strong> — ${LAST_FOUND.nome_ele} & ${LAST_FOUND.nome_ela} • <span class="muted">${LAST_FOUND.telefones || '—'}</span><br><span class="muted">${LAST_FOUND.endereco || ''}</span>`;
+}
+
+async function confirmarAdicionar(){
+  if(!LAST_FOUND || !LAST_FOUND.id){
+    alert('Busque e selecione um casal válido primeiro.');
+    return;
+  }
+
+  const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/add`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ encontrista_id: LAST_FOUND.id })
+  }).then(r=>r.json());
+
+  if(!js.ok){
+    alert(js.msg || 'Erro ao adicionar.');
+    return;
+  }
+
+  await loadIntegrantes();
+  loadCandidatos();
+
+  document.getElementById('inp_casal_id').value = '';
+  document.getElementById('inp_ele').value = '';
+  document.getElementById('inp_ela').value = '';
+  document.getElementById('busca_info').innerText = 'Adicionado. Selecione o próximo casal…';
+
+  LAST_FOUND = null;
+}
+
+async function concluirIntegrantes(){
+  const js = await fetch(`/api/circulos/${CIRC_ID}/integrantes/copy-atual-para-original`, {
+    method:'POST'
+  }).then(r=>r.json());
+
+  if(!js.ok){
+    alert(js.msg || 'Erro ao concluir.');
+    return;
+  }
+
+  await loadIntegrantes();
+  alert('Integrantes originais atualizados.');
+}
+
+async function saveCoordAtual(){
+  const sel = document.getElementById('coord_select');
+  const id = parseInt(sel.value || '');
+
+  const js = await fetch(`/api/circulos/${CIRC_ID}/definir-coord`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ encontrista_id: id || null })
+  }).then(r=>r.json());
+
+  if(!js.ok){
+    alert(js.msg || 'Erro ao salvar coordenador.');
+    return;
+  }
+
+  if(id){
+    const opt = sel.options[sel.selectedIndex].text;
+    document.getElementById('coord_atual_txt').innerText = opt;
+  } else {
+    document.getElementById('coord_atual_txt').innerText = '— (não definido)';
+  }
+
+  toggleEdit('coord', false);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadIntegrantes();
+
+  const grupo = document.querySelector('#integrantes_add_panel [data-casal-grupo]');
+
+  if(grupo){
+    grupo.addEventListener('casalSelecionado', function(event){
+      atualizarLastFound(event.detail.casal);
     });
-  </script>
-</body>
-</html>
+  }
+});
+</script>
+{% endblock %}
