@@ -17,6 +17,8 @@ def _buscar_encontrista_por_nomes(cur, paroquia_id, nome_ele, nome_ela):
             ano,
             nome_usual_ele,
             nome_usual_ela,
+            nome_completo_ele,
+            nome_completo_ela,
             telefone_ele,
             telefone_ela,
             endereco,
@@ -25,15 +27,25 @@ def _buscar_encontrista_por_nomes(cur, paroquia_id, nome_ele, nome_ela):
         WHERE paroquia_id = %s
           AND (
                 UPPER(TRIM(nome_usual_ele)) = UPPER(TRIM(%s))
+                OR UPPER(TRIM(nome_completo_ele)) = UPPER(TRIM(%s))
                 OR JSON_SEARCH(apelidos, 'one', %s, NULL, '$.ele[*]') IS NOT NULL
           )
           AND (
                 UPPER(TRIM(nome_usual_ela)) = UPPER(TRIM(%s))
+                OR UPPER(TRIM(nome_completo_ela)) = UPPER(TRIM(%s))
                 OR JSON_SEARCH(apelidos, 'one', %s, NULL, '$.ela[*]') IS NOT NULL
           )
         ORDER BY ano DESC, id DESC
         LIMIT 1
-    """, (paroquia_id, nome_ele, nome_ele, nome_ela, nome_ela))
+    """, (
+        paroquia_id,
+        nome_ele,
+        nome_ele,
+        nome_ele,
+        nome_ela,
+        nome_ela,
+        nome_ela,
+    ))
 
     return cur.fetchone()
 
@@ -93,15 +105,25 @@ def carregar_palestras_do_ano(ano, paroquia_id):
     try:
         cur.execute("""
             SELECT
-                id,
-                palestra,
-                nome_ele,
-                nome_ela,
-                status
-            FROM palestras
-            WHERE ano = %s
-              AND paroquia_id = %s
-            ORDER BY id DESC
+                p.id,
+                p.palestra,
+                p.casal_id,
+                CASE
+                    WHEN p.casal_id IS NULL THEN COALESCE(p.palestrante, '')
+                    ELSE COALESCE(e.nome_usual_ele, '')
+                END AS nome_ele,
+                CASE
+                    WHEN p.casal_id IS NULL THEN ''
+                    ELSE COALESCE(e.nome_usual_ela, '')
+                END AS nome_ela,
+                p.status
+            FROM palestras p
+            LEFT JOIN encontristas e
+              ON e.id = p.casal_id
+             AND e.paroquia_id = p.paroquia_id
+            WHERE p.ano = %s
+              AND p.paroquia_id = %s
+            ORDER BY p.id DESC
         """, (ano, paroquia_id))
 
         rows = cur.fetchall() or []
@@ -115,6 +137,7 @@ def carregar_palestras_do_ano(ano, paroquia_id):
             if titulo and titulo not in existentes:
                 existentes[titulo] = {
                     "id": r.get("id"),
+                    "casal_id": r.get("casal_id"),
                     "nome_ele": r.get("nome_ele"),
                     "nome_ela": r.get("nome_ela"),
                     "status": r.get("status"),
@@ -144,6 +167,7 @@ def obter_dados_casal_palestra(paroquia_id, nome_ele, nome_ela, solo=False):
     try:
         if solo:
             return {
+                "casal_id": None,
                 "telefones": "",
                 "endereco": "",
                 "eligible": True,
@@ -153,12 +177,14 @@ def obter_dados_casal_palestra(paroquia_id, nome_ele, nome_ela, solo=False):
 
         if not encontrista:
             return {
+                "casal_id": None,
                 "telefones": "",
                 "endereco": "",
                 "eligible": False,
             }
 
         return {
+            "casal_id": encontrista.get("id"),
             "telefones": _telefones_encontrista(encontrista),
             "endereco": encontrista.get("endereco") or "",
             "eligible": True,
@@ -183,17 +209,21 @@ def contar_repeticoes_palestra(paroquia_id, palestra, nome_ele, nome_ela="", sol
                 FROM palestras
                 WHERE paroquia_id = %s
                   AND palestra = %s
-                  AND UPPER(TRIM(nome_ele)) = UPPER(TRIM(%s))
+                  AND UPPER(TRIM(COALESCE(palestrante, ''))) = UPPER(TRIM(%s))
             """, (paroquia_id, palestra, nome_ele))
         else:
+            encontrista = _buscar_encontrista_por_nomes(cur, paroquia_id, nome_ele, nome_ela)
+
+            if not encontrista:
+                return 0
+
             cur.execute("""
                 SELECT COUNT(*) AS n
                 FROM palestras
                 WHERE paroquia_id = %s
                   AND palestra = %s
-                  AND UPPER(TRIM(nome_ele)) = UPPER(TRIM(%s))
-                  AND UPPER(TRIM(nome_ela)) = UPPER(TRIM(%s))
-            """, (paroquia_id, palestra, nome_ele, nome_ela))
+                  AND casal_id = %s
+            """, (paroquia_id, palestra, encontrista["id"]))
 
         n = int(((cur.fetchone() or {}).get("n", 0) or 0))
         return n
@@ -211,13 +241,17 @@ def salvar_palestra_ano(paroquia_id, ano, palestra, nome_ele, nome_ela="", solo=
     cur = conn.cursor(dictionary=True)
 
     try:
-        if not solo:
+        casal_id = None
+        palestrante = None
+
+        if solo:
+            palestrante = (nome_ele or "").strip()
+        else:
             encontrista = _buscar_encontrista_por_nomes(cur, paroquia_id, nome_ele, nome_ela)
             if not encontrista:
                 return "not_found"
 
-            nome_ele = encontrista.get("nome_usual_ele") or nome_ele
-            nome_ela = encontrista.get("nome_usual_ela") or nome_ela
+            casal_id = encontrista.get("id")
 
         cur.execute("""
             SELECT id
@@ -234,42 +268,24 @@ def salvar_palestra_ano(paroquia_id, ano, palestra, nome_ele, nome_ela="", solo=
 
         try:
             if existing:
-                if solo:
-                    cur2.execute("""
-                        UPDATE palestras
-                        SET nome_ele = %s,
-                            nome_ela = '',
-                            status = 'Aberto'
-                        WHERE id = %s
-                          AND paroquia_id = %s
-                    """, (nome_ele, existing["id"], paroquia_id))
-                else:
-                    cur2.execute("""
-                        UPDATE palestras
-                        SET nome_ele = %s,
-                            nome_ela = %s,
-                            status = 'Aberto'
-                        WHERE id = %s
-                          AND paroquia_id = %s
-                    """, (nome_ele, nome_ela, existing["id"], paroquia_id))
+                cur2.execute("""
+                    UPDATE palestras
+                    SET casal_id = %s,
+                        palestrante = %s,
+                        status = 'Aberto'
+                    WHERE id = %s
+                      AND paroquia_id = %s
+                """, (casal_id, palestrante, existing["id"], paroquia_id))
 
                 action = "update"
 
             else:
-                if solo:
-                    cur2.execute("""
-                        INSERT INTO palestras
-                            (paroquia_id, ano, palestra, nome_ele, nome_ela, status)
-                        VALUES
-                            (%s, %s, %s, %s, '', 'Aberto')
-                    """, (paroquia_id, int(ano), palestra, nome_ele))
-                else:
-                    cur2.execute("""
-                        INSERT INTO palestras
-                            (paroquia_id, ano, palestra, nome_ele, nome_ela, status)
-                        VALUES
-                            (%s, %s, %s, %s, %s, 'Aberto')
-                    """, (paroquia_id, int(ano), palestra, nome_ele, nome_ela))
+                cur2.execute("""
+                    INSERT INTO palestras
+                        (paroquia_id, ano, palestra, casal_id, palestrante, status)
+                    VALUES
+                        (%s, %s, %s, %s, %s, 'Aberto')
+                """, (paroquia_id, int(ano), palestra, casal_id, palestrante))
 
                 action = "insert"
 
@@ -292,31 +308,27 @@ def adicionar_palestra(paroquia_id, ano, palestra, nome_ele, nome_ela="", solo=F
     cur = conn.cursor(dictionary=True)
 
     try:
-        if not solo:
+        casal_id = None
+        palestrante = None
+
+        if solo:
+            palestrante = (nome_ele or "").strip()
+        else:
             encontrista = _buscar_encontrista_por_nomes(cur, paroquia_id, nome_ele, nome_ela)
             if not encontrista:
                 return False
 
-            nome_ele = encontrista.get("nome_usual_ele") or nome_ele
-            nome_ela = encontrista.get("nome_usual_ela") or nome_ela
+            casal_id = encontrista.get("id")
 
         cur2 = conn.cursor()
 
         try:
-            if solo:
-                cur2.execute("""
-                    INSERT INTO palestras
-                        (paroquia_id, ano, palestra, nome_ele, nome_ela, status, observacao)
-                    VALUES
-                        (%s, %s, %s, %s, '', 'Aberto', NULL)
-                """, (paroquia_id, int(ano), palestra, nome_ele))
-            else:
-                cur2.execute("""
-                    INSERT INTO palestras
-                        (paroquia_id, ano, palestra, nome_ele, nome_ela, status, observacao)
-                    VALUES
-                        (%s, %s, %s, %s, %s, 'Aberto', NULL)
-                """, (paroquia_id, int(ano), palestra, nome_ele, nome_ela))
+            cur2.execute("""
+                INSERT INTO palestras
+                    (paroquia_id, ano, palestra, casal_id, palestrante, status, observacao)
+                VALUES
+                    (%s, %s, %s, %s, %s, 'Aberto', NULL)
+            """, (paroquia_id, int(ano), palestra, casal_id, palestrante))
 
             conn.commit()
             return True
@@ -392,9 +404,22 @@ def marcar_status_palestra_por_criterios(
     nome_ela=""
 ):
     conn = db_conn()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
 
     try:
+        casal_id = None
+        palestrante = None
+
+        nome_ele = (nome_ele or "").strip()
+        nome_ela = (nome_ela or "").strip()
+
+        if nome_ele and nome_ela:
+            encontrista = _buscar_encontrista_por_nomes(cur, paroquia_id, nome_ele, nome_ela)
+            if encontrista:
+                casal_id = encontrista.get("id")
+        elif nome_ele:
+            palestrante = nome_ele
+
         clauses = [
             "UPDATE palestras SET status = %s, observacao = %s",
             "WHERE ano = %s AND palestra = %s AND paroquia_id = %s",
@@ -403,13 +428,12 @@ def marcar_status_palestra_por_criterios(
 
         params = [novo_status, observacao, int(ano), palestra, paroquia_id]
 
-        if nome_ele:
-            clauses.append("AND UPPER(TRIM(nome_ele)) = UPPER(TRIM(%s))")
-            params.append(nome_ele)
-
-        if nome_ela:
-            clauses.append("AND UPPER(TRIM(nome_ela)) = UPPER(TRIM(%s))")
-            params.append(nome_ela)
+        if casal_id:
+            clauses.append("AND casal_id = %s")
+            params.append(casal_id)
+        elif palestrante:
+            clauses.append("AND UPPER(TRIM(COALESCE(palestrante, ''))) = UPPER(TRIM(%s))")
+            params.append(palestrante)
 
         clauses.append("ORDER BY id DESC LIMIT 1")
 
