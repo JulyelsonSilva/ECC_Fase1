@@ -1155,3 +1155,99 @@ tbody tr:last-child td {
     font-size: 26px;
   }
 }
+
+.casal-busca-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.casal-busca-popover.is-open {
+  display: flex;
+}
+
+.casal-busca-card {
+  width: min(760px, 96vw);
+  max-height: 82vh;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.casal-busca-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.casal-busca-close {
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.casal-busca-body {
+  max-height: 68vh;
+  overflow: auto;
+  padding: 12px;
+}
+
+.casal-busca-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.casal-busca-item:hover {
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.casal-busca-nome {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.casal-busca-meta,
+.casal-busca-completo,
+.casal-busca-extra,
+.casal-busca-item small {
+  color: #475569;
+}
+
+.casal-busca-meta {
+  margin-top: 3px;
+  font-size: 0.88rem;
+}
+
+.casal-busca-completo {
+  margin-top: 5px;
+  font-size: 0.92rem;
+}
+
+.casal-busca-extra {
+  margin-top: 5px;
+  font-size: 0.88rem;
+}
+
+.casal-busca-empty {
+  padding: 24px;
+  text-align: center;
+  color: #475569;
+}
