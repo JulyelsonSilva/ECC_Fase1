@@ -496,13 +496,12 @@ def buscar_visao_casal(
                     SELECT ano, palestra
                     FROM palestras
                     WHERE paroquia_id = %s
-                      AND LOWER(TRIM(nome_ele)) = LOWER(TRIM(%s))
-                      AND LOWER(TRIM(COALESCE(nome_ela, ''))) = LOWER(TRIM(%s))
+                      AND casal_id = %s
                       AND palestra IN ({in_clause})
                     ORDER BY ano DESC
                 """
 
-                params = [paroquia_id, nome_ele_oficial, nome_ela_oficial] + list(format_titles)
+                params = [paroquia_id, casal_id] + list(format_titles)
                 cursor.execute(sql, params)
                 dados_palestras = cursor.fetchall() or []
 
