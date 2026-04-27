@@ -278,25 +278,56 @@ def register_core_routes(
         cur = conn.cursor(dictionary=True)
 
         sql = """
-            SELECT id, ano, palestra, nome_ele, nome_ela
-              FROM palestras
-             WHERE paroquia_id = %s
+            SELECT
+                p.id,
+                p.ano,
+                p.palestra,
+
+                CASE
+                    WHEN p.casal_id IS NULL THEN COALESCE(p.palestrante, '')
+                    ELSE COALESCE(e.nome_usual_ele, e.nome_completo_ele, '')
+                END AS nome_ele,
+
+                CASE
+                    WHEN p.casal_id IS NULL THEN ''
+                    ELSE COALESCE(e.nome_usual_ela, e.nome_completo_ela, '')
+                END AS nome_ela
+
+              FROM palestras p
+              LEFT JOIN encontristas e
+                ON e.id = p.casal_id
+               AND e.paroquia_id = p.paroquia_id
+
+             WHERE p.paroquia_id = %s
         """
         params = [paroquia_id]
 
         if nome_ele:
-            sql += " AND LOWER(nome_ele) LIKE LOWER(%s)"
-            params.append(f"%{nome_ele}%")
+            sql += """
+                AND (
+                    LOWER(COALESCE(e.nome_usual_ele, '')) LIKE LOWER(%s)
+                    OR LOWER(COALESCE(e.nome_completo_ele, '')) LIKE LOWER(%s)
+                    OR LOWER(COALESCE(p.palestrante, '')) LIKE LOWER(%s)
+                )
+            """
+            termo = f"%{nome_ele}%"
+            params.extend([termo, termo, termo])
 
         if nome_ela:
-            sql += " AND LOWER(COALESCE(nome_ela,'')) LIKE LOWER(%s)"
-            params.append(f"%{nome_ela}%")
+            sql += """
+                AND (
+                    LOWER(COALESCE(e.nome_usual_ela, '')) LIKE LOWER(%s)
+                    OR LOWER(COALESCE(e.nome_completo_ela, '')) LIKE LOWER(%s)
+                )
+            """
+            termo = f"%{nome_ela}%"
+            params.extend([termo, termo])
 
         if ano_filtro:
-            sql += " AND ano = %s"
+            sql += " AND p.ano = %s"
             params.append(ano_filtro)
 
-        sql += " ORDER BY ano DESC, id ASC"
+        sql += " ORDER BY p.ano DESC, p.id ASC"
 
         cur.execute(sql, params)
         rows = cur.fetchall() or []
