@@ -22,6 +22,7 @@ from routes.palestras import register_palestras_routes
 from routes.core import register_core_routes
 from routes.admin import register_admin_routes
 from routes.palestras_vinculos import register_palestras_vinculos_routes
+from routes.casais import register_casais_routes
 
 
 app = Flask(__name__)
@@ -35,6 +36,7 @@ register_palestras_routes(app, PALESTRAS_TITULOS, PALESTRAS_SOLO)
 register_palestras_vinculos_routes(app, _admin_ok)
 register_core_routes(app, TEAM_MAP, TEAM_LIMITS, _q)
 register_admin_routes(app, _admin_ok)
+register_casais_routes(app)
 
 
 
