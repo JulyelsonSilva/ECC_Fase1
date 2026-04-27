@@ -45,334 +45,519 @@ input, textarea { width:100%; padding:10px 12px; border:1px solid var(--border);
 
 {% block content %}
 <div class="wrap">
-    <div class="header">
-      <div>
-        <h1>Montagem da Equipe</h1>
-        <div class="muted">Ano: <b>{{ ano }}</b> • Equipe: <b>{{ equipe_final }}</b></div>
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('montagem') }}"><i class="bi bi-arrow-left"></i> Montagem</a>
-        <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}"><i class="bi bi-arrow-return-left"></i> Voltar à Nova Montagem</a>
-        <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
-      </div>
+  <div class="header">
+    <div>
+      <h1>Montagem da Equipe</h1>
+      <div class="muted">Ano: <b>{{ ano }}</b> • Equipe: <b>{{ equipe_final }}</b></div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn" href="{{ url_for('montagem') }}"><i class="bi bi-arrow-left"></i> Montagem</a>
+      <a class="btn" href="{{ url_for('nova_montagem', ano=ano) }}"><i class="bi bi-arrow-return-left"></i> Voltar à Nova Montagem</a>
+      <a class="btn" href="{{ url_for('index') }}"><i class="bi bi-house-door"></i> Página Inicial</a>
+    </div>
+  </div>
+
+  <div class="kpis">
+    {% if limites %}
+      <span class="pill">Mín.: {{ limites.min }}</span>
+      <span class="pill">Máx.: {{ limites.max }}</span>
+    {% endif %}
+    <span class="pill">Integrantes atuais: <b id="kpi-atual">0</b></span>
+  </div>
+
+  <div class="layout" style="margin-top:12px;">
+    <div class="card">
+      <h3 style="margin:0 0 12px;">Integrantes da {{ equipe_final }}</h3>
+      <div id="slots"></div>
     </div>
 
-    <div class="kpis">
-      {% if limites %}
-        <span class="pill">Mín.: {{ limites.min }}</span>
-        <span class="pill">Máx.: {{ limites.max }}</span>
-      {% endif %}
-      <span class="pill">Integrantes atuais: <b id="kpi-atual">0</b></span>
-    </div>
-
-    <div class="layout" style="margin-top:12px;">
-      <!-- Esquerda: slots -->
-      <div class="card">
-        <h3 style="margin:0 0 12px;">Integrantes da {{ equipe_final }}</h3>
-        <div id="slots"></div>
-      </div>
-
-      <!-- Direita: sugestões do ano anterior -->
-      <div class="card side-panel">
-        <h3 class="side-title">Encontristas do ano {{ ano - 1 }}</h3>
-        <p class="small muted" style="margin-top:0;">Clique em um casal para preencher a próxima caixa vazia. Após inserir com sucesso, ele some desta lista.</p>
-        <div id="sugestoes">
-          {% for s in sugestoes_prev_ano %}
-            {% set label = (s.nome_ele ~ ' e ' ~ s.nome_ela).strip() %}
-            <a href="#" class="suggest" data-ele="{{ s.nome_ele }}" data-ela="{{ s.nome_ela }}">
-              {{ label }}
-            </a>
-          {% else %}
-            <p class="small muted">Sem registros para o ano anterior.</p>
-          {% endfor %}
-        </div>
+    <div class="card side-panel">
+      <h3 class="side-title">Encontristas do ano {{ ano - 1 }}</h3>
+      <p class="small muted" style="margin-top:0;">Clique em um casal para preencher a próxima caixa vazia. Depois confirme com Buscar casal.</p>
+      <div id="sugestoes">
+        {% for s in sugestoes_prev_ano %}
+          {% set label = (s.nome_ele ~ ' e ' ~ s.nome_ela).strip() %}
+          <a href="#" class="suggest" data-ele="{{ s.nome_ele }}" data-ela="{{ s.nome_ela }}">
+            {{ label }}
+          </a>
+        {% else %}
+          <p class="small muted">Sem registros para o ano anterior.</p>
+        {% endfor %}
       </div>
     </div>
   </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-// ----- Dados do servidor -----
-    const ANO = {{ ano | int }};
-    const EQUIPE_FINAL = {{ equipe_final | tojson }};
-    const LIMITES = {{ (limites or {}) | tojson }};
-    const EXISTENTES = {{ (membros_existentes or []) | tojson }};
-    const SLOTS_MAX = ((LIMITES && Number.isInteger(LIMITES.max)) ? LIMITES.max : 8); // SEMPRE renderiza todas as caixas
+const ANO = {{ ano | int }};
+const EQUIPE_FINAL = {{ equipe_final | tojson }};
+const LIMITES = {{ (limites or {}) | tojson }};
+const EXISTENTES = {{ (membros_existentes or []) | tojson }};
+const SLOTS_MAX = ((LIMITES && Number.isInteger(LIMITES.max)) ? LIMITES.max : 8);
 
-    const slotsWrap = document.getElementById('slots');
-    const kpiAtual = document.getElementById('kpi-atual');
+const slotsWrap = document.getElementById('slots');
+const kpiAtual = document.getElementById('kpi-atual');
 
-    // ----- Utils -----
-    function h(tag, attrs={}, html='') {
-      const el = document.createElement(tag);
-      for (const [k,v] of Object.entries(attrs||{})) {
-        if (k === 'class') el.className = v;
-        else if (k.startsWith('data-')) el.setAttribute(k, v);
-        else if (k === 'disabled' && v) el.setAttribute('disabled', 'disabled');
-        else el.setAttribute(k, v);
+function h(tag, attrs={}, html='') {
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs||{})) {
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.setAttribute('style', v);
+    else if (k.startsWith('data-')) el.setAttribute(k, v);
+    else if (k === 'disabled' && v) el.setAttribute('disabled', 'disabled');
+    else el.setAttribute(k, v);
+  }
+  if (html !== undefined && html !== null) el.innerHTML = html;
+  return el;
+}
+
+function updateKPI() {
+  let count = 0;
+  for (let i=0; i<SLOTS_MAX; i++) {
+    const slot = document.getElementById(`slot_${i}`);
+    if (slot && slot.dataset.locked === '1') count++;
+  }
+  kpiAtual.textContent = String(count);
+}
+
+async function postJSON(url, body) {
+  const r = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body||{})
+  });
+  return await r.json();
+}
+
+function fillSlot(i, data) {
+  const $casal = document.getElementById(`casal_id_${i}`);
+  const $ele = document.getElementById(`ele_${i}`);
+  const $ela = document.getElementById(`ela_${i}`);
+  const $tel = document.getElementById(`tel_${i}`);
+  const $end = document.getElementById(`end_${i}`);
+
+  if ($casal) $casal.value = data.casal_id || data.id || '';
+  if ($ele) $ele.value = data.nome_ele || data.nome_usual_ele || '';
+  if ($ela) $ela.value = data.nome_ela || data.nome_usual_ela || '';
+  if ($tel) $tel.value = data.telefones || '';
+  if ($end) $end.value = data.endereco || '';
+}
+
+function lockSlot(i, locked, memberId=null) {
+  const slot = document.getElementById(`slot_${i}`);
+  const $casal = document.getElementById(`casal_id_${i}`);
+  const $ele = document.getElementById(`ele_${i}`);
+  const $ela = document.getElementById(`ela_${i}`);
+  const $tel = document.getElementById(`tel_${i}`);
+  const $end = document.getElementById(`end_${i}`);
+  const $buscar = document.getElementById(`buscar_${i}`);
+  const $add = document.getElementById(`add_${i}`);
+  const j = document.getElementById(`justify_wrap_${i}`);
+  const jt = document.getElementById(`justify_${i}`);
+
+  if (locked) {
+    slot.dataset.locked = '1';
+    if ($ele) $ele.disabled = true;
+    if ($ela) $ela.disabled = true;
+    if ($tel) $tel.disabled = true;
+    if ($end) $end.disabled = true;
+    if ($buscar) $buscar.disabled = true;
+    if ($add) { $add.textContent = 'Alterar'; $add.dataset.mode = 'alterar'; }
+    if (memberId) slot.dataset.memberId = String(memberId);
+  } else {
+    slot.dataset.locked = '';
+    slot.dataset.memberId = '';
+    if ($casal) $casal.value = '';
+    if ($ele) { $ele.disabled = false; $ele.value = ''; }
+    if ($ela) { $ela.disabled = false; $ela.value = ''; }
+    if ($tel) { $tel.disabled = false; $tel.value = ''; }
+    if ($end) { $end.disabled = false; $end.value = ''; }
+    if ($buscar) $buscar.disabled = false;
+    if ($add) { $add.textContent = 'Adicionar'; $add.dataset.mode = 'add'; }
+    if (j) j.style.display = 'none';
+    if (jt) jt.value = '';
+    slot.dataset.trabalhouAntes = '';
+  }
+
+  updateKPI();
+}
+
+async function validarSlot(i) {
+  const slot = document.getElementById(`slot_${i}`);
+  const status = document.getElementById(`status_${i}`);
+  const nome_ele = document.getElementById(`ele_${i}`).value.trim();
+  const nome_ela = document.getElementById(`ela_${i}`).value.trim();
+
+  if (!nome_ele || !nome_ela) {
+    status.textContent = 'Preencha Nome (Ele) e Nome (Ela) antes de buscar.';
+    status.className = 'status warn-t';
+    return false;
+  }
+
+  try {
+    const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', {
+      ano: ANO,
+      equipe_final: EQUIPE_FINAL,
+      nome_ele,
+      nome_ela
+    });
+
+    if (!data.ok) {
+      status.textContent = data.msg || 'Falha ao validar.';
+      status.className = 'status err';
+      return false;
+    }
+
+    if (data.ja_coordenador) {
+      status.textContent = 'Casal já foi coordenador desta equipe.';
+      status.className = 'status err';
+      return false;
+    }
+
+    if (data.ja_no_ano) {
+      status.textContent = 'Casal já está montado em alguma equipe deste ano.';
+      status.className = 'status err';
+      return false;
+    }
+
+    document.getElementById(`tel_${i}`).value = data.telefones || '';
+    document.getElementById(`end_${i}`).value = data.endereco || '';
+
+    if (data.trabalhou_antes) {
+      status.textContent = 'Casal já trabalhou nesta equipe. Confirme na hora de adicionar.';
+      status.className = 'status warn-t';
+      slot.dataset.trabalhouAntes = '1';
+    } else {
+      status.textContent = 'Casal selecionado e dados carregados.';
+      status.className = 'status ok';
+      slot.dataset.trabalhouAntes = '';
+    }
+
+    return true;
+
+  } catch {
+    status.textContent = 'Erro na validação/busca.';
+    status.className = 'status err';
+    return false;
+  }
+}
+
+function renderSlot(i) {
+  const slot = h('div', {
+    class:'slot',
+    id:`slot_${i}`,
+    'data-casal-grupo':''
+  });
+
+  slot.dataset.locked = '';
+  slot.dataset.memberId = '';
+
+  const rowNomes = h('div', {class:'row'});
+  const gEle = h('div', {}, `
+    <input type="hidden" id="casal_id_${i}" data-casal-id>
+    <label for="ele_${i}">Nome (Ele)</label>
+    <input id="ele_${i}" data-casal-ele placeholder="Ex.: João">
+  `);
+  const gEla = h('div', {}, `
+    <label for="ela_${i}">Nome (Ela)</label>
+    <input id="ela_${i}" data-casal-ela placeholder="Ex.: Maria">
+  `);
+  rowNomes.append(gEle, gEla);
+
+  const rowCont = h('div', {class:'row', style:'margin-top:8px;'});
+  const gTel = h('div', {}, `
+    <label for="tel_${i}">Telefones</label>
+    <input id="tel_${i}" data-casal-telefones placeholder="Preenchido pela busca">
+  `);
+  const gEnd = h('div', {}, `
+    <label for="end_${i}">Endereço</label>
+    <input id="end_${i}" data-casal-endereco placeholder="Preenchido pela busca">
+  `);
+  rowCont.append(gTel, gEnd);
+
+  const actions = h('div', {class:'inline-actions', style:'margin-top:8px;'});
+  const btnBuscar = h('button', {
+    class:'btn',
+    id:`buscar_${i}`,
+    'data-casal-buscar':''
+  }, 'Buscar casal');
+  const btnAdd = h('button', {
+    class:'btn primary',
+    id:`add_${i}`,
+    'data-mode':'add'
+  }, 'Adicionar');
+  actions.append(btnBuscar, btnAdd);
+
+  const justifyWrap = h('div', {class:'justify-box', id:`justify_wrap_${i}`}, `
+    <label for="justify_${i}">Justificativa (obrigatória para Recusou/Desistiu)</label>
+    <textarea id="justify_${i}" rows="3" placeholder="Descreva a justificativa..."></textarea>
+    <div class="inline-actions" style="margin-top:6px;">
+      <button class="btn danger" id="mark_recusou_${i}">Confirmar Recusou</button>
+      <button class="btn warn" id="mark_desistiu_${i}">Confirmar Desistiu</button>
+      <button class="btn" id="cancel_alter_${i}">Cancelar</button>
+    </div>
+  `);
+
+  const status = h('div', {class:'status', id:`status_${i}`});
+
+  slot.append(rowNomes, rowCont, actions, justifyWrap, status);
+  slotsWrap.appendChild(slot);
+
+  slot.addEventListener('casalSelecionado', async function () {
+    await validarSlot(i);
+  });
+
+  btnAdd.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    const mode = btnAdd.dataset.mode || 'add';
+
+    if (mode === 'add') {
+      const casal_id = document.getElementById(`casal_id_${i}`).value.trim();
+      const nome_ele = document.getElementById(`ele_${i}`).value.trim();
+      const nome_ela = document.getElementById(`ela_${i}`).value.trim();
+      const telefones = document.getElementById(`tel_${i}`).value.trim();
+      const endereco = document.getElementById(`end_${i}`).value.trim();
+
+      if (!nome_ele || !nome_ela) {
+        status.textContent = 'Preencha Nome (Ele) e Nome (Ela).';
+        status.className = 'status warn-t';
+        return;
       }
-      if (html !== undefined && html !== null) el.innerHTML = html;
-      return el;
-    }
-    function updateKPI() {
-      let count = 0;
-      for (let i=0; i<SLOTS_MAX; i++) {
-        const slot = document.getElementById(`slot_${i}`);
-        if (slot && slot.dataset.locked === '1') count++;
+
+      if (!casal_id) {
+        status.textContent = 'Clique em Buscar casal e selecione o casal antes de adicionar.';
+        status.className = 'status warn-t';
+        return;
       }
-      kpiAtual.textContent = String(count);
-    }
-    async function postJSON(url, body) {
-      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{}) });
-      return await r.json();
-    }
-    function fillSlot(i, data) {
-      const $ele = document.getElementById(`ele_${i}`);
-      const $ela = document.getElementById(`ela_${i}`);
-      const $tel = document.getElementById(`tel_${i}`);
-      const $end = document.getElementById(`end_${i}`);
-      if ($ele) $ele.value = data.nome_ele || '';
-      if ($ela) $ela.value = data.nome_ela || '';
-      if ($tel) $tel.value = data.telefones || '';
-      if ($end) $end.value = data.endereco || '';
-    }
-    function lockSlot(i, locked, memberId=null) {
-      const slot = document.getElementById(`slot_${i}`);
-      const $ele = document.getElementById(`ele_${i}`);
-      const $ela = document.getElementById(`ela_${i}`);
-      const $tel = document.getElementById(`tel_${i}`);
-      const $end = document.getElementById(`end_${i}`);
-      const $buscar = document.getElementById(`buscar_${i}`);
-      const $add = document.getElementById(`add_${i}`);
-      const j = document.getElementById(`justify_wrap_${i}`);
-      const jt = document.getElementById(`justify_${i}`);
 
-      if (locked) {
-        slot.dataset.locked = '1';
-        if ($ele) $ele.disabled = true;
-        if ($ela) $ela.disabled = true;
-        if ($tel) $tel.disabled = true;
-        if ($end) $end.disabled = true;
-        if ($buscar) $buscar.disabled = true;
-        if ($add) { $add.textContent = 'Alterar'; $add.dataset.mode = 'alterar'; }
-        if (memberId) slot.dataset.memberId = String(memberId);
-      } else {
-        slot.dataset.locked = '';
-        slot.dataset.memberId = '';
-        if ($ele) { $ele.disabled = false; $ele.value = ''; }
-        if ($ela) { $ela.disabled = false; $ela.value = ''; }
-        if ($tel) { $tel.disabled = false; $tel.value = ''; }
-        if ($end) { $end.disabled = false; $end.value = ''; }
-        if ($buscar) $buscar.disabled = false;
-        if ($add) { $add.textContent = 'Adicionar'; $add.dataset.mode = 'add'; }
-        if (j) j.style.display = 'none';
-        if (jt) jt.value = '';
+      let confirmar_repeticao = false;
+
+      if (slot.dataset.trabalhouAntes === '1') {
+        confirmar_repeticao = window.confirm('Casal já trabalhou na equipe. Confirmar para montar novamente?');
+        if (!confirmar_repeticao) return;
       }
-      updateKPI();
-    }
 
-    // ----- Render slot -----
-    function renderSlot(i) {
-      const slot = h('div', {class:'slot', id:`slot_${i}`});
-      slot.dataset.locked = '';
-      slot.dataset.memberId = '';
+      try {
+        const resp = await postJSON('{{ url_for("api_add_membro_equipe") }}', {
+          ano: ANO,
+          equipe_final: EQUIPE_FINAL,
+          nome_ele,
+          nome_ela,
+          telefones,
+          endereco,
+          confirmar_repeticao
+        });
 
-      const rowNomes = h('div', {class:'row'});
-      const gEle = h('div', {}, `<label for="ele_${i}">Nome (Ele)</label><input id="ele_${i}" placeholder="Ex.: João">`);
-      const gEla = h('div', {}, `<label for="ela_${i}">Nome (Ela)</label><input id="ela_${i}" placeholder="Ex.: Maria">`);
-      rowNomes.append(gEle, gEla);
+        if (resp.ok) {
+          status.textContent = 'Integrante adicionado com sucesso.';
+          status.className = 'status ok';
+          lockSlot(i, true, null);
 
-      const rowCont = h('div', {class:'row', style:'margin-top:8px;'});
-      const gTel = h('div', {}, `<label for="tel_${i}">Telefones</label><input id="tel_${i}" placeholder="Preenchido pela busca (editável)">`);
-      const gEnd = h('div', {}, `<label for="end_${i}">Endereço</label><input id="end_${i}" placeholder="Preenchido pela busca (editável)">`);
-      rowCont.append(gTel, gEnd);
+          const sug = document.querySelector(`.suggest[data-ele="${CSS.escape(nome_ele)}"][data-ela="${CSS.escape(nome_ela)}"]`);
+          if (sug) sug.remove();
 
-      const actions = h('div', {class:'inline-actions', style:'margin-top:8px;'});
-      const btnBuscar = h('button', {class:'btn', id:`buscar_${i}`}, 'Buscar');
-      const btnAdd    = h('button', {class:'btn primary', id:`add_${i}`, 'data-mode':'add'}, 'Adicionar');
-      actions.append(btnBuscar, btnAdd);
+        } else if (resp.needs_confirm) {
+          const ok = window.confirm(resp.msg || 'Confirmar?');
 
-      const justifyWrap = h('div', {class:'justify-box', id:`justify_wrap_${i}`}, `
-        <label for="justify_${i}">Justificativa (obrigatória para Recusou/Desistiu)</label>
-        <textarea id="justify_${i}" rows="3" placeholder="Descreva a justificativa..."></textarea>
-        <div class="inline-actions" style="margin-top:6px;">
-          <button class="btn danger" id="mark_recusou_${i}">Confirmar Recusou</button>
-          <button class="btn warn" id="mark_desistiu_${i}">Confirmar Desistiu</button>
-          <button class="btn" id="cancel_alter_${i}">Cancelar</button>
-        </div>
-      `);
-
-      const status = h('div', {class:'status', id:`status_${i}`});
-
-      slot.append(rowNomes, rowCont, actions, justifyWrap, status);
-      slotsWrap.appendChild(slot);
-
-      // Handlers
-      btnBuscar.addEventListener('click', async (e) => {
-        e.preventDefault();
-        status.textContent = '';
-        const nome_ele = document.getElementById(`ele_${i}`).value.trim();
-        const nome_ela = document.getElementById(`ela_${i}`).value.trim();
-        if (!nome_ele || !nome_ela) {
-          status.textContent = 'Preencha Nome (Ele) e Nome (Ela) antes de buscar.';
-          status.className = 'status warn-t';
-          return;
-        }
-        try {
-          const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', {
-            ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela
-          });
-          if (!data.ok) { status.textContent = data.msg || 'Falha ao validar.'; status.className = 'status err'; return; }
-          if (data.ja_coordenador) { status.textContent = 'Casal já foi coordenador desta equipe.'; status.className = 'status err'; return; }
-          if (data.ja_no_ano) { status.textContent = 'Casal já está montado em alguma equipe deste ano.'; status.className = 'status err'; return; }
-          document.getElementById(`tel_${i}`).value = data.telefones || '';
-          document.getElementById(`end_${i}`).value = data.endereco || '';
-          if (data.trabalhou_antes) {
-            status.textContent = 'Casal já trabalhou nesta equipe. Confirme na hora de adicionar.';
-            status.className = 'status warn-t';
-            slot.dataset.trabalhouAntes = '1';
-          } else {
-            status.textContent = 'Dados carregados.';
-            status.className = 'status ok';
-            slot.dataset.trabalhouAntes = '';
-          }
-        } catch { status.textContent = 'Erro na validação/busca.'; status.className = 'status err'; }
-      });
-
-      btnAdd.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const mode = btnAdd.dataset.mode || 'add';
-        if (mode === 'add') {
-          const nome_ele = document.getElementById(`ele_${i}`).value.trim();
-          const nome_ela = document.getElementById(`ela_${i}`).value.trim();
-          const telefones = document.getElementById(`tel_${i}`).value.trim();
-          const endereco  = document.getElementById(`end_${i}`).value.trim();
-          if (!nome_ele || !nome_ela) { status.textContent = 'Preencha Nome (Ele) e Nome (Ela).'; status.className = 'status warn-t'; return; }
-          let confirmar_repeticao = false;
-          if (slot.dataset.trabalhouAntes === '1') {
-            confirmar_repeticao = window.confirm('Casal já trabalhou na equipe. Confirmar para montar novamente?');
-            if (!confirmar_repeticao) return;
-          }
-          try {
-            const resp = await postJSON('{{ url_for("api_add_membro_equipe") }}', {
-              ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao
+          if (ok) {
+            const resp2 = await postJSON('{{ url_for("api_add_membro_equipe") }}', {
+              ano: ANO,
+              equipe_final: EQUIPE_FINAL,
+              nome_ele,
+              nome_ela,
+              telefones,
+              endereco,
+              confirmar_repeticao: true
             });
-            if (resp.ok) {
-              status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok';
+
+            if (resp2.ok) {
+              status.textContent = 'Integrante adicionado com sucesso.';
+              status.className = 'status ok';
               lockSlot(i, true, null);
-              // remove da coluna lateral (se veio de lá)
-              const sug = document.querySelector(`.suggest[data-ele="${CSS.escape(nome_ele)}"][data-ela="${CSS.escape(nome_ela)}"]`);
-              if (sug) sug.remove();
-            } else if (resp.needs_confirm) {
-              const ok = window.confirm(resp.msg || 'Confirmar?');
-              if (ok) {
-                const resp2 = await postJSON('{{ url_for("api_add_membro_equipe") }}', {
-                  ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela, telefones, endereco, confirmar_repeticao: true
-                });
-                if (resp2.ok) { status.textContent = 'Integrante adicionado com sucesso.'; status.className = 'status ok'; lockSlot(i, true, null); }
-                else { status.textContent = resp2.msg || 'Falha ao adicionar.'; status.className = 'status err'; }
-              }
             } else {
-              status.textContent = resp.msg || 'Falha ao adicionar.'; status.className = 'status err';
+              status.textContent = resp2.msg || 'Falha ao adicionar.';
+              status.className = 'status err';
             }
-          } catch { status.textContent = 'Erro ao adicionar.'; status.className = 'status err'; }
-        } else { // alterar
-          document.getElementById(`justify_wrap_${i}`).style.display = 'block';
+          }
+
+        } else {
+          status.textContent = resp.msg || 'Falha ao adicionar.';
+          status.className = 'status err';
         }
-      });
 
-      // Ações da justificativa (Alterar -> Recusou/Desistiu)
-      justify_wrap_listeners(i, status);
-    }
-
-    function justify_wrap_listeners(i, statusEl) {
-      const btnRec = document.getElementById(`mark_recusou_${i}`);
-      const btnDes = document.getElementById(`mark_desistiu_${i}`);
-      const btnCan = document.getElementById(`cancel_alter_${i}`);
-      btnRec.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const obs = document.getElementById(`justify_${i}`).value.trim();
-        if (!obs) { statusEl.textContent = 'Justificativa é obrigatória.'; statusEl.className = 'status err'; return; }
-        const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
-        if (!memberId) { statusEl.textContent = 'Sem ID do integrante. Recarregue a página.'; statusEl.className = 'status err'; return; }
-        try {
-          const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', { id: parseInt(memberId,10), novo_status:'Recusou', observacao: obs });
-          if (resp.ok) { statusEl.textContent = 'Status atualizado para Recusou. Campos liberados.'; statusEl.className = 'status ok'; lockSlot(i, false, null); }
-          else { statusEl.textContent = resp.msg || 'Falha ao alterar status.'; statusEl.className = 'status err'; }
-        } catch { statusEl.textContent = 'Erro ao alterar status.'; statusEl.className = 'status err'; }
-      });
-      btnDes.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const obs = document.getElementById(`justify_${i}`).value.trim();
-        if (!obs) { statusEl.textContent = 'Justificativa é obrigatória.'; statusEl.className = 'status err'; return; }
-        const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
-        if (!memberId) { statusEl.textContent = 'Sem ID do integrante. Recarregue a página.'; statusEl.className = 'status err'; return; }
-        try {
-          const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', { id: parseInt(memberId,10), novo_status:'Desistiu', observacao: obs });
-          if (resp.ok) { statusEl.textContent = 'Status atualizado para Desistiu. Campos liberados.'; statusEl.className = 'status ok'; lockSlot(i, false, null); }
-          else { statusEl.textContent = resp.msg || 'Falha ao alterar status.'; statusEl.className = 'status err'; }
-        } catch { statusEl.textContent = 'Erro ao alterar status.'; statusEl.className = 'status err'; }
-      });
-      btnCan.addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById(`justify_wrap_${i}`).style.display = 'none';
-        document.getElementById(`justify_${i}`).value = '';
-      });
-    }
-
-    // ----- Render geral -----
-    function renderAll() {
-      // 1) cria TODOS os slots vazios primeiro (sempre SLOTS_MAX)
-      slotsWrap.innerHTML = '';
-      for (let i=0; i<SLOTS_MAX; i++) renderSlot(i);
-
-      // 2) pré-preenche e trava os existentes por índice (um por um)
-      for (let i=0; i<Math.min(EXISTENTES.length, SLOTS_MAX); i++) {
-        const p = EXISTENTES[i];
-        fillSlot(i, p);
-        lockSlot(i, true, p.id || null);
-        const st = document.getElementById(`status_${i}`);
-        st.textContent = `Integrante já cadastrado${p.status ? ' ('+p.status+')' : ''}.`;
-        st.className = 'status ok';
+      } catch {
+        status.textContent = 'Erro ao adicionar.';
+        status.className = 'status err';
       }
-      updateKPI();
+
+    } else {
+      document.getElementById(`justify_wrap_${i}`).style.display = 'block';
+    }
+  });
+
+  justify_wrap_listeners(i, status);
+}
+
+function justify_wrap_listeners(i, statusEl) {
+  const btnRec = document.getElementById(`mark_recusou_${i}`);
+  const btnDes = document.getElementById(`mark_desistiu_${i}`);
+  const btnCan = document.getElementById(`cancel_alter_${i}`);
+
+  btnRec.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    const obs = document.getElementById(`justify_${i}`).value.trim();
+
+    if (!obs) {
+      statusEl.textContent = 'Justificativa é obrigatória.';
+      statusEl.className = 'status err';
+      return;
     }
 
-    // ----- Sugestões (lado direito) -----
-    function wireSuggestions() {
-      const box = document.getElementById('sugestoes');
-      if (!box) return;
-      box.addEventListener('click', async (e) => {
-        const a = e.target.closest('.suggest'); if (!a) return; e.preventDefault();
-        // encontra primeiro slot vazio (não travado)
-        let idx = -1;
-        for (let i=0; i<SLOTS_MAX; i++) {
-          const s = document.getElementById(`slot_${i}`);
-          if (s && s.dataset.locked !== '1') { idx = i; break; }
-        }
-        if (idx === -1) { alert('Não há slots vazios. Libere um com Alterar -> Recusou/Desistiu.'); return; }
+    const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
 
-        const nome_ele = a.dataset.ele || '';
-        const nome_ela = a.dataset.ela || '';
-        fillSlot(idx, {nome_ele, nome_ela});
+    if (!memberId) {
+      statusEl.textContent = 'Sem ID do integrante. Recarregue a página.';
+      statusEl.className = 'status err';
+      return;
+    }
 
-        const status = document.getElementById(`status_${idx}`);
-        try {
-          const data = await postJSON('{{ url_for("api_check_casal_equipe") }}', { ano: ANO, equipe_final: EQUIPE_FINAL, nome_ele, nome_ela });
-          if (!data.ok) { status.textContent = data.msg || 'Falha ao validar.'; status.className = 'status err'; return; }
-          if (data.ja_coordenador) { status.textContent = 'Casal já foi coordenador desta equipe.'; status.className = 'status err'; return; }
-          if (data.ja_no_ano) { status.textContent = 'Casal já está montado em alguma equipe deste ano.'; status.className = 'status err'; return; }
-          document.getElementById(`tel_${idx}`).value = data.telefones || '';
-          document.getElementById(`end_${idx}`).value = data.endereco || '';
-          if (data.trabalhou_antes) { status.textContent = 'Casal já trabalhou nesta equipe. Confirme ao adicionar.'; status.className = 'status warn-t'; document.getElementById(`slot_${idx}`).dataset.trabalhouAntes='1'; }
-          else { status.textContent = 'Dados carregados a partir da sugestão.'; status.className = 'status ok'; document.getElementById(`slot_${idx}`).dataset.trabalhouAntes=''; }
-        } catch { status.textContent = 'Erro na validação/busca.'; status.className = 'status err'; }
+    try {
+      const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', {
+        id: parseInt(memberId,10),
+        novo_status:'Recusou',
+        observacao: obs
       });
+
+      if (resp.ok) {
+        statusEl.textContent = 'Status atualizado para Recusou. Campos liberados.';
+        statusEl.className = 'status ok';
+        lockSlot(i, false, null);
+      } else {
+        statusEl.textContent = resp.msg || 'Falha ao alterar status.';
+        statusEl.className = 'status err';
+      }
+
+    } catch {
+      statusEl.textContent = 'Erro ao alterar status.';
+      statusEl.className = 'status err';
+    }
+  });
+
+  btnDes.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    const obs = document.getElementById(`justify_${i}`).value.trim();
+
+    if (!obs) {
+      statusEl.textContent = 'Justificativa é obrigatória.';
+      statusEl.className = 'status err';
+      return;
     }
 
-    // Init
-    renderAll();
-    wireSuggestions();
+    const memberId = document.getElementById(`slot_${i}`).dataset.memberId;
+
+    if (!memberId) {
+      statusEl.textContent = 'Sem ID do integrante. Recarregue a página.';
+      statusEl.className = 'status err';
+      return;
+    }
+
+    try {
+      const resp = await postJSON('{{ url_for("api_marcar_status_membro") }}', {
+        id: parseInt(memberId,10),
+        novo_status:'Desistiu',
+        observacao: obs
+      });
+
+      if (resp.ok) {
+        statusEl.textContent = 'Status atualizado para Desistiu. Campos liberados.';
+        statusEl.className = 'status ok';
+        lockSlot(i, false, null);
+      } else {
+        statusEl.textContent = resp.msg || 'Falha ao alterar status.';
+        statusEl.className = 'status err';
+      }
+
+    } catch {
+      statusEl.textContent = 'Erro ao alterar status.';
+      statusEl.className = 'status err';
+    }
+  });
+
+  btnCan.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById(`justify_wrap_${i}`).style.display = 'none';
+    document.getElementById(`justify_${i}`).value = '';
+  });
+}
+
+function renderAll() {
+  slotsWrap.innerHTML = '';
+
+  for (let i=0; i<SLOTS_MAX; i++) {
+    renderSlot(i);
+  }
+
+  for (let i=0; i<Math.min(EXISTENTES.length, SLOTS_MAX); i++) {
+    const p = EXISTENTES[i];
+    fillSlot(i, p);
+    lockSlot(i, true, p.id || null);
+
+    const st = document.getElementById(`status_${i}`);
+    st.textContent = `Integrante já cadastrado${p.status ? ' ('+p.status+')' : ''}.`;
+    st.className = 'status ok';
+  }
+
+  updateKPI();
+}
+
+function wireSuggestions() {
+  const box = document.getElementById('sugestoes');
+  if (!box) return;
+
+  box.addEventListener('click', async (e) => {
+    const a = e.target.closest('.suggest');
+    if (!a) return;
+
+    e.preventDefault();
+
+    let idx = -1;
+
+    for (let i=0; i<SLOTS_MAX; i++) {
+      const s = document.getElementById(`slot_${i}`);
+      if (s && s.dataset.locked !== '1') {
+        idx = i;
+        break;
+      }
+    }
+
+    if (idx === -1) {
+      alert('Não há slots vazios. Libere um com Alterar -> Recusou/Desistiu.');
+      return;
+    }
+
+    const nome_ele = a.dataset.ele || '';
+    const nome_ela = a.dataset.ela || '';
+
+    fillSlot(idx, {
+      casal_id: '',
+      nome_ele,
+      nome_ela,
+      telefones: '',
+      endereco: ''
+    });
+
+    const status = document.getElementById(`status_${idx}`);
+    status.textContent = 'Sugestão aplicada. Clique em Buscar casal para confirmar o vínculo.';
+    status.className = 'status ok';
+  });
+}
+
+renderAll();
+wireSuggestions();
 </script>
 {% endblock %}
