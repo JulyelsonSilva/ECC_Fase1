@@ -239,8 +239,8 @@
       $grid.appendChild(wrap);
 
       const $st = document.getElementById(`${id}_status`);
-      const disableSolo = () => disable([`${id}_nome`, `${id}_add`]);
-      const disableCouple = () => disable([`${id}_ele`, `${id}_ela`, `${id}_tel`, `${id}_end`, `${id}_buscar`, `${id}_add`]);
+      const disableSolo = () => disable([`${id}_nome`]);
+      const disableCouple = () => disable([`${id}_ele`, `${id}_ela`, `${id}_tel`, `${id}_end`, `${id}_buscar`]);
 
       if (ex) {
         $st.textContent = `Palestra já cadastrada para este ano (status: ${ex.status || '—'}).`;
