@@ -16,6 +16,7 @@ from services.circulos_service import (
     remove_integrante_circulo,
     copiar_atual_para_original,
     definir_coord_circulo,
+    sincronizar_circulos_por_encontreiros,
 )
 
 
@@ -38,6 +39,8 @@ def register_circulos_routes(app, _encontrista_name_by_id):
         paroquia_id = paroquia_id_atual()
         ano = (request.args.get("ano") or "").strip()
         q = (request.args.get("q") or "").strip()
+
+        sincronizar_circulos_por_encontreiros(paroquia_id)
 
         dados = listar_circulos(paroquia_id=paroquia_id, ano=ano, q=q)
 
@@ -176,6 +179,9 @@ def register_circulos_routes(app, _encontrista_name_by_id):
             return bloqueio
 
         paroquia_id = paroquia_id_atual()
+
+        sincronizar_circulos_por_encontreiros(paroquia_id)
+
         dados = pesquisar_circulos(paroquia_id)
 
         return render_template(
@@ -191,6 +197,9 @@ def register_circulos_routes(app, _encontrista_name_by_id):
             return bloqueio
 
         paroquia_id = paroquia_id_atual()
+
+        sincronizar_circulos_por_encontreiros(paroquia_id)
+
         dados = listar_circulos_transferencia(paroquia_id)
 
         return render_template(
