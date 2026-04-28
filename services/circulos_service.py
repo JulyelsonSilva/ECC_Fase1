@@ -135,10 +135,10 @@ def listar_circulos(paroquia_id, ano="", q=""):
                 (
                     LOWER(c.nome_circulo)    LIKE LOWER(%s) OR
                     LOWER(c.cor_circulo)     LIKE LOWER(%s) OR
-                    LOWER(COALESCE(ea.nome_usual_ele, c.coord_atual_ele, '')) LIKE LOWER(%s) OR
-                    LOWER(COALESCE(ea.nome_usual_ela, c.coord_atual_ela, '')) LIKE LOWER(%s) OR
-                    LOWER(COALESCE(eo.nome_usual_ele, c.coord_orig_ele, '')) LIKE LOWER(%s) OR
-                    LOWER(COALESCE(eo.nome_usual_ela, c.coord_orig_ela, '')) LIKE LOWER(%s)
+                    LOWER(COALESCE(ea.nome_usual_ele, '')) LIKE LOWER(%s) OR
+                    LOWER(COALESCE(ea.nome_usual_ela, '')) LIKE LOWER(%s) OR
+                    LOWER(COALESCE(eo.nome_usual_ele, '')) LIKE LOWER(%s) OR
+                    LOWER(COALESCE(eo.nome_usual_ela, '')) LIKE LOWER(%s)
                 )
             """)
             params += [like, like, like, like, like, like]
@@ -149,10 +149,10 @@ def listar_circulos(paroquia_id, ano="", q=""):
             SELECT
                 c.id, c.ano, c.cor_circulo, c.nome_circulo,
                 c.coord_orig_casal_id, c.coord_atual_casal_id,
-                COALESCE(eo.nome_usual_ele, c.coord_orig_ele) AS coord_orig_ele,
-                COALESCE(eo.nome_usual_ela, c.coord_orig_ela) AS coord_orig_ela,
-                COALESCE(ea.nome_usual_ele, c.coord_atual_ele) AS coord_atual_ele,
-                COALESCE(ea.nome_usual_ela, c.coord_atual_ela) AS coord_atual_ela,
+                COALESCE(eo.nome_usual_ele, '') AS coord_orig_ele,
+                COALESCE(eo.nome_usual_ela, '') AS coord_orig_ela,
+                COALESCE(ea.nome_usual_ele, '') AS coord_atual_ele,
+                COALESCE(ea.nome_usual_ela, '') AS coord_atual_ela,
                 c.integrantes_original, c.integrantes_atual,
                 c.situacao, c.observacao, c.created_at
             FROM circulos c
@@ -292,10 +292,10 @@ def buscar_circulo_por_id(cid, paroquia_id):
         cur.execute("""
             SELECT
                 c.*,
-                COALESCE(eo.nome_usual_ele, c.coord_orig_ele) AS coord_orig_ele_resolvido,
-                COALESCE(eo.nome_usual_ela, c.coord_orig_ela) AS coord_orig_ela_resolvido,
-                COALESCE(ea.nome_usual_ele, c.coord_atual_ele) AS coord_atual_ele_resolvido,
-                COALESCE(ea.nome_usual_ela, c.coord_atual_ela) AS coord_atual_ela_resolvido
+                COALESCE(eo.nome_usual_ele, '') AS coord_orig_ele_resolvido,
+                COALESCE(eo.nome_usual_ela, '') AS coord_orig_ela_resolvido,
+                COALESCE(ea.nome_usual_ele, '') AS coord_atual_ele_resolvido,
+                COALESCE(ea.nome_usual_ela, '') AS coord_atual_ela_resolvido
             FROM circulos c
             LEFT JOIN encontristas eo
                    ON eo.id = c.coord_orig_casal_id
@@ -529,8 +529,6 @@ def atualizar_campo_circulo(cid, paroquia_id, field, value):
     allowed = {
         "cor_circulo",
         "nome_circulo",
-        "coord_atual_ele",
-        "coord_atual_ela",
         "integrantes_atual",
         "situacao",
         "observacao"
@@ -627,10 +625,10 @@ def pesquisar_circulos(paroquia_id):
         cur.execute("""
             SELECT
                 c.id, c.ano, c.cor_circulo, c.nome_circulo,
-                COALESCE(eo.nome_usual_ele, c.coord_orig_ele) AS coord_orig_ele,
-                COALESCE(eo.nome_usual_ela, c.coord_orig_ela) AS coord_orig_ela,
-                COALESCE(ea.nome_usual_ele, c.coord_atual_ele) AS coord_atual_ele,
-                COALESCE(ea.nome_usual_ela, c.coord_atual_ela) AS coord_atual_ela,
+                COALESCE(eo.nome_usual_ele, '') AS coord_orig_ele,
+                COALESCE(eo.nome_usual_ela, '') AS coord_orig_ela,
+                COALESCE(ea.nome_usual_ele, '') AS coord_atual_ele,
+                COALESCE(ea.nome_usual_ela, '') AS coord_atual_ela,
                 c.integrantes_atual, c.integrantes_original
             FROM circulos c
             LEFT JOIN encontristas eo
