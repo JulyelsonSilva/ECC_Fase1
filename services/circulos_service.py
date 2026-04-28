@@ -93,8 +93,8 @@ def sincronizar_circulos_por_encontreiros(paroquia_id):
                 e.casal_id
             FROM encontreiros e
             WHERE e.paroquia_id = %s
-              AND e.equipe = 'Círculos'
-              AND COALESCE(e.coordenador, 'Não') = 'Não'
+              AND LOWER(TRIM(e.equipe)) IN ('equipe de círculos', 'equipe de circulos')
+              AND LOWER(TRIM(COALESCE(e.coordenador, ''))) NOT IN ('sim', 's')
               AND e.casal_id IS NOT NULL
               AND NOT EXISTS (
                   SELECT 1
