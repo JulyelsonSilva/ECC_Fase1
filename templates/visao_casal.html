@@ -211,6 +211,16 @@
               <div class="box-item">
                 <div class="small">Ano do encontro</div>
                 <strong>{{ dados_encontrista.ano_encontro or '—' }}</strong>
+
+                <div class="small" style="margin-top: 8px;">Data da Segunda Etapa</div>
+                <strong>
+                  {{ dados_encontrista.data_2_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_2_etapa else '—' }}
+                </strong>
+
+                <div class="small" style="margin-top: 8px;">Data da Terceira Etapa</div>
+                <strong>
+                  {{ dados_encontrista.data_3_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_3_etapa else '—' }}
+                </strong>
               </div>
               <div class="box-item">
                 <div class="small">Telefones</div>
