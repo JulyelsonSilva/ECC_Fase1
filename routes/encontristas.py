@@ -28,6 +28,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     ano,
                     num_ecc,
                     data_casamento,
+                    data_1_etapa,
                     data_2_etapa,
                     data_3_etapa,
                     nome_completo_ele,
@@ -93,6 +94,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     ano,
                     num_ecc,
                     data_casamento,
+                    data_1_etapa,
                     data_2_etapa,
                     data_3_etapa,
                     nome_completo_ele,
@@ -137,6 +139,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     num_ecc = %s,
                     ano = %s,
                     data_casamento = %s,
+                    data_1_etapa = %s,
                     data_2_etapa = %s,
                     data_3_etapa = %s,
                     casal_visitacao = %s,
@@ -158,6 +161,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 payload["num_ecc"],
                 payload["ano"],
                 payload["data_casamento"],
+                payload["data_1_etapa"],
                 payload["data_2_etapa"],
                 payload["data_3_etapa"],
                 payload["casal_visitacao"],
@@ -304,6 +308,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             num_ecc = request.form.get('num_ecc', '').strip()
             ano_raw = request.form.get('ano', '').strip()
             data_casamento = request.form.get('data_casamento', '').strip() or None
+            data_1_etapa = request.form.get('data_1_etapa', '').strip() or None
             data_2_etapa = request.form.get('data_2_etapa', '').strip() or None
             data_3_etapa = request.form.get('data_3_etapa', '').strip() or None
             casal_visitacao = request.form.get('casal_visitacao', '').strip()
@@ -328,6 +333,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 "num_ecc": num_ecc,
                 "ano": ano,
                 "data_casamento": data_casamento,
+                "data_1_etapa": data_1_etapa,
                 "data_2_etapa": data_2_etapa,
                 "data_3_etapa": data_3_etapa,
                 "casal_visitacao": casal_visitacao,
