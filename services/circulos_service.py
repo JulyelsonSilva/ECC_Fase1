@@ -81,6 +81,8 @@ def sincronizar_circulos_por_encontreiros(paroquia_id):
                 integrantes_atual,
                 coord_orig_casal_id,
                 coord_atual_casal_id
+                observacao
+                situacao
             )
             SELECT
                 e.paroquia_id,
@@ -90,7 +92,9 @@ def sincronizar_circulos_por_encontreiros(paroquia_id):
                 '',
                 '',
                 e.casal_id,
-                e.casal_id
+                e.casal_id,
+                '',
+                ''
             FROM encontreiros e
             WHERE e.paroquia_id = %s
               AND LOWER(TRIM(e.equipe)) IN ('equipe de círculos', 'equipe de circulos')
