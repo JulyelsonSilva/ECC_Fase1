@@ -80,8 +80,8 @@ def sincronizar_circulos_por_encontreiros(paroquia_id):
                 integrantes_original,
                 integrantes_atual,
                 coord_orig_casal_id,
-                coord_atual_casal_id
-                observacao
+                coord_atual_casal_id,
+                observacao,
                 situacao
             )
             SELECT
