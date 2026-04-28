@@ -28,6 +28,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     ano,
                     num_ecc,
                     data_casamento,
+                    data_2_etapa,
+                    data_3_etapa,
                     nome_completo_ele,
                     nome_completo_ela,
                     nome_usual_ele,
@@ -91,6 +93,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     ano,
                     num_ecc,
                     data_casamento,
+                    data_2_etapa,
+                    data_3_etapa,
                     nome_completo_ele,
                     nome_completo_ela,
                     nome_usual_ele,
@@ -133,6 +137,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                     num_ecc = %s,
                     ano = %s,
                     data_casamento = %s,
+                    data_2_etapa = %s,
+                    data_3_etapa = %s,
                     casal_visitacao = %s,
                     ficha_num = %s,
                     aceitou = %s,
@@ -152,6 +158,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 payload["num_ecc"],
                 payload["ano"],
                 payload["data_casamento"],
+                payload["data_2_etapa"],
+                payload["data_3_etapa"],
                 payload["casal_visitacao"],
                 payload["ficha_num"],
                 payload["aceitou"],
@@ -296,6 +304,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
             num_ecc = request.form.get('num_ecc', '').strip()
             ano_raw = request.form.get('ano', '').strip()
             data_casamento = request.form.get('data_casamento', '').strip() or None
+            data_2_etapa = request.form.get('data_2_etapa', '').strip() or None
+            data_3_etapa = request.form.get('data_3_etapa', '').strip() or None
             casal_visitacao = request.form.get('casal_visitacao', '').strip()
             ficha_num = request.form.get('ficha_num', '').strip()
             aceitou = request.form.get('aceitou', '').strip()
@@ -318,6 +328,8 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 "num_ecc": num_ecc,
                 "ano": ano,
                 "data_casamento": data_casamento,
+                "data_2_etapa": data_2_etapa,
+                "data_3_etapa": data_3_etapa,
                 "casal_visitacao": casal_visitacao,
                 "ficha_num": ficha_num,
                 "aceitou": aceitou,
