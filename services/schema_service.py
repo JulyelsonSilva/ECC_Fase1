@@ -190,14 +190,24 @@ def ensure_database_schema():
               coord_orig_ela VARCHAR(120) NULL,
               coord_atual_ele VARCHAR(120) NULL,
               coord_atual_ela VARCHAR(120) NULL,
+              coord_orig_casal_id INT NULL,
+              coord_atual_casal_id INT NULL,
               situacao VARCHAR(60) NULL,
               observacao TEXT NULL,
               created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (id),
               INDEX idx_circulos_paroquia (paroquia_id),
               INDEX idx_circulos_ano (ano),
+              INDEX idx_circulos_coord_orig_casal_id (coord_orig_casal_id),
+              INDEX idx_circulos_coord_atual_casal_id (coord_atual_casal_id),
               CONSTRAINT fk_circulos_paroquia
-                FOREIGN KEY (paroquia_id) REFERENCES paroquias(id)
+                FOREIGN KEY (paroquia_id) REFERENCES paroquias(id),
+              CONSTRAINT fk_circulos_coord_orig_casal
+                FOREIGN KEY (coord_orig_casal_id) REFERENCES encontristas(id)
+                ON DELETE SET NULL,
+              CONSTRAINT fk_circulos_coord_atual_casal
+                FOREIGN KEY (coord_atual_casal_id) REFERENCES encontristas(id)
+                ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
 
@@ -290,6 +300,10 @@ def ensure_database_schema():
             "paroquia_id": "ALTER TABLE circulos ADD COLUMN paroquia_id INT NULL AFTER id",
             "coord_orig_ele": "ALTER TABLE circulos ADD COLUMN coord_orig_ele VARCHAR(120) NULL",
             "coord_orig_ela": "ALTER TABLE circulos ADD COLUMN coord_orig_ela VARCHAR(120) NULL",
+            "coord_atual_ele": "ALTER TABLE circulos ADD COLUMN coord_atual_ele VARCHAR(120) NULL",
+            "coord_atual_ela": "ALTER TABLE circulos ADD COLUMN coord_atual_ela VARCHAR(120) NULL",
+            "coord_orig_casal_id": "ALTER TABLE circulos ADD COLUMN coord_orig_casal_id INT NULL AFTER coord_atual_ela",
+            "coord_atual_casal_id": "ALTER TABLE circulos ADD COLUMN coord_atual_casal_id INT NULL AFTER coord_orig_casal_id",
             "situacao": "ALTER TABLE circulos ADD COLUMN situacao VARCHAR(60) NULL",
             "observacao": "ALTER TABLE circulos ADD COLUMN observacao TEXT NULL",
             "created_at": "ALTER TABLE circulos ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
@@ -320,6 +334,18 @@ def ensure_database_schema():
             cur.execute("""
                 ALTER TABLE palestras
                 ADD INDEX idx_palestras_casal_id (casal_id)
+            """)
+
+        if not _index_exists(cur, "circulos", "idx_circulos_coord_orig_casal_id"):
+            cur.execute("""
+                ALTER TABLE circulos
+                ADD INDEX idx_circulos_coord_orig_casal_id (coord_orig_casal_id)
+            """)
+
+        if not _index_exists(cur, "circulos", "idx_circulos_coord_atual_casal_id"):
+            cur.execute("""
+                ALTER TABLE circulos
+                ADD INDEX idx_circulos_coord_atual_casal_id (coord_atual_casal_id)
             """)
 
         if not _index_exists(cur, "encontristas", "idx_encontristas_paroquia"):
@@ -372,6 +398,24 @@ def ensure_database_schema():
                     ALTER TABLE encontreiros
                     ADD CONSTRAINT fk_encontreiros_encontrista
                     FOREIGN KEY (casal_id) REFERENCES encontristas(id)
+                    ON DELETE SET NULL
+                """)
+
+        if _column_exists(cur, "circulos", "coord_orig_casal_id"):
+            if not _foreign_key_exists(cur, "circulos", "fk_circulos_coord_orig_casal"):
+                cur.execute("""
+                    ALTER TABLE circulos
+                    ADD CONSTRAINT fk_circulos_coord_orig_casal
+                    FOREIGN KEY (coord_orig_casal_id) REFERENCES encontristas(id)
+                    ON DELETE SET NULL
+                """)
+
+        if _column_exists(cur, "circulos", "coord_atual_casal_id"):
+            if not _foreign_key_exists(cur, "circulos", "fk_circulos_coord_atual_casal"):
+                cur.execute("""
+                    ALTER TABLE circulos
+                    ADD CONSTRAINT fk_circulos_coord_atual_casal
+                    FOREIGN KEY (coord_atual_casal_id) REFERENCES encontristas(id)
                     ON DELETE SET NULL
                 """)
 
