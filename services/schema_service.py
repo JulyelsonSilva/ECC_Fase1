@@ -294,11 +294,7 @@ def ensure_database_schema():
         # =========================
         circulos_missing = {
             "paroquia_id": "ALTER TABLE circulos ADD COLUMN paroquia_id INT NULL AFTER id",
-            "coord_orig_ele": "ALTER TABLE circulos ADD COLUMN coord_orig_ele VARCHAR(120) NULL",
-            "coord_orig_ela": "ALTER TABLE circulos ADD COLUMN coord_orig_ela VARCHAR(120) NULL",
-            "coord_atual_ele": "ALTER TABLE circulos ADD COLUMN coord_atual_ele VARCHAR(120) NULL",
-            "coord_atual_ela": "ALTER TABLE circulos ADD COLUMN coord_atual_ela VARCHAR(120) NULL",
-            "coord_orig_casal_id": "ALTER TABLE circulos ADD COLUMN coord_orig_casal_id INT NULL AFTER coord_atual_ela",
+            "coord_orig_casal_id": "ALTER TABLE circulos ADD COLUMN coord_orig_casal_id INT NULL AFTER cor_circulo",
             "coord_atual_casal_id": "ALTER TABLE circulos ADD COLUMN coord_atual_casal_id INT NULL AFTER coord_orig_casal_id",
             "situacao": "ALTER TABLE circulos ADD COLUMN situacao VARCHAR(60) NULL",
             "observacao": "ALTER TABLE circulos ADD COLUMN observacao TEXT NULL",
