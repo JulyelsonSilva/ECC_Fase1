@@ -276,6 +276,12 @@
 
             <div class="form-grid">
               
+               <div class="field col-3">
+                <label for="data_1_etapa">Data da Primeira Etapa</label>
+                <input id="data_1_etapa" name="data_1_etapa" type="date"
+                       value="{{ r.data_1_etapa.strftime('%Y-%m-%d') if r.data_1_etapa else '' }}">
+              </div>
+              
               <div class="field col-3">
                 <label for="data_2_etapa">Data da Segunda Etapa</label>
                 <input id="data_2_etapa" name="data_2_etapa" type="date"
