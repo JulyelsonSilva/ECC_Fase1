@@ -85,10 +85,10 @@ def sincronizar_circulos_por_encontreiros(paroquia_id):
             SELECT
                 e.paroquia_id,
                 e.ano,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
+                '',
+                '',
+                '',
+                '',
                 e.casal_id,
                 e.casal_id
             FROM encontreiros e
