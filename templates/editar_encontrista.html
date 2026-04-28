@@ -271,6 +271,32 @@
             </div>
           </div>
 
+          <section class="form-section">
+            <h3>Datas</h3>
+
+            <div class="form-grid">
+
+              <div class="field col-3">
+                <label for="data_casamento">Data de Casamento</label>
+                <input id="data_casamento" name="data_casamento" type="date"
+                       value="{{ r.data_casamento.strftime('%Y-%m-%d') if r.data_casamento else '' }}">
+              </div>
+
+              <div class="field col-3">
+                <label for="data_2_etapa">Data da Segunda Etapa</label>
+                <input id="data_2_etapa" name="data_2_etapa" type="date"
+                       value="{{ r.data_2_etapa.strftime('%Y-%m-%d') if r.data_2_etapa else '' }}">
+              </div>
+
+              <div class="field col-3">
+                <label for="data_3_etapa">Data da Terceira Etapa</label>
+                <input id="data_3_etapa" name="data_3_etapa" type="date"
+                       value="{{ r.data_3_etapa.strftime('%Y-%m-%d') if r.data_3_etapa else '' }}">
+              </div>
+
+            </div>
+          </section>
+
           <div class="divider"></div>
           <div class="section-title">Informações complementares</div>
           <div class="form-grid">
