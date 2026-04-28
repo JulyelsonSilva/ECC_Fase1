@@ -437,6 +437,8 @@ def buscar_visao_casal(
             SELECT
                 id,
                 ano,
+                data_2_etapa,
+                data_3_etapa,
                 nome_completo_ele,
                 nome_completo_ela,
                 nome_usual_ele,
@@ -462,6 +464,8 @@ def buscar_visao_casal(
             dados_encontrista = {
                 "id": encontrista["id"],
                 "ano_encontro": encontrista["ano"],
+                "data_2_etapa": encontrista.get("data_2_etapa"),
+                "data_3_etapa": encontrista.get("data_3_etapa"),
                 "nome_completo_ele": encontrista.get("nome_completo_ele") or "",
                 "nome_completo_ela": encontrista.get("nome_completo_ela") or "",
                 "nome_usual_ele": nome_ele_oficial,
