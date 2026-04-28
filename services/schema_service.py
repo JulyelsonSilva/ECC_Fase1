@@ -100,6 +100,7 @@ def ensure_database_schema():
               ano INT NOT NULL,
               num_ecc VARCHAR(100) NULL,
               data_casamento DATE NULL,
+              data_1_etapa DATE NULL,
               data_2_etapa DATE NULL,
               data_3_etapa DATE NULL,
               nome_completo_ele VARCHAR(250) NULL,
@@ -260,7 +261,8 @@ def ensure_database_schema():
         encontristas_missing = {
             "paroquia_id": "ALTER TABLE encontristas ADD COLUMN paroquia_id INT NULL AFTER id",
             "apelidos": "ALTER TABLE encontristas ADD COLUMN apelidos JSON NULL AFTER nome_usual_ela",
-            "data_2_etapa": "ALTER TABLE encontristas ADD COLUMN data_2_etapa DATE NULL AFTER data_casamento",
+            "data_1_etapa": "ALTER TABLE encontristas ADD COLUMN data_1_etapa DATE NULL AFTER data_casamento",
+            "data_2_etapa": "ALTER TABLE encontristas ADD COLUMN data_2_etapa DATE NULL AFTER data_1_etapa",
             "data_3_etapa": "ALTER TABLE encontristas ADD COLUMN data_3_etapa DATE NULL AFTER data_2_etapa",
         }
 
