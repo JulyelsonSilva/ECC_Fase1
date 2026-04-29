@@ -19,42 +19,54 @@
       <div class="eyebrow">Sistema do ECC</div>
       <h1 class="page-title">Selecione a paróquia</h1>
       <p class="page-subtitle">
-        Escolha a paróquia que deseja acessar para iniciar o uso do sistema.
+        Escolha a paróquia para acessar o sistema.
       </p>
     </div>
   </section>
 
-  <section class="cards-grid">
+  <div class="row" style="display: flex; flex-wrap: wrap; gap: 16px;">
+
     {% for p in paroquias %}
-      <a class="feature-card" href="{{ url_for('definir_paroquia', paroquia_id=p.id) }}">
-        <div class="feature-icon">
-          <i class="bi bi-buildings"></i>
-        </div>
+      <div style="flex: 1 1 280px; max-width: 320px;">
+        <a href="{{ url_for('definir_paroquia', paroquia_id=p.id) }}"
+           style="text-decoration: none; color: inherit;">
 
-        <div>
-          <h2>{{ p.nome }}</h2>
-          <p>
-            {% if p.cidade or p.estado %}
-              {{ p.cidade or '' }}{% if p.cidade and p.estado %} - {% endif %}{{ p.estado or '' }}
-            {% else %}
-              Localização não informada.
-            {% endif %}
-          </p>
+          <div class="card" style="height: 100%; cursor: pointer; transition: 0.2s;">
+            <div class="card-body">
 
-          {% if p.diocese %}
-            <p class="small">{{ p.diocese }}</p>
-          {% endif %}
-        </div>
-      </a>
+              <h2 style="margin-bottom: 8px;">
+                {{ p.nome }}
+              </h2>
+
+              <p class="small" style="margin-bottom: 6px;">
+                {% if p.cidade or p.estado %}
+                  {{ p.cidade or '' }}{% if p.cidade and p.estado %} - {% endif %}{{ p.estado or '' }}
+                {% else %}
+                  Localização não informada
+                {% endif %}
+              </p>
+
+              {% if p.diocese %}
+                <p class="small">
+                  {{ p.diocese }}
+                </p>
+              {% endif %}
+
+            </div>
+          </div>
+
+        </a>
+      </div>
     {% else %}
       <div class="card">
         <div class="card-body">
-          <h2>Nenhuma paróquia ativa encontrada</h2>
+          <h2>Nenhuma paróquia disponível</h2>
           <p class="small">
-            Acesse as configurações para cadastrar ou ativar uma paróquia.
+            Cadastre uma paróquia nas configurações.
           </p>
         </div>
       </div>
     {% endfor %}
-  </section>
+
+  </div>
 {% endblock %}
