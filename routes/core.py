@@ -1,7 +1,7 @@
-from flask import render_template, request, jsonify, redirect, url_for, session
-from utils import paroquia_id_atual, exigir_paroquia, registrar_contexto_paroquia, json_sem_paroquia
+from flask import render_template, request, jsonify, redirect, url_for
 
 from db import db_conn
+from utils import paroquia_id_atual, exigir_paroquia, registrar_contexto_paroquia
 
 
 def register_core_routes(
@@ -10,7 +10,7 @@ def register_core_routes(
     TEAM_LIMITS,
     _q,
 ):
-        registrar_contexto_paroquia(app)
+    registrar_contexto_paroquia(app)
 
     # =========================
     # Seleção de paróquia
