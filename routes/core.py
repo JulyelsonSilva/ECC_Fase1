@@ -1,4 +1,5 @@
 from flask import render_template, request, jsonify, redirect, url_for, session
+from utils import paroquia_id_atual, exigir_paroquia, registrar_contexto_paroquia, json_sem_paroquia
 
 from db import db_conn
 
@@ -9,20 +10,7 @@ def register_core_routes(
     TEAM_LIMITS,
     _q,
 ):
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
-
-    def exigir_paroquia():
-        if not paroquia_id_atual():
-            return redirect(url_for("selecionar_paroquia"))
-        return None
-
-    @app.context_processor
-    def inject_paroquia_atual():
-        return {
-            "paroquia_id": session.get("paroquia_id"),
-            "paroquia_nome": session.get("paroquia_nome"),
-        }
+        registrar_contexto_paroquia(app)
 
     # =========================
     # Seleção de paróquia
