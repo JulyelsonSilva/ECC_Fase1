@@ -1,64 +1,61 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configurações | Sistema ECC</title>
+{% extends "base.html" %}
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-</head>
+{% block title %}Configurações | Sistema do ECC{% endblock %}
 
-<body>
-  <main class="page-shell">
-    <div class="container">
+{% block main_nav %}
+  <nav class="main-nav" aria-label="Ações administrativas">
+    <a href="{{ url_for('selecionar_paroquia') }}" class="nav-link">
+      <i class="bi bi-arrow-left"></i>
+      <span>Voltar</span>
+    </a>
+  </nav>
+{% endblock %}
 
-      <section class="page-header">
-        <div>
-          <div class="eyebrow">Administração</div>
-          <h1 class="page-title">Configurações do Sistema</h1>
-          <p class="page-subtitle">
-            Gerencie os cadastros estruturais do sistema.
-          </p>
-        </div>
+{% block page_context %}{% endblock %}
 
-        <a href="{{ url_for('selecionar_paroquia') }}" class="btn btn-soft">
-          <i class="bi bi-arrow-left"></i>
-          Voltar
-        </a>
-      </section>
-
-      <section class="cards-grid">
-
-        <a class="feature-card" href="{{ url_for('admin_paroquias', token=token) }}">
-          <div class="feature-icon">
-            <i class="bi bi-buildings"></i>
-          </div>
-
-          <div>
-            <h2>Paróquias</h2>
-            <p>
-              Cadastrar, editar, ativar ou desativar paróquias disponíveis no sistema.
-            </p>
-          </div>
-        </a>
-
-        <div class="feature-card is-disabled">
-          <div class="feature-icon">
-            <i class="bi bi-people-gear"></i>
-          </div>
-
-          <div>
-            <h2>Usuários</h2>
-            <p>
-              Controle de usuários e permissões será implementado na próxima etapa.
-            </p>
-          </div>
-        </div>
-
-      </section>
-
+{% block content %}
+  <section class="page-header">
+    <div>
+      <div class="eyebrow">Administração</div>
+      <h1 class="page-title">Configurações do Sistema</h1>
+      <p class="page-subtitle">
+        Gerencie os cadastros estruturais do sistema.
+      </p>
     </div>
-  </main>
-</body>
-</html>
+
+    <a href="{{ url_for('selecionar_paroquia') }}" class="btn btn-soft">
+      <i class="bi bi-arrow-left"></i>
+      Voltar
+    </a>
+  </section>
+
+  <section class="cards-grid">
+
+    <a class="feature-card" href="{{ url_for('admin_paroquias', token=token) }}">
+      <div class="feature-icon">
+        <i class="bi bi-buildings"></i>
+      </div>
+
+      <div>
+        <h2>Paróquias</h2>
+        <p>
+          Cadastrar, editar, ativar ou desativar paróquias disponíveis no sistema.
+        </p>
+      </div>
+    </a>
+
+    <div class="feature-card is-disabled">
+      <div class="feature-icon">
+        <i class="bi bi-people-gear"></i>
+      </div>
+
+      <div>
+        <h2>Usuários</h2>
+        <p>
+          Controle de usuários e permissões será implementado na próxima etapa.
+        </p>
+      </div>
+    </div>
+
+  </section>
+{% endblock %}
