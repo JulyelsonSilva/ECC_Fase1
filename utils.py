@@ -1,6 +1,8 @@
 import re
 from difflib import SequenceMatcher
 
+from flask import session, redirect, url_for, jsonify
+
 from config import TEAM_MAP
 
 
@@ -38,6 +40,34 @@ def _yes_coord_vals():
         'sim - coordenador',
     )
 
+# =========================
+# Helpers de sessão / paróquia
+# =========================
+def paroquia_id_atual():
+    return session.get("paroquia_id")
+
+
+def paroquia_nome_atual():
+    return session.get("paroquia_nome")
+
+
+def exigir_paroquia():
+    if not paroquia_id_atual():
+        return redirect(url_for("selecionar_paroquia"))
+    return None
+
+
+def json_sem_paroquia(mensagem="Paróquia não selecionada."):
+    return jsonify({"ok": False, "msg": mensagem}), 400
+
+
+def registrar_contexto_paroquia(app):
+    @app.context_processor
+    def inject_paroquia_atual():
+        return {
+            "paroquia_id": session.get("paroquia_id"),
+            "paroquia_nome": session.get("paroquia_nome"),
+        }
 
 # =========================
 # Helpers de equipes
