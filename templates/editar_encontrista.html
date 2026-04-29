@@ -6,9 +6,9 @@
   <section class="page-header">
     <div>
       <div class="eyebrow">Encontristas</div>
-      <h1 class="page-title">Editar casal</h1>
+      <h1 class="page-title">Editar encontrista</h1>
       <p class="page-subtitle">
-        Atualize os dados do casal encontrista.
+        Atualize os dados do casal com segurança.
       </p>
     </div>
 
@@ -20,97 +20,148 @@
 
   <section class="card">
     <div class="card-body">
-      <form method="POST" class="stack">
+      <h2>{{ r.nome_usual_ele or '' }} e {{ r.nome_usual_ela or '' }}</h2>
+      <p class="small">
+        ID {{ r.id }}{% if r.ano %} • Ano {{ r.ano }}{% endif %}
+      </p>
 
-        <h2>Dados do encontro</h2>
+      <form method="post" class="stack" style="margin-top:18px;">
 
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+        <h3>Dados do encontro</h3>
+
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
           <div>
-            <label>Ano</label>
-            <input type="number" name="ano" value="{{ e.ano }}">
+            <label for="ano">Ano</label>
+            <input id="ano" name="ano" type="number" value="{{ r.ano or '' }}">
           </div>
 
           <div>
-            <label>Número do ECC</label>
-            <input type="text" name="num_ecc" value="{{ e.num_ecc }}">
+            <label for="num_ecc">Nº ECC</label>
+            <input id="num_ecc" name="num_ecc" value="{{ r.num_ecc or '' }}">
           </div>
 
           <div>
-            <label>Data do casamento</label>
-            <input type="date" name="data_casamento" value="{{ e.data_casamento }}">
-          </div>
-        </div>
-
-        <hr>
-
-        <h2>Dados do casal</h2>
-
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
-          <div>
-            <label>Nome completo (ele)</label>
-            <input type="text" name="nome_completo_ele" value="{{ e.nome_completo_ele }}">
+            <label for="data_casamento">Data de casamento</label>
+            <input id="data_casamento" name="data_casamento" type="date"
+                   value="{{ r.data_casamento.strftime('%Y-%m-%d') if r.data_casamento else '' }}">
           </div>
 
           <div>
-            <label>Nome completo (ela)</label>
-            <input type="text" name="nome_completo_ela" value="{{ e.nome_completo_ela }}">
-          </div>
-
-          <div>
-            <label>Nome usual (ele)</label>
-            <input type="text" name="nome_usual_ele" value="{{ e.nome_usual_ele }}">
-          </div>
-
-          <div>
-            <label>Nome usual (ela)</label>
-            <input type="text" name="nome_usual_ela" value="{{ e.nome_usual_ela }}">
+            <label for="ficha_num">Ficha nº</label>
+            <input id="ficha_num" name="ficha_num" value="{{ r.ficha_num or '' }}">
           </div>
         </div>
 
         <hr>
 
-        <h2>Contato</h2>
+        <h3>Identificação</h3>
 
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
           <div>
-            <label>Telefone (ele)</label>
-            <input type="text" name="telefone_ele" value="{{ e.telefone_ele }}">
+            <label for="nome_completo_ele">Nome completo (Ele)</label>
+            <input id="nome_completo_ele" name="nome_completo_ele" value="{{ r.nome_completo_ele or '' }}">
           </div>
 
           <div>
-            <label>Telefone (ela)</label>
-            <input type="text" name="telefone_ela" value="{{ e.telefone_ela }}">
+            <label for="nome_completo_ela">Nome completo (Ela)</label>
+            <input id="nome_completo_ela" name="nome_completo_ela" value="{{ r.nome_completo_ela or '' }}">
           </div>
-        </div>
 
-        <div>
-          <label>Endereço</label>
-          <input type="text" name="endereco" value="{{ e.endereco }}">
+          <div>
+            <label for="nome_usual_ele">Nome usual (Ele)</label>
+            <input id="nome_usual_ele" name="nome_usual_ele" value="{{ r.nome_usual_ele or '' }}">
+          </div>
+
+          <div>
+            <label for="nome_usual_ela">Nome usual (Ela)</label>
+            <input id="nome_usual_ela" name="nome_usual_ela" value="{{ r.nome_usual_ela or '' }}">
+          </div>
         </div>
 
         <hr>
 
-        <h2>Observações</h2>
+        <h3>Contato</h3>
 
-        <div>
-          <label>Observação</label>
-          <textarea name="observacao">{{ e.observacao }}</textarea>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+          <div>
+            <label for="telefone_ele">Telefone (Ele)</label>
+            <input id="telefone_ele" name="telefone_ele" value="{{ r.telefone_ele or '' }}">
+          </div>
+
+          <div>
+            <label for="telefone_ela">Telefone (Ela)</label>
+            <input id="telefone_ela" name="telefone_ela" value="{{ r.telefone_ela or '' }}">
+          </div>
         </div>
 
         <div>
-          <label>Observação extra</label>
-          <textarea name="observacao_extra">{{ e.observacao_extra }}</textarea>
+          <label for="endereco">Endereço</label>
+          <input id="endereco" name="endereco" value="{{ r.endereco or '' }}">
+        </div>
+
+        <hr>
+
+        <h3>Datas dos Encontros</h3>
+
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
+          <div>
+            <label for="data_1_etapa">Data da Primeira Etapa</label>
+            <input id="data_1_etapa" name="data_1_etapa" type="date"
+                   value="{{ r.data_1_etapa.strftime('%Y-%m-%d') if r.data_1_etapa else '' }}">
+          </div>
+
+          <div>
+            <label for="data_2_etapa">Data da Segunda Etapa</label>
+            <input id="data_2_etapa" name="data_2_etapa" type="date"
+                   value="{{ r.data_2_etapa.strftime('%Y-%m-%d') if r.data_2_etapa else '' }}">
+          </div>
+
+          <div>
+            <label for="data_3_etapa">Data da Terceira Etapa</label>
+            <input id="data_3_etapa" name="data_3_etapa" type="date"
+                   value="{{ r.data_3_etapa.strftime('%Y-%m-%d') if r.data_3_etapa else '' }}">
+          </div>
+        </div>
+
+        <hr>
+
+        <h3>Informações complementares</h3>
+
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+          <div>
+            <label for="casal_visitacao">Casal de visitação</label>
+            <input id="casal_visitacao" name="casal_visitacao" value="{{ r.casal_visitacao or '' }}">
+          </div>
+
+          <div>
+            <label for="aceitou">Aceitou</label>
+            <select id="aceitou" name="aceitou">
+              <option value="" {% if not r.aceitou %}selected{% endif %}>Selecione</option>
+              <option value="Sim" {% if r.aceitou == 'Sim' %}selected{% endif %}>Sim</option>
+              <option value="Não" {% if r.aceitou == 'Não' %}selected{% endif %}>Não</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="observacao_extra">Observação extra</label>
+          <input id="observacao_extra" name="observacao_extra" value="{{ r.observacao_extra or '' }}">
+        </div>
+
+        <div>
+          <label for="observacao">Observação</label>
+          <textarea id="observacao" name="observacao">{{ r.observacao or '' }}</textarea>
         </div>
 
         <div class="form-actions">
-          <a href="{{ url_for('encontristas') }}" class="btn btn-secondary">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-save"></i>
+            Salvar alterações
+          </button>
+
+          <a class="btn btn-secondary" href="{{ url_for('encontristas') }}">
             Cancelar
           </a>
-
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-save"></i>
-            Salvar
-          </button>
         </div>
 
       </form>
