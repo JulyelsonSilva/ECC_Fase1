@@ -1,21 +1,14 @@
-from flask import render_template, request, jsonify, redirect, url_for, session
+from flask import render_template, request, jsonify, redirect, url_for
 import math
 import time
 
 from db import db_conn
-from utils import _parse_id_list
+from utils import _parse_id_list, paroquia_id_atual, exigir_paroquia, json_sem_paroquia
 from services.geocoding import normalize_address, addr_hash, geocode_br_smart
 
 
 def register_encontristas_routes(app, _encontrista_name_by_id):
 
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
-
-    def exigir_paroquia():
-        if not paroquia_id_atual():
-            return redirect(url_for("selecionar_paroquia"))
-        return None
 
     def listar_encontristas_paroquia(paroquia_id, nome_ele="", nome_ela="", ano="", pagina=1, por_pagina=50):
         conn = db_conn()
@@ -61,18 +54,22 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
                 query += " AND ano = %s"
                 params.append(ano)
 
-            query += " ORDER BY ano DESC, id DESC"
+            count_query = f"SELECT COUNT(*) AS total FROM ({query}) AS base_count"
+            cursor.execute(count_query, params)
+            total_row = cursor.fetchone() or {}
+            total = total_row.get("total", 0) or 0
 
-            cursor.execute(query, params)
-            todos = cursor.fetchall() or []
+            pagina = max(int(pagina or 1), 1)
+            por_pagina = max(int(por_pagina or 50), 1)
+            offset = (pagina - 1) * por_pagina
 
-            inicio = (pagina - 1) * por_pagina
-            fim = pagina * por_pagina
-            dados = todos[inicio:fim]
+            query += " ORDER BY ano DESC, id DESC LIMIT %s OFFSET %s"
+            cursor.execute(query, params + [por_pagina, offset])
+            dados = cursor.fetchall() or []
 
             return {
                 "dados": dados,
-                "total": len(todos),
+                "total": total,
                 "pagina": pagina,
                 "por_pagina": por_pagina,
             }
@@ -358,7 +355,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
     def api_encontristas_por_ano(ano):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         livres = request.args.get("livres", "").strip() in ("1", "true", "True")
 
@@ -427,7 +424,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
     def api_encontrista_busca():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         ele = (request.args.get("ele") or "").strip()
         ela = (request.args.get("ela") or "").strip()
@@ -516,7 +513,7 @@ def register_encontristas_routes(app, _encontrista_name_by_id):
     def normalizar_geocodificar():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         try:
             lote = max(1, int(request.args.get("lote", 50)))
