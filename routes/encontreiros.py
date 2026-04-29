@@ -1,5 +1,6 @@
 
-from flask import render_template, request, redirect, url_for, session
+from flask import render_template, request, redirect, url_for
+from utils import paroquia_id_atual, exigir_paroquia
 
 from services.encontreiros_service import (
     listar_encontreiros,
@@ -16,14 +17,6 @@ def register_encontreiros_routes(
     DB_CONFIG,
     safe_fetch_one
 ):
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
-
-    def exigir_paroquia():
-        if not paroquia_id_atual():
-            return redirect(url_for("selecionar_paroquia"))
-        return None
-
     @app.route('/encontreiros')
     def encontreiros():
         bloqueio = exigir_paroquia()
