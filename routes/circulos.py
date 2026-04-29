@@ -1,4 +1,6 @@
-from flask import render_template, request, jsonify, redirect, url_for, session
+from flask import render_template, request, jsonify, redirect, url_for
+
+from utils import paroquia_id_atual, exigir_paroquia, json_sem_paroquia
 
 from services.circulos_service import (
     listar_circulos,
@@ -22,13 +24,6 @@ from services.circulos_service import (
 
 def register_circulos_routes(app, _encontrista_name_by_id):
 
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
-
-    def exigir_paroquia():
-        if not paroquia_id_atual():
-            return redirect(url_for("selecionar_paroquia"))
-        return None
 
     @app.route("/circulos")
     def circulos_list():
@@ -79,7 +74,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_buscar_encontrista():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         ano_circulo = data.get("ano")
@@ -100,7 +95,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_integrantes(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         resultado = buscar_integrantes_circulo(cid, paroquia_id)
 
@@ -113,7 +108,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_integrantes_append(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         eid = data.get("encontrista_id")
@@ -132,7 +127,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_integrantes_concluir(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         resultado = concluir_integrantes_circulo(cid, paroquia_id)
 
@@ -145,7 +140,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_update_field(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         field = (data.get("field") or "").strip()
@@ -162,7 +157,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_candidatos():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         ano = request.args.get("ano", type=int)
 
@@ -212,7 +207,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_transferir():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         from_id = data.get("from_id")
@@ -239,7 +234,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_update_alias(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         field = (data.get("field") or "").strip()
@@ -256,7 +251,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_add_integrante(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         pid = data.get("encontrista_id")
@@ -275,7 +270,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_remove_integrante(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         pid = data.get("encontrista_id")
@@ -299,7 +294,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_copy_atual_para_original(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         resultado = copiar_atual_para_original(cid, paroquia_id)
         return jsonify(resultado)
@@ -308,7 +303,7 @@ def register_circulos_routes(app, _encontrista_name_by_id):
     def api_circulos_definir_coord(cid):
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         pid = data.get("encontrista_id")
