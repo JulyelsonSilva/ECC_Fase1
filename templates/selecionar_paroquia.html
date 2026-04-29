@@ -1,82 +1,60 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Selecionar Paróquia</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #f4f6f8;
-            margin: 0;
-            padding: 0;
-        }
+{% extends "base.html" %}
 
-        .topbar {
-            background: #2c3e50;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+{% block title %}Selecionar Paróquia | Sistema do ECC{% endblock %}
 
-        .config-btn {
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-        }
+{% block main_nav %}
+  <nav class="main-nav" aria-label="Ações da seleção de paróquia">
+    <a href="{{ url_for('admin_home') }}" class="nav-link">
+      <i class="bi bi-gear"></i>
+      <span>Configurações</span>
+    </a>
+  </nav>
+{% endblock %}
 
-        .container {
-            max-width: 700px;
-            margin: 50px auto;
-        }
+{% block page_context %}{% endblock %}
 
-        .titulo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+{% block content %}
+  <section class="page-header">
+    <div>
+      <div class="eyebrow">Sistema do ECC</div>
+      <h1 class="page-title">Selecione a paróquia</h1>
+      <p class="page-subtitle">
+        Escolha a paróquia que deseja acessar para iniciar o uso do sistema.
+      </p>
+    </div>
+  </section>
 
-        .card {
-            background: white;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 1px solid #ddd;
-            transition: 0.2s;
-        }
-
-        .card:hover {
-            background: #eef3ff;
-        }
-
-        .nome {
-            font-weight: bold;
-        }
-
-        .cidade {
-            color: #666;
-            font-size: 14px;
-        }
-    </style>
-</head>
-<body>
-
-<div class="topbar">
-    <div>Escolha a Paróquia</div>
-    <a href="{{ url_for('admin_home') }}" class="config-btn">⚙ Configurações</a>
-</div>
-
-<div class="container">
-    <h2 class="titulo">Selecione a paróquia</h2>
-
+  <section class="cards-grid">
     {% for p in paroquias %}
-        <div class="card" onclick="window.location.href='/definir-paroquia/{{ p.id }}'">
-            <div class="nome">{{ p.nome }}</div>
-            <div class="cidade">{{ p.cidade }} - {{ p.estado }}</div>
+      <a class="feature-card" href="{{ url_for('definir_paroquia', paroquia_id=p.id) }}">
+        <div class="feature-icon">
+          <i class="bi bi-buildings"></i>
         </div>
-    {% endfor %}
-</div>
 
-</body>
-</html>
+        <div>
+          <h2>{{ p.nome }}</h2>
+          <p>
+            {% if p.cidade or p.estado %}
+              {{ p.cidade or '' }}{% if p.cidade and p.estado %} - {% endif %}{{ p.estado or '' }}
+            {% else %}
+              Localização não informada.
+            {% endif %}
+          </p>
+
+          {% if p.diocese %}
+            <p class="small">{{ p.diocese }}</p>
+          {% endif %}
+        </div>
+      </a>
+    {% else %}
+      <div class="card">
+        <div class="card-body">
+          <h2>Nenhuma paróquia ativa encontrada</h2>
+          <p class="small">
+            Acesse as configurações para cadastrar ou ativar uma paróquia.
+          </p>
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+{% endblock %}
