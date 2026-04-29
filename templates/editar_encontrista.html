@@ -2,169 +2,280 @@
 
 {% block title %}Editar Encontrista | Sistema do ECC{% endblock %}
 
+{% block extra_head %}
+  <style>
+    .edit-page {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .edit-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .edit-topbar h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+    }
+
+    .edit-topbar p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    .edit-actions-top,
+    .edit-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .edit-card-head {
+      padding: 18px 20px 0;
+    }
+
+    .edit-card-head h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .edit-card-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .edit-section-title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary, #2563eb);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .edit-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 18px 0;
+    }
+
+    .edit-form-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .edit-field {
+      grid-column: span 12;
+    }
+
+    .edit-col-6 {
+      grid-column: span 6;
+    }
+
+    .edit-col-4 {
+      grid-column: span 4;
+    }
+
+    .edit-col-3 {
+      grid-column: span 3;
+    }
+
+    .edit-form-section {
+      margin-top: 18px;
+    }
+
+    .edit-form-section h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary, #2563eb);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    @media (max-width: 820px) {
+      .edit-col-6,
+      .edit-col-4,
+      .edit-col-3 {
+        grid-column: span 12;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <section class="page-header">
-    <div>
-      <div class="eyebrow">Encontristas</div>
-      <h1 class="page-title">Editar encontrista</h1>
-      <p class="page-subtitle">
-        Atualize os dados do casal com segurança.
-      </p>
+  <div class="edit-page">
+    <div class="edit-topbar">
+      <div>
+        <h1>Editar encontrista</h1>
+        <p>Atualize os dados do casal com segurança e mantendo compatibilidade com o banco atual.</p>
+      </div>
+
+      <div class="edit-actions-top">
+        <a class="btn btn-secondary" href="{{ url_for('encontristas') }}">
+          <i class="bi bi-arrow-left"></i>
+          Voltar
+        </a>
+      </div>
     </div>
 
-    <a href="{{ url_for('encontristas') }}" class="btn btn-secondary">
-      <i class="bi bi-arrow-left"></i>
-      Voltar
-    </a>
-  </section>
+    <section class="card">
+      <div class="edit-card-head">
+        <h2>{{ r.nome_usual_ele or '' }} e {{ r.nome_usual_ela or '' }}</h2>
+        <p>ID {{ r.id }}{% if r.ano %} • Ano {{ r.ano }}{% endif %}</p>
+      </div>
 
-  <section class="card">
-    <div class="card-body">
-      <h2>{{ r.nome_usual_ele or '' }} e {{ r.nome_usual_ela or '' }}</h2>
-      <p class="small">
-        ID {{ r.id }}{% if r.ano %} • Ano {{ r.ano }}{% endif %}
-      </p>
+      <div class="card-body">
+        <form method="post">
+          <div class="edit-section-title">Dados do encontro</div>
 
-      <form method="post" class="stack" style="margin-top:18px;">
+          <div class="edit-form-grid">
+            <div class="edit-field edit-col-3">
+              <label for="ano">Ano</label>
+              <input id="ano" name="ano" type="number" value="{{ r.ano or '' }}">
+            </div>
 
-        <h3>Dados do encontro</h3>
+            <div class="edit-field edit-col-3">
+              <label for="num_ecc">Nº ECC</label>
+              <input id="num_ecc" name="num_ecc" value="{{ r.num_ecc or '' }}">
+            </div>
 
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
-          <div>
-            <label for="ano">Ano</label>
-            <input id="ano" name="ano" type="number" value="{{ r.ano or '' }}">
+            <div class="edit-field edit-col-3">
+              <label for="data_casamento">Data de casamento</label>
+              <input id="data_casamento" name="data_casamento" type="date"
+                     value="{{ r.data_casamento.strftime('%Y-%m-%d') if r.data_casamento else '' }}">
+            </div>
+
+            <div class="edit-field edit-col-3">
+              <label for="ficha_num">Ficha nº</label>
+              <input id="ficha_num" name="ficha_num" value="{{ r.ficha_num or '' }}">
+            </div>
           </div>
 
-          <div>
-            <label for="num_ecc">Nº ECC</label>
-            <input id="num_ecc" name="num_ecc" value="{{ r.num_ecc or '' }}">
+          <div class="edit-divider"></div>
+
+          <div class="edit-section-title">Identificação</div>
+
+          <div class="edit-form-grid">
+            <div class="edit-field edit-col-6">
+              <label for="nome_completo_ele">Nome completo (Ele)</label>
+              <input id="nome_completo_ele" name="nome_completo_ele" value="{{ r.nome_completo_ele or '' }}">
+            </div>
+
+            <div class="edit-field edit-col-6">
+              <label for="nome_completo_ela">Nome completo (Ela)</label>
+              <input id="nome_completo_ela" name="nome_completo_ela" value="{{ r.nome_completo_ela or '' }}">
+            </div>
+
+            <div class="edit-field edit-col-6">
+              <label for="nome_usual_ele">Nome usual (Ele)</label>
+              <input id="nome_usual_ele" name="nome_usual_ele" value="{{ r.nome_usual_ele or '' }}">
+            </div>
+
+            <div class="edit-field edit-col-6">
+              <label for="nome_usual_ela">Nome usual (Ela)</label>
+              <input id="nome_usual_ela" name="nome_usual_ela" value="{{ r.nome_usual_ela or '' }}">
+            </div>
           </div>
 
-          <div>
-            <label for="data_casamento">Data de casamento</label>
-            <input id="data_casamento" name="data_casamento" type="date"
-                   value="{{ r.data_casamento.strftime('%Y-%m-%d') if r.data_casamento else '' }}">
+          <div class="edit-divider"></div>
+
+          <div class="edit-section-title">Contato</div>
+
+          <div class="edit-form-grid">
+            <div class="edit-field edit-col-6">
+              <label for="telefone_ele">Telefone (Ele)</label>
+              <input id="telefone_ele" name="telefone_ele" value="{{ r.telefone_ele or '' }}">
+            </div>
+
+            <div class="edit-field edit-col-6">
+              <label for="telefone_ela">Telefone (Ela)</label>
+              <input id="telefone_ela" name="telefone_ela" value="{{ r.telefone_ela or '' }}">
+            </div>
+
+            <div class="edit-field">
+              <label for="endereco">Endereço</label>
+              <input id="endereco" name="endereco" value="{{ r.endereco or '' }}">
+            </div>
           </div>
 
-          <div>
-            <label for="ficha_num">Ficha nº</label>
-            <input id="ficha_num" name="ficha_num" value="{{ r.ficha_num or '' }}">
-          </div>
-        </div>
+          <div class="edit-divider"></div>
 
-        <hr>
+          <section class="edit-form-section">
+            <h3>Datas dos Encontros</h3>
 
-        <h3>Identificação</h3>
+            <div class="edit-form-grid">
+              <div class="edit-field edit-col-3">
+                <label for="data_1_etapa">Data da Primeira Etapa</label>
+                <input id="data_1_etapa" name="data_1_etapa" type="date"
+                       value="{{ r.data_1_etapa.strftime('%Y-%m-%d') if r.data_1_etapa else '' }}">
+              </div>
 
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
-          <div>
-            <label for="nome_completo_ele">Nome completo (Ele)</label>
-            <input id="nome_completo_ele" name="nome_completo_ele" value="{{ r.nome_completo_ele or '' }}">
-          </div>
+              <div class="edit-field edit-col-3">
+                <label for="data_2_etapa">Data da Segunda Etapa</label>
+                <input id="data_2_etapa" name="data_2_etapa" type="date"
+                       value="{{ r.data_2_etapa.strftime('%Y-%m-%d') if r.data_2_etapa else '' }}">
+              </div>
 
-          <div>
-            <label for="nome_completo_ela">Nome completo (Ela)</label>
-            <input id="nome_completo_ela" name="nome_completo_ela" value="{{ r.nome_completo_ela or '' }}">
-          </div>
+              <div class="edit-field edit-col-3">
+                <label for="data_3_etapa">Data da Terceira Etapa</label>
+                <input id="data_3_etapa" name="data_3_etapa" type="date"
+                       value="{{ r.data_3_etapa.strftime('%Y-%m-%d') if r.data_3_etapa else '' }}">
+              </div>
+            </div>
+          </section>
 
-          <div>
-            <label for="nome_usual_ele">Nome usual (Ele)</label>
-            <input id="nome_usual_ele" name="nome_usual_ele" value="{{ r.nome_usual_ele or '' }}">
-          </div>
+          <div class="edit-divider"></div>
 
-          <div>
-            <label for="nome_usual_ela">Nome usual (Ela)</label>
-            <input id="nome_usual_ela" name="nome_usual_ela" value="{{ r.nome_usual_ela or '' }}">
-          </div>
-        </div>
+          <div class="edit-section-title">Informações complementares</div>
 
-        <hr>
+          <div class="edit-form-grid">
+            <div class="edit-field edit-col-6">
+              <label for="casal_visitacao">Casal de visitação</label>
+              <input id="casal_visitacao" name="casal_visitacao" value="{{ r.casal_visitacao or '' }}">
+            </div>
 
-        <h3>Contato</h3>
+            <div class="edit-field edit-col-6">
+              <label for="aceitou">Aceitou</label>
+              <select id="aceitou" name="aceitou">
+                <option value="" {% if not r.aceitou %}selected{% endif %}>Selecione</option>
+                <option value="Sim" {% if r.aceitou == 'Sim' %}selected{% endif %}>Sim</option>
+                <option value="Não" {% if r.aceitou == 'Não' %}selected{% endif %}>Não</option>
+              </select>
+            </div>
 
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
-          <div>
-            <label for="telefone_ele">Telefone (Ele)</label>
-            <input id="telefone_ele" name="telefone_ele" value="{{ r.telefone_ele or '' }}">
-          </div>
+            <div class="edit-field">
+              <label for="observacao_extra">Observação extra</label>
+              <input id="observacao_extra" name="observacao_extra" value="{{ r.observacao_extra or '' }}">
+            </div>
 
-          <div>
-            <label for="telefone_ela">Telefone (Ela)</label>
-            <input id="telefone_ela" name="telefone_ela" value="{{ r.telefone_ela or '' }}">
-          </div>
-        </div>
-
-        <div>
-          <label for="endereco">Endereço</label>
-          <input id="endereco" name="endereco" value="{{ r.endereco or '' }}">
-        </div>
-
-        <hr>
-
-        <h3>Datas dos Encontros</h3>
-
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
-          <div>
-            <label for="data_1_etapa">Data da Primeira Etapa</label>
-            <input id="data_1_etapa" name="data_1_etapa" type="date"
-                   value="{{ r.data_1_etapa.strftime('%Y-%m-%d') if r.data_1_etapa else '' }}">
+            <div class="edit-field">
+              <label for="observacao">Observação</label>
+              <textarea id="observacao" name="observacao">{{ r.observacao or '' }}</textarea>
+            </div>
           </div>
 
-          <div>
-            <label for="data_2_etapa">Data da Segunda Etapa</label>
-            <input id="data_2_etapa" name="data_2_etapa" type="date"
-                   value="{{ r.data_2_etapa.strftime('%Y-%m-%d') if r.data_2_etapa else '' }}">
+          <div class="edit-actions" style="margin-top:20px;">
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-save"></i>
+              Salvar alterações
+            </button>
+
+            <a class="btn btn-secondary" href="{{ url_for('encontristas') }}">
+              Cancelar
+            </a>
           </div>
-
-          <div>
-            <label for="data_3_etapa">Data da Terceira Etapa</label>
-            <input id="data_3_etapa" name="data_3_etapa" type="date"
-                   value="{{ r.data_3_etapa.strftime('%Y-%m-%d') if r.data_3_etapa else '' }}">
-          </div>
-        </div>
-
-        <hr>
-
-        <h3>Informações complementares</h3>
-
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
-          <div>
-            <label for="casal_visitacao">Casal de visitação</label>
-            <input id="casal_visitacao" name="casal_visitacao" value="{{ r.casal_visitacao or '' }}">
-          </div>
-
-          <div>
-            <label for="aceitou">Aceitou</label>
-            <select id="aceitou" name="aceitou">
-              <option value="" {% if not r.aceitou %}selected{% endif %}>Selecione</option>
-              <option value="Sim" {% if r.aceitou == 'Sim' %}selected{% endif %}>Sim</option>
-              <option value="Não" {% if r.aceitou == 'Não' %}selected{% endif %}>Não</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label for="observacao_extra">Observação extra</label>
-          <input id="observacao_extra" name="observacao_extra" value="{{ r.observacao_extra or '' }}">
-        </div>
-
-        <div>
-          <label for="observacao">Observação</label>
-          <textarea id="observacao" name="observacao">{{ r.observacao or '' }}</textarea>
-        </div>
-
-        <div class="form-actions">
-          <button class="btn btn-primary" type="submit">
-            <i class="bi bi-save"></i>
-            Salvar alterações
-          </button>
-
-          <a class="btn btn-secondary" href="{{ url_for('encontristas') }}">
-            Cancelar
-          </a>
-        </div>
-
-      </form>
-    </div>
-  </section>
+        </form>
+      </div>
+    </section>
+  </div>
 {% endblock %}
