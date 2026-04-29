@@ -40,6 +40,7 @@ def _yes_coord_vals():
         'sim - coordenador',
     )
 
+
 # =========================
 # Helpers de sessão / paróquia
 # =========================
@@ -68,6 +69,7 @@ def registrar_contexto_paroquia(app):
             "paroquia_id": session.get("paroquia_id"),
             "paroquia_nome": session.get("paroquia_nome"),
         }
+
 
 # =========================
 # Helpers de equipes
