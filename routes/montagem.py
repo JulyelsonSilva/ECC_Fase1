@@ -1,4 +1,6 @@
-from flask import render_template, request, jsonify, redirect, url_for, session
+from flask import render_template, request, jsonify, redirect, url_for
+
+from utils import paroquia_id_atual, exigir_paroquia, json_sem_paroquia
 
 from services.montagem_service import (
     listar_montagem_por_ano,
@@ -26,14 +28,6 @@ def register_montagem_routes(
     TEAM_LIMITS,
     _team_label,
 ):
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
-
-    def exigir_paroquia():
-        if not paroquia_id_atual():
-            return redirect(url_for("selecionar_paroquia"))
-        return None
-
     # =========================
     # MONTAGEM (Aberto x Concluído)
     # =========================
@@ -81,7 +75,7 @@ def register_montagem_routes(
     def api_buscar_casal():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         nome_ele = (data.get('nome_ele') or '').strip()
@@ -105,7 +99,7 @@ def register_montagem_routes(
     def api_adicionar_dirigente():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
@@ -141,7 +135,7 @@ def register_montagem_routes(
     def api_buscar_cg():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
@@ -166,7 +160,7 @@ def register_montagem_routes(
     def api_adicionar_cg():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
@@ -261,7 +255,7 @@ def register_montagem_routes(
     def api_check_casal_equipe():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
@@ -294,7 +288,7 @@ def register_montagem_routes(
     def api_add_membro_equipe():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
@@ -334,7 +328,7 @@ def register_montagem_routes(
     def api_marcar_status_dirigente():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
@@ -363,7 +357,7 @@ def register_montagem_routes(
     def api_marcar_status_membro():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
 
