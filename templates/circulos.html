@@ -4,53 +4,201 @@
 
 {% block extra_head %}
 <style>
-  .circulos-grid{
-    display:grid;
-    gap:14px;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+/* =========================================================
+   ETAPA 8 — CÍRCULOS / LISTAGEM
+========================================================= */
+
+.circulos-page {
+  gap: 22px;
+}
+
+.circulos-page .header {
+  position: relative;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.circulos-page .header::before {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -130px;
+  width: 340px;
+  height: 340px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 154, 46, 0.16), transparent 66%);
+}
+
+.circulos-page .header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.circulos-page .title i {
+  color: var(--accent);
+  filter: drop-shadow(0 8px 14px rgba(201, 154, 46, 0.16));
+}
+
+.circulos-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.circulo-card {
+  position: relative;
+  isolation: isolate;
+  display: block;
+  min-height: 132px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 22px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(251, 248, 242, 0.80));
+  box-shadow:
+    0 12px 28px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition),
+    border-color var(--transition),
+    background var(--transition);
+}
+
+.circulo-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right top / 80% auto no-repeat;
+  opacity: 0.09;
+}
+
+.circulo-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -48px;
+  z-index: -1;
+  width: 170px;
+  height: 132px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(31, 79, 122, 0.10), transparent 65%);
+}
+
+.circulo-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 24px 44px rgba(8, 43, 77, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+  border-color: rgba(201, 154, 46, 0.50);
+  text-decoration: none;
+}
+
+.circulo-card[data-color] {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(var(--c), 0.13));
+  border-color: rgba(var(--c), 0.40);
+}
+
+.circulo-card[data-color]::after {
+  background: radial-gradient(circle, rgba(var(--c), 0.24), transparent 66%);
+}
+
+.circulo-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.circulo-card-title::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, rgba(31, 79, 122, 0.92), rgba(201, 154, 46, 0.86));
+  box-shadow: 0 0 0 5px rgba(234, 241, 248, 0.88);
+}
+
+.circulo-card[data-color] .circulo-card-title::before {
+  background: rgb(var(--c));
+  box-shadow: 0 0 0 5px rgba(var(--c), 0.16);
+}
+
+.circulo-card .small {
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.ano-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 252, 246, 0.74));
+}
+
+.ano-bloco .card-head {
+  border-bottom: 1px solid rgba(230, 216, 192, 0.76);
+  background:
+    linear-gradient(135deg, rgba(234, 241, 248, 0.74), rgba(255, 247, 226, 0.44));
+}
+
+.ano-title {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+@media (max-width: 720px) {
+  .circulos-page .header {
+    padding: 24px 20px;
+    border-radius: 22px;
   }
 
-  .circulo-card{
-    display:block;
-    text-decoration:none;
-    color:inherit;
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:16px;
-    background:#fff;
-    box-shadow:var(--shadow);
-    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+  .circulo-card {
+    min-height: auto;
+    border-radius: 20px;
   }
 
-  .circulo-card:hover{
-    transform:translateY(-2px);
-    box-shadow:0 12px 26px rgba(15,23,42,.08);
-    border-color:#d2d7e0;
-    background:#fcfdff;
-    text-decoration:none;
+  .circulo-card-title {
+    font-size: 20px;
   }
-
-  .circulo-card[data-color]{
-    background:rgba(var(--c), .12);
-    border-color:rgba(var(--c), .35);
-  }
-
-  .ano-bloco{
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  }
-
-  .ano-title{
-    margin:0;
-    font-size:18px;
-    color:#334155;
-  }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page">
+<div class="page circulos-page">
   <div class="header">
     <div>
       <h1 class="title">
@@ -96,7 +244,7 @@
               <a class="circulo-card"
                  href="{{ url_for('circulos_view', cid=c.id) }}"
                  {% if c.rgb %}data-color="1" style="--c: {{ c.rgb }}"{% endif %}>
-                <div style="font-weight:700; margin-bottom:6px;">
+                <div class="circulo-card-title">
                   {{ c.nome or '— Sem nome —' }}
                 </div>
                 <div class="small">

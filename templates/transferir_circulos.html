@@ -3,77 +3,244 @@
 {% block title %}Transferir casal entre círculos | Sistema do ECC{% endblock %}
 
 {% block extra_head %}
-  <style>
-    .transfer-wrap {
-      max-width: 1150px;
-      margin: 0 auto;
-    }
+<style>
+/* =========================================================
+   ETAPA 8 — TRANSFERIR CASAL ENTRE CÍRCULOS
+========================================================= */
 
-    .transfer-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr 320px;
-      gap: 16px;
-      align-items: start;
-    }
+.transfer-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+}
 
-    .transfer-circle {
-      text-decoration: none;
-      color: inherit;
-      display: block;
-      width: 100%;
-      text-align: left;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px;
-      background: #fff;
-      transition: border-color .15s, box-shadow .15s;
-      cursor: pointer;
-    }
+.transfer-wrap .page-header {
+  position: relative;
+  margin-bottom: 16px;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
 
-    .transfer-circle[data-color] {
-      background: rgba(var(--c), .12);
-      border-color: rgba(var(--c), .35);
-    }
+.transfer-wrap .page-title {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(34px, 4.4vw, 52px);
+  font-weight: 800;
+  line-height: 1.03;
+  letter-spacing: -0.04em;
+}
 
-    .transfer-circle.is-selected {
-      outline: 3px solid rgba(37, 99, 235, .35);
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, .15);
-    }
+.transfer-wrap .page-subtitle {
+  max-width: 720px;
+  margin-top: 10px;
+  color: var(--text-soft);
+  font-size: 15px;
+  line-height: 1.65;
+}
 
-    .transfer-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+.transfer-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
 
-    .transfer-row {
-      display: flex;
-      gap: .5rem;
-      align-items: center;
-    }
+.transfer-wrap .card {
+  overflow: hidden;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.78));
+  box-shadow:
+    0 14px 34px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
 
-    .transfer-summary {
-      font-size: 14px;
-      line-height: 1.4;
-    }
+.transfer-wrap .card h2 {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
 
-    .transfer-help {
-      font-size: 12px;
-    }
+.transfer-circle {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  margin-bottom: 8px;
+  padding: 14px 15px 14px 44px;
+  overflow: hidden;
+  text-align: left;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(251, 248, 242, 0.80));
+  box-shadow:
+    0 8px 18px rgba(8, 43, 77, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition),
+    border-color var(--transition),
+    background var(--transition);
+}
 
-    .transfer-steps {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0 16px;
-    }
+.transfer-circle::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background:
+    linear-gradient(135deg, rgba(31, 79, 122, 0.92), rgba(201, 154, 46, 0.86));
+  box-shadow: 0 0 0 5px rgba(234, 241, 248, 0.88);
+}
 
-    @media (max-width: 1060px) {
-      .transfer-cols {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+.transfer-circle:hover {
+  transform: translateY(-2px);
+  border-color: rgba(201, 154, 46, 0.46);
+  box-shadow:
+    0 16px 28px rgba(8, 43, 77, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.transfer-circle[data-color] {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(var(--c), 0.13));
+  border-color: rgba(var(--c), 0.40);
+}
+
+.transfer-circle[data-color]::before {
+  background: rgb(var(--c));
+  box-shadow: 0 0 0 5px rgba(var(--c), 0.16);
+}
+
+.transfer-circle.is-selected {
+  border-color: rgba(31, 79, 122, 0.56);
+  box-shadow:
+    0 0 0 4px rgba(31, 79, 122, 0.12),
+    0 18px 30px rgba(8, 43, 77, 0.12);
+}
+
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transfer-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(230, 216, 192, 0.82);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(234, 241, 248, 0.60));
+  cursor: pointer;
+}
+
+.transfer-row input {
+  accent-color: var(--primary);
+}
+
+.transfer-summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  border: 1px solid rgba(230, 216, 192, 0.86);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 226, 0.62));
+}
+
+.transfer-help {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.transfer-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 18px;
+}
+
+.transfer-steps .badge {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 11px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid rgba(31, 79, 122, 0.12);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(234, 241, 248, 0.72));
+}
+
+.transfer-wrap .year {
+  margin-bottom: 14px;
+}
+
+.transfer-wrap .year > .muted {
+  width: fit-content;
+  padding: 6px 10px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 999px;
+  background: rgba(234, 241, 248, 0.82);
+  border: 1px solid rgba(31, 79, 122, 0.12);
+}
+
+#transfer_msg {
+  min-height: 22px;
+  font-weight: 700;
+}
+
+@media (max-width: 1060px) {
+  .transfer-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .transfer-wrap .page-header {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .transfer-wrap .page-title {
+    font-size: 34px;
+  }
+
+  .transfer-circle {
+    border-radius: 16px;
+  }
+}
+</style>
 {% endblock %}
 
 {% block content %}
