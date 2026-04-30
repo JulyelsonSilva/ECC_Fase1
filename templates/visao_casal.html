@@ -2,101 +2,89 @@
 
 {% block title %}Visão do Casal{% endblock %}
 
-{% block extra_head %}
-<style>
-  .vc-grid{
-    display:grid;
-    gap:16px;
-    grid-template-columns: 1fr 1fr;
-  }
-  .pill{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    font-size:12px;
-    padding:4px 8px;
-    border-radius:999px;
-    border:1px solid var(--border);
-    background:#f8fafc;
-    color:var(--muted);
-  }
-  .box-list{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
-  .box-item{
-    padding:12px;
-    border:1px solid var(--border);
-    border-radius:12px;
-    background:#fff;
-  }
-  .section-title{
-    margin:0 0 12px;
-    font-size:16px;
-    font-weight:700;
-  }
-  .candidate-name{
-    font-weight:800;
-    color:var(--ink);
-  }
-  .candidate-sub{
-    margin-top:4px;
-    line-height:1.35;
-  }
-  @media (max-width: 980px){
-    .vc-grid{ grid-template-columns:1fr; }
-  }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="page">
-  <div class="header">
-    <div>
+<div class="page visao-casal-page">
+
+  <section class="vc-hero">
+    <div class="vc-hero-content">
+      <div class="eyebrow">Consulta pastoral</div>
+
       <h1 class="title">
         <i class="bi bi-heart"></i>
         <span>Visão do Casal</span>
       </h1>
-      <p class="subtitle">Pesquise por nome, parte do nome ou apelido. Se houver mais de um resultado, escolha o casal correto.</p>
+
+      <p class="subtitle">
+        Pesquise por nome, parte do nome ou apelido. Se houver mais de um resultado,
+        escolha o casal correto para visualizar sua caminhada no ECC.
+      </p>
+
+      <div class="vc-hero-actions">
+        <a class="btn btn-secondary" href="{{ url_for('index') }}">
+          <i class="bi bi-house-door"></i>
+          <span>Início</span>
+        </a>
+      </div>
     </div>
 
-    <div class="actions">
-      <a class="btn" href="{{ url_for('index') }}">
-        <i class="bi bi-house-door"></i>
-        <span>Início</span>
-      </a>
+    <div class="vc-hero-visual" aria-hidden="true">
+      <img src="{{ url_for('static', filename='img/icons/icon-visao-casal.svg') }}" alt="">
     </div>
-  </div>
+  </section>
 
-  <section class="card">
+  <section class="card vc-search-card">
     <div class="card-head">
-      <h2>Pesquisar casal</h2>
-      <p>Você pode informar apenas o nome dele, apenas o nome dela, ou ambos. A busca considera nome usual, nome completo e apelidos.</p>
+      <div>
+        <span class="section-kicker">Busca inteligente</span>
+        <h2>Pesquisar casal</h2>
+        <p>
+          Você pode informar apenas o nome dele, apenas o nome dela, ou ambos.
+          A busca considera nome usual, nome completo e apelidos.
+        </p>
+      </div>
     </div>
 
     <div class="card-body">
       <form method="get" action="{{ url_for('visao_casal') }}">
-        <div class="filters">
+        <div class="filters vc-search-grid">
           <div class="field col-6">
             <label for="nome_ele">Nome Ele</label>
-            <input id="nome_ele" name="nome_ele" list="sugestoes_ele" value="{{ nome_ele or '' }}" placeholder="Digite nome, parte do nome ou apelido dele">
+            <div class="vc-input-wrap">
+              <i class="bi bi-person"></i>
+              <input
+                id="nome_ele"
+                name="nome_ele"
+                list="sugestoes_ele"
+                value="{{ nome_ele or '' }}"
+                placeholder="Digite nome, parte do nome ou apelido dele"
+              >
+            </div>
             <datalist id="sugestoes_ele"></datalist>
           </div>
 
           <div class="field col-6">
             <label for="nome_ela">Nome Ela</label>
-            <input id="nome_ela" name="nome_ela" list="sugestoes_ela" value="{{ nome_ela or '' }}" placeholder="Digite nome, parte do nome ou apelido dela">
+            <div class="vc-input-wrap">
+              <i class="bi bi-person-heart"></i>
+              <input
+                id="nome_ela"
+                name="nome_ela"
+                list="sugestoes_ela"
+                value="{{ nome_ela or '' }}"
+                placeholder="Digite nome, parte do nome ou apelido dela"
+              >
+            </div>
             <datalist id="sugestoes_ela"></datalist>
           </div>
 
           <div class="field col-12">
-            <div class="actions">
+            <div class="actions vc-search-actions">
               <button class="btn btn-primary" type="submit">
                 <i class="bi bi-search"></i>
                 <span>Pesquisar</span>
               </button>
-              <a class="btn" href="{{ url_for('visao_casal') }}">
+
+              <a class="btn btn-secondary" href="{{ url_for('visao_casal') }}">
                 <i class="bi bi-arrow-counterclockwise"></i>
                 <span>Limpar</span>
               </a>
@@ -108,19 +96,28 @@
   </section>
 
   {% if erro %}
-    <div class="flash info">{{ erro }}</div>
+    <div class="flash info vc-flash">
+      <i class="bi bi-info-circle"></i>
+      <span>{{ erro }}</span>
+    </div>
   {% endif %}
 
   {% if candidatos %}
-    <section class="card">
+    <section class="card vc-candidates-card">
       <div class="card-head">
-        <h2>Resultados encontrados</h2>
-        <p>Mais de um casal corresponde ao filtro informado. Escolha o casal correto para visualizar o histórico.</p>
+        <div>
+          <span class="section-kicker">Resultados encontrados</span>
+          <h2>Escolha o casal correto</h2>
+          <p>
+            Mais de um casal corresponde ao filtro informado.
+            Selecione o registro correto para visualizar o histórico.
+          </p>
+        </div>
       </div>
 
       <div class="card-body">
-        <div class="table-wrap">
-          <table>
+        <div class="table-wrap vc-table-wrap">
+          <table class="vc-table">
             <thead>
               <tr>
                 <th>Casal</th>
@@ -132,34 +129,50 @@
                 <th></th>
               </tr>
             </thead>
+
             <tbody>
               {% for c in candidatos %}
                 <tr>
                   <td>
-                    <div class="candidate-name">{{ c.nome_usual_ele }} e {{ c.nome_usual_ela }}</div>
+                    <div class="candidate-name">
+                      {{ c.nome_usual_ele }} e {{ c.nome_usual_ela }}
+                    </div>
                     <div class="small candidate-sub">
                       {{ c.nome_completo_ele or '—' }}<br>
                       {{ c.nome_completo_ela or '—' }}
                     </div>
                   </td>
-                  <td>{{ c.ano or '—' }}</td>
+
+                  <td>
+                    <span class="vc-year-badge">{{ c.ano or '—' }}</span>
+                  </td>
+
                   <td>
                     {% if c.apelidos_ele %}
                       <div><strong>Ele:</strong> {{ c.apelidos_ele }}</div>
                     {% endif %}
+
                     {% if c.apelidos_ela %}
                       <div><strong>Ela:</strong> {{ c.apelidos_ela }}</div>
                     {% endif %}
+
                     {% if not c.apelidos_ele and not c.apelidos_ela %}
                       <span class="small">—</span>
                     {% endif %}
                   </td>
+
                   <td>{{ c.telefones or '—' }}</td>
                   <td>{{ c.endereco or '—' }}</td>
-                  <td>{{ c.qtd_trabalhos }}</td>
+
                   <td>
-                    <a class="btn btn-primary"
-                       href="{{ url_for('visao_casal', casal_id=c.id, nome_ele=nome_ele, nome_ela=nome_ela) }}">
+                    <span class="vc-count-badge">{{ c.qtd_trabalhos }}</span>
+                  </td>
+
+                  <td>
+                    <a
+                      class="btn btn-primary btn-sm"
+                      href="{{ url_for('visao_casal', casal_id=c.id, nome_ele=nome_ele, nome_ela=nome_ela) }}"
+                    >
                       <i class="bi bi-eye"></i>
                       <span>Ver</span>
                     </a>
@@ -174,22 +187,39 @@
   {% endif %}
 
   {% if dados_encontrista or dados_encontreiros or dados_palestras %}
+    <div class="vc-result-header">
+      <div>
+        <span class="section-kicker">Histórico encontrado</span>
+        <h2>
+          {% if dados_encontrista %}
+            {{ dados_encontrista.nome_usual_ele }} e {{ dados_encontrista.nome_usual_ela }}
+          {% else %}
+            Resultado do casal
+          {% endif %}
+        </h2>
+      </div>
+    </div>
+
     <div class="vc-grid">
-      <section class="card">
+      <section class="card vc-info-card">
         <div class="card-head">
-          <h2>Dados básicos</h2>
-          <p>Informações do encontro e contatos mais recentes.</p>
+          <div>
+            <span class="section-kicker">Identificação</span>
+            <h2>Dados básicos</h2>
+            <p>Informações do encontro e contatos mais recentes.</p>
+          </div>
         </div>
+
         <div class="card-body">
           {% if dados_encontrista %}
-            <div class="box-list">
-              <div class="box-item">
+            <div class="box-list vc-box-list">
+              <div class="box-item vc-box-item vc-box-featured">
                 <div class="small">Casal</div>
                 <strong>{{ dados_encontrista.nome_usual_ele }} e {{ dados_encontrista.nome_usual_ela }}</strong>
               </div>
 
               {% if dados_encontrista.nome_completo_ele or dados_encontrista.nome_completo_ela %}
-                <div class="box-item">
+                <div class="box-item vc-box-item">
                   <div class="small">Nomes completos</div>
                   <div>{{ dados_encontrista.nome_completo_ele or '—' }}</div>
                   <div>{{ dados_encontrista.nome_completo_ela or '—' }}</div>
@@ -197,41 +227,53 @@
               {% endif %}
 
               {% if dados_encontrista.apelidos_ele or dados_encontrista.apelidos_ela %}
-                <div class="box-item">
+                <div class="box-item vc-box-item">
                   <div class="small">Apelidos registrados</div>
+
                   {% if dados_encontrista.apelidos_ele %}
                     <div><strong>Ele:</strong> {{ dados_encontrista.apelidos_ele }}</div>
                   {% endif %}
+
                   {% if dados_encontrista.apelidos_ela %}
                     <div><strong>Ela:</strong> {{ dados_encontrista.apelidos_ela }}</div>
                   {% endif %}
                 </div>
               {% endif %}
 
-              <div class="box-item">
+              <div class="box-item vc-box-item vc-date-box">
                 <div class="small">Ano do encontro</div>
                 <strong>{{ dados_encontrista.ano_encontro or '—' }}</strong>
 
-                <div class="small" style="margin-top: 8px;">Data da Primeira Etapa</div>
-                <strong>
-                  {{ dados_encontrista.data_1_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_1_etapa else '—' }}
-                </strong>
-                
-                <div class="small" style="margin-top: 8px;">Data da Segunda Etapa</div>
-                <strong>
-                  {{ dados_encontrista.data_2_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_2_etapa else '—' }}
-                </strong>
+                <div class="vc-date-list">
+                  <div>
+                    <span>Data da Primeira Etapa</span>
+                    <strong>
+                      {{ dados_encontrista.data_1_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_1_etapa else '—' }}
+                    </strong>
+                  </div>
 
-                <div class="small" style="margin-top: 8px;">Data da Terceira Etapa</div>
-                <strong>
-                  {{ dados_encontrista.data_3_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_3_etapa else '—' }}
-                </strong>
+                  <div>
+                    <span>Data da Segunda Etapa</span>
+                    <strong>
+                      {{ dados_encontrista.data_2_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_2_etapa else '—' }}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Data da Terceira Etapa</span>
+                    <strong>
+                      {{ dados_encontrista.data_3_etapa.strftime('%d/%m/%Y') if dados_encontrista.data_3_etapa else '—' }}
+                    </strong>
+                  </div>
+                </div>
               </div>
-              <div class="box-item">
+
+              <div class="box-item vc-box-item">
                 <div class="small">Telefones</div>
                 <strong>{{ dados_encontrista.telefones or '—' }}</strong>
               </div>
-              <div class="box-item">
+
+              <div class="box-item vc-box-item">
                 <div class="small">Endereço</div>
                 <strong>{{ dados_encontrista.endereco or '—' }}</strong>
               </div>
@@ -242,38 +284,63 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card vc-summary-card">
         <div class="card-head">
-          <h2>Resumo</h2>
-          <p>Quantidade de anos com participação em equipes e palestras.</p>
+          <div>
+            <span class="section-kicker">Resumo da caminhada</span>
+            <h2>Resumo</h2>
+            <p>Quantidade de anos com participação em equipes e palestras.</p>
+          </div>
         </div>
+
         <div class="card-body">
-          <div class="box-list">
-            <div class="box-item">
-              <div class="small">Anos com trabalho em equipes</div>
-              <strong>{{ por_ano_trabalhos|length }}</strong>
+          <div class="box-list vc-summary-list">
+            <div class="box-item vc-summary-item">
+              <div class="vc-summary-icon">
+                <i class="bi bi-people"></i>
+              </div>
+              <div>
+                <div class="small">Anos com trabalho em equipes</div>
+                <strong>{{ por_ano_trabalhos|length }}</strong>
+              </div>
             </div>
-            <div class="box-item">
-              <div class="small">Anos com palestras</div>
-              <strong>{{ por_ano_palestras|length }}</strong>
+
+            <div class="box-item vc-summary-item">
+              <div class="vc-summary-icon">
+                <i class="bi bi-mic"></i>
+              </div>
+              <div>
+                <div class="small">Anos com palestras</div>
+                <strong>{{ por_ano_palestras|length }}</strong>
+              </div>
             </div>
-            <div class="box-item">
-              <div class="small">Anos totais no histórico</div>
-              <strong>{{ anos|length }}</strong>
+
+            <div class="box-item vc-summary-item">
+              <div class="vc-summary-icon">
+                <i class="bi bi-calendar-heart"></i>
+              </div>
+              <div>
+                <div class="small">Anos totais no histórico</div>
+                <strong>{{ anos|length }}</strong>
+              </div>
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <section class="card">
+    <section class="card vc-history-card">
       <div class="card-head">
-        <h2>Histórico por ano</h2>
-        <p>Trabalhos em equipes e palestras do casal ao longo do tempo.</p>
+        <div>
+          <span class="section-kicker">Linha do tempo</span>
+          <h2>Histórico por ano</h2>
+          <p>Trabalhos em equipes e palestras do casal ao longo do tempo.</p>
+        </div>
       </div>
+
       <div class="card-body">
-        <div class="table-wrap">
-          <table>
+        <div class="table-wrap vc-table-wrap">
+          <table class="vc-table vc-history-table">
             <thead>
               <tr>
                 <th>Ano</th>
@@ -281,29 +348,44 @@
                 <th>Palestras</th>
               </tr>
             </thead>
+
             <tbody>
               {% if anos %}
                 {% for ano in anos %}
                   {% set trabalhos = por_ano_trabalhos.get(ano, []) %}
                   {% set talks = por_ano_palestras.get(ano, []) %}
+
                   <tr>
-                    <td><strong>{{ ano }}</strong></td>
+                    <td>
+                      <span class="vc-year-badge">{{ ano }}</span>
+                    </td>
+
                     <td>
                       {% if trabalhos %}
-                        <ul style="margin:0; padding-left:18px;">
+                        <ul class="vc-history-list">
                           {% for r in trabalhos %}
                             {% set st = (r.status or '')|trim|lower %}
-                            <li style="margin-bottom:6px;">
-                              {{ r.equipe or '—' }}
-                              {% if (r.coordenador or '')|trim|lower == 'sim' %}
-                                <span class="pill">Coord.</span>
-                              {% endif %}
-                              {% if st in ['recusou','desistiu'] %}
-                                <span class="pill" style="background:#fee2e2; color:#991b1b; border-color:#fecaca;">{{ st|capitalize }}</span>
-                              {% endif %}
-                              {% if r.observacao %}
-                                <div class="small" style="margin-top:4px;">Obs.: {{ r.observacao }}</div>
-                              {% endif %}
+
+                            <li>
+                              <div>
+                                <strong>{{ r.equipe or '—' }}</strong>
+
+                                <div class="vc-pill-row">
+                                  {% if (r.coordenador or '')|trim|lower == 'sim' %}
+                                    <span class="pill vc-pill-ok">Coord.</span>
+                                  {% endif %}
+
+                                  {% if st in ['recusou','desistiu'] %}
+                                    <span class="pill vc-pill-danger">{{ st|capitalize }}</span>
+                                  {% endif %}
+                                </div>
+
+                                {% if r.observacao %}
+                                  <div class="small vc-history-note">
+                                    Obs.: {{ r.observacao }}
+                                  </div>
+                                {% endif %}
+                              </div>
                             </li>
                           {% endfor %}
                         </ul>
@@ -311,11 +393,14 @@
                         <span class="small">—</span>
                       {% endif %}
                     </td>
+
                     <td>
                       {% if talks %}
-                        <ul style="margin:0; padding-left:18px;">
+                        <ul class="vc-history-list vc-talk-list">
                           {% for p in talks %}
-                            <li>{{ p.palestra or '' }}</li>
+                            <li>
+                              <strong>{{ p.palestra or '' }}</strong>
+                            </li>
                           {% endfor %}
                         </ul>
                       {% else %}
@@ -346,6 +431,7 @@
 
   function buscarNomes(input, datalist) {
     const valor = (input.value || '').trim();
+
     if (valor.length < 3) {
       datalist.innerHTML = '';
       return;
@@ -355,6 +441,7 @@
       .then(res => res.json())
       .then(data => {
         datalist.innerHTML = '';
+
         (data || []).forEach(item => {
           const opt = document.createElement('option');
           opt.value = input.id === 'nome_ele' ? item.nome_ele : item.nome_ela;
@@ -364,8 +451,13 @@
       .catch(() => {});
   }
 
-  if (inputEle) inputEle.addEventListener('input', () => buscarNomes(inputEle, datalistEle));
-  if (inputEla) inputEla.addEventListener('input', () => buscarNomes(inputEla, datalistEla));
+  if (inputEle) {
+    inputEle.addEventListener('input', () => buscarNomes(inputEle, datalistEle));
+  }
+
+  if (inputEla) {
+    inputEla.addEventListener('input', () => buscarNomes(inputEla, datalistEla));
+  }
 })();
 </script>
 {% endblock %}
