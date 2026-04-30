@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, redirect, url_for, session
 
 from db import db_conn
 from utils import paroquia_id_atual, exigir_paroquia, registrar_contexto_paroquia
