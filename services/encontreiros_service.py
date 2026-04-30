@@ -1,10 +1,7 @@
 from collections import defaultdict
 import json
 import re
-import mysql.connector
-from mysql.connector import errors as mysql_errors
-
-from db import db_conn
+from db import db_conn, safe_fetch_one
 
 
 def _telefones_encontrista(row):
@@ -549,7 +546,7 @@ def buscar_visao_casal(
     }
 
 
-def buscar_relatorio_casais(paroquia_id, entrada, titulo, DB_CONFIG, safe_fetch_one):
+def buscar_relatorio_casais(paroquia_id, entrada, titulo):
     def split_casal(line):
         raw = (line or "").strip()
 
@@ -570,6 +567,67 @@ def buscar_relatorio_casais(paroquia_id, entrada, titulo, DB_CONFIG, safe_fetch_
 
         return None, None
 
+    def consulta_prefix_like(cur, a, b):
+        a = (a or "").strip()
+        b = (b or "").strip()
+
+        if not a or not b:
+            return None
+
+        a_pref = f"{a}%"
+        b_pref = f"{b}%"
+
+        base = safe_fetch_one(
+            cur,
+            """
+            SELECT
+                i.endereco,
+                i.telefone_ele,
+                i.telefone_ela
+            FROM encontristas i
+            WHERE i.paroquia_id = %s
+              AND (
+                    (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                 OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+              )
+            ORDER BY i.ano DESC, i.id DESC
+            LIMIT 1
+            """,
+            (paroquia_id, a_pref, b_pref, b_pref, a_pref)
+        )
+
+        if base is None:
+            base = safe_fetch_one(
+                cur,
+                """
+                SELECT
+                    i.endereco,
+                    i.telefone_ele,
+                    i.telefone_ela
+                FROM encontreiros e
+                JOIN encontristas i ON i.id = e.casal_id
+                WHERE e.paroquia_id = %s
+                  AND i.paroquia_id = %s
+                  AND (
+                        (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                     OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
+                  )
+                ORDER BY e.ano DESC, e.id DESC
+                LIMIT 1
+                """,
+                (paroquia_id, paroquia_id, a_pref, b_pref, b_pref, a_pref)
+            )
+
+        if base:
+            telefones = f"{base.get('telefone_ele') or '—'} / {base.get('telefone_ela') or '—'}"
+
+            return {
+                "endereco": base.get("endereco") or "—",
+                "telefones": telefones
+            }
+
+        return None
+
     resultados_ok = []
     resultados_fail = []
 
@@ -582,92 +640,10 @@ def buscar_relatorio_casais(paroquia_id, entrada, titulo, DB_CONFIG, safe_fetch_
             "entrada": entrada
         }
 
-    try:
-        conn = mysql.connector.connect(
-            host=DB_CONFIG["host"],
-            user=DB_CONFIG["user"],
-            password=DB_CONFIG["password"],
-            database=DB_CONFIG["database"],
-            connection_timeout=5
-        )
-        cur = conn.cursor(dictionary=True)
-
-    except mysql_errors.Error:
-        for linha in linhas:
-            resultados_fail.append({
-                "nome": linha,
-                "endereco": "Erro de conexão com o banco",
-                "telefones": "— / —"
-            })
-
-        return {
-            "resultados": resultados_fail,
-            "titulo": titulo,
-            "entrada": entrada
-        }
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
 
     try:
-        def consulta_prefix_like(a, b):
-            a = (a or "").strip()
-            b = (b or "").strip()
-
-            if not a or not b:
-                return None
-
-            a_pref = f"{a}%"
-            b_pref = f"{b}%"
-
-            base = safe_fetch_one(
-                cur,
-                """
-                SELECT
-                    i.endereco,
-                    i.telefone_ele,
-                    i.telefone_ela
-                FROM encontristas i
-                WHERE i.paroquia_id = %s
-                  AND (
-                        (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
-                     OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
-                  )
-                ORDER BY i.ano DESC, i.id DESC
-                LIMIT 1
-                """,
-                (paroquia_id, a_pref, b_pref, b_pref, a_pref)
-            )
-
-            if base is None:
-                base = safe_fetch_one(
-                    cur,
-                    """
-                    SELECT
-                        i.endereco,
-                        i.telefone_ele,
-                        i.telefone_ela
-                    FROM encontreiros e
-                    JOIN encontristas i ON i.id = e.casal_id
-                    WHERE e.paroquia_id = %s
-                      AND i.paroquia_id = %s
-                      AND (
-                            (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
-                         OR (i.nome_usual_ele LIKE %s AND i.nome_usual_ela LIKE %s)
-                      )
-                    ORDER BY e.ano DESC, e.id DESC
-                    LIMIT 1
-                    """,
-                    (paroquia_id, paroquia_id, a_pref, b_pref, b_pref, a_pref)
-                )
-
-            if base:
-                telefones = f"{base.get('telefone_ele') or '—'} / {base.get('telefone_ela') or '—'}"
-
-                return {
-                    "endereco": base.get("endereco") or "—",
-                    "telefones": telefones
-                }
-
-            return None
-
         for linha in linhas:
             ele, ela = split_casal(linha)
 
@@ -679,7 +655,7 @@ def buscar_relatorio_casais(paroquia_id, entrada, titulo, DB_CONFIG, safe_fetch_
                 })
                 continue
 
-            dados = consulta_prefix_like(ele, ela)
+            dados = consulta_prefix_like(cur, ele, ela)
 
             if dados:
                 resultados_ok.append({
