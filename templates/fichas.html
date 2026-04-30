@@ -2,180 +2,463 @@
 
 {% block title %}Fichas | Sistema do ECC{% endblock %}
 
+{% block extra_head %}
+<style>
+/* =========================================================
+   ETAPA 9 — FICHAS
+   Atualização visual preservando campos, POST e fluxo atual.
+========================================================= */
+
+.fichas-page {
+  gap: 22px;
+}
+
+.fichas-page .page-header {
+  position: relative;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.fichas-page .page-header::before {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -130px;
+  width: 340px;
+  height: 340px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 154, 46, 0.16), transparent 66%);
+}
+
+.fichas-page .page-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.fichas-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(320px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.fichas-form-card,
+.fichas-recent-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.78));
+  box-shadow:
+    0 14px 34px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.fichas-form-card::before,
+.fichas-recent-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right top / 58% auto no-repeat;
+  opacity: 0.07;
+}
+
+.fichas-form-card > *,
+.fichas-recent-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.fichas-card-title {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.fichas-card-subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.ficha-section {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid rgba(230, 216, 192, 0.78);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(251, 248, 242, 0.56));
+}
+
+.ficha-section:first-of-type {
+  margin-top: 18px;
+}
+
+.ficha-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.ficha-section h3::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(31, 79, 122, 0.96), rgba(201, 154, 46, 0.80));
+  box-shadow: 0 10px 18px rgba(8, 43, 77, 0.12);
+}
+
+.ficha-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.ficha-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.ficha-grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.ficha-grid-compact {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.fichas-page label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fichas-page label .required {
+  color: #b91c1c;
+}
+
+.fichas-page input,
+.fichas-page select,
+.fichas-page textarea {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  color: var(--text);
+  font: inherit;
+  border: 1px solid rgba(201, 154, 46, 0.30);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(251, 248, 242, 0.72));
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    0 8px 18px rgba(8, 43, 77, 0.04);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition),
+    background var(--transition);
+}
+
+.fichas-page textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.fichas-page input:focus,
+.fichas-page select:focus,
+.fichas-page textarea:focus {
+  background: #ffffff;
+  border-color: rgba(31, 79, 122, 0.46);
+  box-shadow:
+    0 0 0 4px rgba(31, 79, 122, 0.09),
+    0 12px 22px rgba(8, 43, 77, 0.07);
+}
+
+.fichas-actions {
+  margin-top: 20px;
+}
+
+.recent-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.recent-item {
+  position: relative;
+  overflow: hidden;
+  padding: 14px;
+  border: 1px solid rgba(230, 216, 192, 0.86);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(234, 241, 248, 0.54));
+  box-shadow: 0 8px 18px rgba(8, 43, 77, 0.04);
+}
+
+.recent-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+}
+
+.recent-item strong {
+  display: block;
+  padding-left: 8px;
+  color: var(--primary);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.recent-item .small {
+  padding-left: 8px;
+  margin-top: 4px;
+}
+
+.fichas-empty {
+  padding: 14px;
+  border: 1px dashed rgba(201, 154, 46, 0.42);
+  border-radius: 18px;
+  background: rgba(255, 247, 226, 0.62);
+}
+
+@media (max-width: 980px) {
+  .fichas-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .fichas-page .page-header {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .ficha-section {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .fichas-page .form-actions,
+  .fichas-actions {
+    width: 100%;
+  }
+
+  .fichas-page .form-actions .btn,
+  .fichas-actions .btn {
+    flex: 1 1 160px;
+  }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-  <section class="page-header">
-    <div>
-      <div class="eyebrow">Encontristas</div>
-      <h1 class="page-title">Fichas</h1>
-      <p class="page-subtitle">
-        Cadastro manual de encontristas com base na estrutura atual da tabela.
-      </p>
-    </div>
+  <div class="page fichas-page">
+    <section class="page-header">
+      <div>
+        <div class="eyebrow">Encontristas</div>
+        <h1 class="page-title">Fichas</h1>
+        <p class="page-subtitle">
+          Cadastro manual de encontristas com base na estrutura atual da tabela.
+        </p>
+      </div>
 
-    <div class="form-actions">
-      <a class="btn btn-secondary" href="{{ url_for('index') }}">
-        <i class="bi bi-house-door"></i>
-        Início
-      </a>
+      <div class="form-actions">
+        <a class="btn btn-secondary" href="{{ url_for('index') }}">
+          <i class="bi bi-house-door"></i>
+          Início
+        </a>
 
-      <a class="btn btn-secondary" href="{{ url_for('encontristas') }}">
-        <i class="bi bi-people"></i>
-        Encontristas
-      </a>
-    </div>
-  </section>
-
-  {% if saved %}
-    <div class="flash ok">Ficha cadastrada com sucesso.</div>
-  {% endif %}
-
-  {% if error %}
-    <div class="flash error">{{ error }}</div>
-  {% endif %}
-
-  <div class="grid" style="grid-template-columns: minmax(0, 2.1fr) minmax(320px, .9fr); gap:18px; align-items:start;">
-    <section class="card">
-      <div class="card-body">
-        <h2>Nova ficha de encontrista</h2>
-        <p class="small">Preencha os dados do casal conforme disponíveis na ficha.</p>
-
-        <form method="post" autocomplete="off" class="stack" style="margin-top:18px;">
-          <h3>Dados do encontro</h3>
-
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
-            <div>
-              <label for="ano">Ano <span style="color:#dc2626;">*</span></label>
-              <input id="ano" name="ano" type="number" value="{{ form.ano }}" required>
-            </div>
-
-            <div>
-              <label for="num_ecc">Nº ECC</label>
-              <input id="num_ecc" name="num_ecc" value="{{ form.num_ecc }}">
-            </div>
-
-            <div>
-              <label for="data_casamento">Data de casamento</label>
-              <input id="data_casamento" name="data_casamento" type="date" value="{{ form.data_casamento }}">
-            </div>
-          </div>
-
-          <hr>
-
-          <h3>Identificação</h3>
-
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
-            <div>
-              <label for="nome_completo_ele">Nome completo (Ele)</label>
-              <input id="nome_completo_ele" name="nome_completo_ele" value="{{ form.nome_completo_ele }}">
-            </div>
-
-            <div>
-              <label for="nome_completo_ela">Nome completo (Ela)</label>
-              <input id="nome_completo_ela" name="nome_completo_ela" value="{{ form.nome_completo_ela }}">
-            </div>
-
-            <div>
-              <label for="nome_usual_ele">Nome usual (Ele)</label>
-              <input id="nome_usual_ele" name="nome_usual_ele" value="{{ form.nome_usual_ele }}">
-            </div>
-
-            <div>
-              <label for="nome_usual_ela">Nome usual (Ela)</label>
-              <input id="nome_usual_ela" name="nome_usual_ela" value="{{ form.nome_usual_ela }}">
-            </div>
-          </div>
-
-          <hr>
-
-          <h3>Contato</h3>
-
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
-            <div>
-              <label for="telefone_ele">Telefone (Ele)</label>
-              <input id="telefone_ele" name="telefone_ele" value="{{ form.telefone_ele }}">
-            </div>
-
-            <div>
-              <label for="telefone_ela">Telefone (Ela)</label>
-              <input id="telefone_ela" name="telefone_ela" value="{{ form.telefone_ela }}">
-            </div>
-
-            <div>
-              <label for="endereco">Endereço</label>
-              <input id="endereco" name="endereco" value="{{ form.endereco }}">
-            </div>
-          </div>
-
-          <hr>
-
-          <h3>Informações complementares</h3>
-
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
-            <div>
-              <label for="casal_visitacao">Casal de visitação</label>
-              <input id="casal_visitacao" name="casal_visitacao" value="{{ form.casal_visitacao }}">
-            </div>
-
-            <div>
-              <label for="ficha_num">Ficha nº</label>
-              <input id="ficha_num" name="ficha_num" value="{{ form.ficha_num }}">
-            </div>
-
-            <div>
-              <label for="aceitou">Aceitou</label>
-              <select id="aceitou" name="aceitou">
-                <option value="" {% if not form.aceitou %}selected{% endif %}>Selecione</option>
-                <option value="Sim" {% if form.aceitou == 'Sim' %}selected{% endif %}>Sim</option>
-                <option value="Não" {% if form.aceitou == 'Não' %}selected{% endif %}>Não</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label for="observacao_extra">Observação extra</label>
-            <input id="observacao_extra" name="observacao_extra" value="{{ form.observacao_extra }}">
-          </div>
-
-          <div>
-            <label for="observacao">Observação</label>
-            <textarea id="observacao" name="observacao">{{ form.observacao }}</textarea>
-          </div>
-
-          <div class="form-actions">
-            <button class="btn btn-primary" type="submit">
-              <i class="bi bi-save"></i>
-              Salvar ficha
-            </button>
-
-            <a class="btn btn-secondary" href="{{ url_for('fichas') }}">
-              <i class="bi bi-arrow-counterclockwise"></i>
-              Limpar formulário
-            </a>
-          </div>
-        </form>
+        <a class="btn btn-secondary" href="{{ url_for('encontristas') }}">
+          <i class="bi bi-people"></i>
+          Encontristas
+        </a>
       </div>
     </section>
 
-    <aside class="card">
-      <div class="card-body">
-        <h2>Últimos cadastrados</h2>
-        <p class="small">Últimos registros inseridos na tabela de encontristas.</p>
+    {% if saved %}
+      <div class="flash ok">Ficha cadastrada com sucesso.</div>
+    {% endif %}
 
-        <div class="stack" style="margin-top:14px;">
-          {% for r in ultimos %}
-            <div class="card" style="box-shadow:none;">
-              <div class="card-body" style="padding:12px;">
+    {% if error %}
+      <div class="flash error">{{ error }}</div>
+    {% endif %}
+
+    <div class="fichas-layout">
+      <section class="card fichas-form-card">
+        <div class="card-body">
+          <h2 class="fichas-card-title">Nova ficha de encontrista</h2>
+          <p class="fichas-card-subtitle">Preencha os dados do casal conforme disponíveis na ficha.</p>
+
+          <form method="post" autocomplete="off" class="stack">
+            <section class="ficha-section">
+              <h3>Dados do encontro</h3>
+
+              <div class="ficha-grid ficha-grid-3">
+                <div>
+                  <label for="ano">Ano <span class="required">*</span></label>
+                  <input id="ano" name="ano" type="number" value="{{ form.ano }}" required>
+                </div>
+
+                <div>
+                  <label for="num_ecc">Nº ECC</label>
+                  <input id="num_ecc" name="num_ecc" value="{{ form.num_ecc }}">
+                </div>
+
+                <div>
+                  <label for="data_casamento">Data de casamento</label>
+                  <input id="data_casamento" name="data_casamento" type="date" value="{{ form.data_casamento }}">
+                </div>
+              </div>
+            </section>
+
+            <section class="ficha-section">
+              <h3>Identificação</h3>
+
+              <div class="ficha-grid ficha-grid-2">
+                <div>
+                  <label for="nome_completo_ele">Nome completo (Ele)</label>
+                  <input id="nome_completo_ele" name="nome_completo_ele" value="{{ form.nome_completo_ele }}">
+                </div>
+
+                <div>
+                  <label for="nome_completo_ela">Nome completo (Ela)</label>
+                  <input id="nome_completo_ela" name="nome_completo_ela" value="{{ form.nome_completo_ela }}">
+                </div>
+
+                <div>
+                  <label for="nome_usual_ele">Nome usual (Ele)</label>
+                  <input id="nome_usual_ele" name="nome_usual_ele" value="{{ form.nome_usual_ele }}">
+                </div>
+
+                <div>
+                  <label for="nome_usual_ela">Nome usual (Ela)</label>
+                  <input id="nome_usual_ela" name="nome_usual_ela" value="{{ form.nome_usual_ela }}">
+                </div>
+              </div>
+            </section>
+
+            <section class="ficha-section">
+              <h3>Contato</h3>
+
+              <div class="ficha-grid ficha-grid-2">
+                <div>
+                  <label for="telefone_ele">Telefone (Ele)</label>
+                  <input id="telefone_ele" name="telefone_ele" value="{{ form.telefone_ele }}">
+                </div>
+
+                <div>
+                  <label for="telefone_ela">Telefone (Ela)</label>
+                  <input id="telefone_ela" name="telefone_ela" value="{{ form.telefone_ela }}">
+                </div>
+
+                <div>
+                  <label for="endereco">Endereço</label>
+                  <input id="endereco" name="endereco" value="{{ form.endereco }}">
+                </div>
+              </div>
+            </section>
+
+            <section class="ficha-section">
+              <h3>Informações complementares</h3>
+
+              <div class="ficha-grid ficha-grid-compact">
+                <div>
+                  <label for="casal_visitacao">Casal de visitação</label>
+                  <input id="casal_visitacao" name="casal_visitacao" value="{{ form.casal_visitacao }}">
+                </div>
+
+                <div>
+                  <label for="ficha_num">Ficha nº</label>
+                  <input id="ficha_num" name="ficha_num" value="{{ form.ficha_num }}">
+                </div>
+
+                <div>
+                  <label for="aceitou">Aceitou</label>
+                  <select id="aceitou" name="aceitou">
+                    <option value="" {% if not form.aceitou %}selected{% endif %}>Selecione</option>
+                    <option value="Sim" {% if form.aceitou == 'Sim' %}selected{% endif %}>Sim</option>
+                    <option value="Não" {% if form.aceitou == 'Não' %}selected{% endif %}>Não</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top:14px;">
+                <label for="observacao_extra">Observação extra</label>
+                <input id="observacao_extra" name="observacao_extra" value="{{ form.observacao_extra }}">
+              </div>
+
+              <div style="margin-top:14px;">
+                <label for="observacao">Observação</label>
+                <textarea id="observacao" name="observacao">{{ form.observacao }}</textarea>
+              </div>
+            </section>
+
+            <div class="form-actions fichas-actions">
+              <button class="btn btn-primary" type="submit">
+                <i class="bi bi-save"></i>
+                Salvar ficha
+              </button>
+
+              <a class="btn btn-secondary" href="{{ url_for('fichas') }}">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                Limpar formulário
+              </a>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <aside class="card fichas-recent-card">
+        <div class="card-body">
+          <h2 class="fichas-card-title">Últimos cadastrados</h2>
+          <p class="fichas-card-subtitle">Últimos registros inseridos na tabela de encontristas.</p>
+
+          <div class="recent-list">
+            {% for r in ultimos %}
+              <div class="recent-item">
                 <strong>{{ r.nome_usual_ele }} e {{ r.nome_usual_ela }}</strong>
                 <div class="small">
                   ID {{ r.id }} • Ano {{ r.ano }}{% if r.num_ecc %} • ECC {{ r.num_ecc }}{% endif %}
                 </div>
               </div>
-            </div>
-          {% else %}
-            <div class="small">Nenhum encontrista cadastrado ainda.</div>
-          {% endfor %}
+            {% else %}
+              <div class="small fichas-empty">Nenhum encontrista cadastrado ainda.</div>
+            {% endfor %}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </div>
   </div>
 {% endblock %}
