@@ -2,8 +2,194 @@
 
 {% block title %}Palestras — Painel{% endblock %}
 
+{% block extra_head %}
+<style>
+/* =========================================================
+   ETAPA 9 — BLOCO 3 / PALESTRAS PAINEL
+   Atualização visual preservando rotas, variáveis e permissões.
+========================================================= */
+
+.palestras-painel-page {
+  gap: 22px;
+}
+
+.palestras-painel-page .header {
+  position: relative;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("../img/bg-fluid-lines.svg") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.palestras-painel-page .header::before {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -130px;
+  width: 340px;
+  height: 340px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 154, 46, 0.16), transparent 66%);
+}
+
+.palestras-painel-page .header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.palestras-painel-page .title i {
+  color: var(--accent);
+  filter: drop-shadow(0 8px 14px rgba(201, 154, 46, 0.16));
+}
+
+.palestras-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.palestras-status-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.78));
+  box-shadow:
+    0 14px 34px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.palestras-status-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url("../img/bg-fluid-lines.svg") right top / 64% auto no-repeat;
+  opacity: 0.07;
+}
+
+.palestras-status-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.palestras-status-card .card-head {
+  border-bottom: 1px solid rgba(230, 216, 192, 0.78);
+  background:
+    linear-gradient(135deg, rgba(234, 241, 248, 0.70), rgba(255, 247, 226, 0.42));
+}
+
+.palestras-status-card .card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.palestras-status-card .card-head h2::before {
+  content: "";
+  width: 34px;
+  height: 34px;
+  display: inline-block;
+  flex: 0 0 34px;
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.36), transparent 34%),
+    linear-gradient(135deg, var(--primary), #1f4f7a);
+  box-shadow: 0 12px 20px rgba(8, 43, 77, 0.14);
+}
+
+.palestras-status-card.palestras-open .card-head h2::before {
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.36), transparent 34%),
+    linear-gradient(135deg, #92400e, var(--accent));
+}
+
+.palestras-status-card.palestras-done .card-head h2::before {
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.36), transparent 34%),
+    linear-gradient(135deg, #166534, #4e7a52);
+}
+
+.palestras-year-list {
+  display: grid;
+  gap: 10px;
+}
+
+.palestras-year-link {
+  position: relative;
+  min-height: 58px;
+  justify-content: flex-start;
+  padding: 12px 14px 12px 15px;
+  overflow: hidden;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(234, 241, 248, 0.60));
+  box-shadow:
+    0 8px 18px rgba(8, 43, 77, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.palestras-year-link::after {
+  content: "";
+  position: absolute;
+  right: -28px;
+  bottom: -36px;
+  width: 126px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(31, 79, 122, 0.10), transparent 66%);
+}
+
+.palestras-year-link span,
+.palestras-year-link i {
+  position: relative;
+  z-index: 1;
+}
+
+.palestras-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 14px;
+  color: var(--muted);
+  border: 1px dashed rgba(201, 154, 46, 0.34);
+  border-radius: 18px;
+  background: rgba(255, 247, 226, 0.46);
+}
+
+.palestras-empty i {
+  color: var(--accent);
+  font-size: 20px;
+}
+
+@media (max-width: 720px) {
+  .palestras-painel-page .header {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .palestras-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page">
+<div class="page palestras-painel-page">
   <div class="header">
     <div>
       <h1 class="title"><i class="bi bi-mic"></i><span>Painel de Palestras</span></h1>
@@ -19,40 +205,46 @@
     </div>
   </div>
 
-  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
-    <section class="card">
+  <div class="palestras-dashboard-grid">
+    <section class="card palestras-status-card palestras-open">
       <div class="card-head">
         <h2>Aberto</h2>
         <p>Anos com ao menos um registro em <strong>Aberto</strong>.</p>
       </div>
       <div class="card-body">
-        <div class="actions">
+        <div class="palestras-year-list">
           {% for r in anos_aberto %}
-            <a class="btn" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">
+            <a class="btn palestras-year-link" href="{{ url_for('palestras_nova') }}?ano={{ r.ano }}">
               <i class="bi bi-calendar-event"></i>
               <span>{{ r.ano }} • abertos: {{ r.qtd_aberto }} / total: {{ r.total }}</span>
             </a>
           {% else %}
-            <span class="small">Nenhum ano em aberto.</span>
+            <div class="palestras-empty">
+              <i class="bi bi-check2-circle"></i>
+              <span>Nenhum ano em aberto.</span>
+            </div>
           {% endfor %}
         </div>
       </div>
     </section>
 
-    <section class="card">
+    <section class="card palestras-status-card palestras-done">
       <div class="card-head">
         <h2>Concluído</h2>
         <p>Anos sem registros em <strong>Aberto</strong>.</p>
       </div>
       <div class="card-body">
-        <div class="actions">
+        <div class="palestras-year-list">
           {% for r in anos_concluidos %}
-            <a class="btn" href="{{ url_for('palestrantes') }}?ano={{ r.ano }}">
+            <a class="btn palestras-year-link" href="{{ url_for('palestrantes') }}?ano={{ r.ano }}">
               <i class="bi bi-check2-circle"></i>
               <span>{{ r.ano }} • total: {{ r.total }}</span>
             </a>
           {% else %}
-            <span class="small">Nenhum ano concluído.</span>
+            <div class="palestras-empty">
+              <i class="bi bi-info-circle"></i>
+              <span>Nenhum ano concluído.</span>
+            </div>
           {% endfor %}
         </div>
       </div>
