@@ -3,47 +3,573 @@
 {% block title %}Nova Montagem{% endblock %}
 
 {% block extra_head %}
+
+{% block extra_head %}
 <style>
-:root{
-  --ok-bg:#dcfce7; --ok-bd:#86efac; --ok-tx:#166534;
-  --warn-bg:#fef3c7; --warn-bd:#fcd34d; --warn-tx:#92400e;
+/* =========================================================
+   ETAPA 7 — NOVA MONTAGEM
+   Atualização visual preservando IDs, JS e fluxo operacional.
+========================================================= */
+
+.nova-montagem-page {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 8px 0 54px;
+  color: var(--text);
 }
-.wrap{max-width:1180px; margin:20px auto; padding:0 16px 48px;}
-header{display:flex; align-items:flex-start; gap:16px; justify-content:space-between; flex-wrap:wrap; margin-bottom:14px;}
-.brand{display:flex; align-items:center; gap:12px;}
-.logo{width:46px; height:46px; border-radius:14px; display:grid; place-items:center; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; font-size:22px; box-shadow:var(--shadow);}
-h1{margin:0; font-size:28px; line-height:1.1;}
-.muted{color:var(--muted);}
-.inline{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-.btn.primary{ background: var(--primary); color:#fff; border-color: var(--primary); }
-.btn.danger{ border-color:#b91c1c; color:#b91c1c; }
-.btn.warn{ border-color:#f59e0b; }
-.grid{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow); }
-.card.team-warn{ background:var(--warn-bg); border-color:var(--warn-bd); }
-.card.team-ok{ background:var(--ok-bg); border-color:var(--ok-bd); }
-label{ display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;}
-input, textarea, select{ width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; }
-.row{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-.status{ margin-top:8px; font-size:13px; }
-.ok{ color:var(--ok-tx); }
-.warn-t, .warn{ color:var(--warn-tx); }
-.err{ color:#b91c1c; }
-.disabled{ opacity:.72; pointer-events:none; }
-.kpi{ font-size:14px; color:#334155; }
-.pill{ display:inline-flex; align-items:center; font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; }
-.team-card{transition: background-color .2s ease, border-color .2s ease, transform .15s ease;}
-.team-card:hover{transform:translateY(-1px)}
-.team-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
-.team-foot{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;}
-.justify{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border)}
-@media (max-width: 900px){
-  .row{grid-template-columns:1fr}
-  h1{font-size:24px}
-  .inline,.actions{width:100%}
-  .inline .btn{flex:1 1 100%}
+
+/* Cabeçalho da página */
+.nova-montagem-page > header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: clamp(22px, 3.6vw, 38px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("../img/bg-fluid-lines.svg") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.nova-montagem-page > header::before {
+  content: "";
+  position: absolute;
+  right: -120px;
+  top: -130px;
+  width: 360px;
+  height: 360px;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(201, 154, 46, 0.16), transparent 66%);
+}
+
+.nova-montagem-page .brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.nova-montagem-page .logo {
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 66px;
+  color: #ffffff;
+  font-size: 30px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.26), transparent 30%),
+    linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border: 1px solid rgba(244, 228, 187, 0.28);
+  box-shadow:
+    0 18px 32px rgba(8, 43, 77, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+}
+
+.nova-montagem-page h1 {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(34px, 4.4vw, 52px);
+  font-weight: 800;
+  line-height: 1.03;
+  letter-spacing: -0.04em;
+}
+
+.nova-montagem-page .muted {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.nova-montagem-page > header .muted {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.nova-montagem-page > p.muted {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 16px 18px 16px 58px;
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.88);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 248, 232, 0.68));
+  box-shadow:
+    0 12px 28px rgba(8, 43, 77, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70);
+}
+
+.nova-montagem-page > p.muted::before {
+  content: "\F431";
+  position: absolute;
+  left: 18px;
+  top: 17px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  font-family: "bootstrap-icons";
+  font-size: 18px;
+  border-radius: 10px;
+  background: rgba(234, 241, 248, 0.92);
+  border: 1px solid rgba(31, 79, 122, 0.12);
+}
+
+/* Utilitários preservados */
+.nova-montagem-page .inline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.nova-montagem-page .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.nova-montagem-page .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+/* Botões específicos da montagem */
+.nova-montagem-page .btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  color: var(--primary);
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid rgba(31, 79, 122, 0.16);
+  border-radius: var(--radius-pill);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(234, 241, 248, 0.72));
+  box-shadow:
+    0 8px 18px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    filter var(--transition),
+    background var(--transition);
+}
+
+.nova-montagem-page .btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(201, 154, 46, 0.42);
+  box-shadow:
+    0 14px 26px rgba(8, 43, 77, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.nova-montagem-page .btn.primary,
+.nova-montagem-page .btn-primary {
+  color: #ffffff;
+  border-color: rgba(244, 228, 187, 0.42);
+  background:
+    linear-gradient(135deg, var(--primary), #1f4f7a 52%, var(--primary-dark));
+  box-shadow:
+    0 16px 26px rgba(8, 43, 77, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.nova-montagem-page .btn.danger {
+  color: #991b1b;
+  border-color: rgba(185, 28, 28, 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(254, 226, 226, 0.78));
+}
+
+.nova-montagem-page .btn.warn {
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(254, 243, 199, 0.82));
+}
+
+/* Cards */
+.nova-montagem-page .card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid rgba(230, 216, 192, 0.90);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.78));
+  box-shadow:
+    0 14px 34px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.nova-montagem-page .card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    url("../img/bg-fluid-lines.svg") right top / 64% auto no-repeat;
+  opacity: 0.075;
+}
+
+.nova-montagem-page .card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nova-montagem-page #ano-card {
+  margin-bottom: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(234, 241, 248, 0.66));
+  border-color: rgba(31, 79, 122, 0.16);
+}
+
+.nova-montagem-page #cg-card,
+.nova-montagem-page #coord-equipes-card {
+  margin-top: 14px !important;
+}
+
+/* Títulos internos */
+.nova-montagem-page h2,
+.nova-montagem-page h3 {
+  color: var(--primary);
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+
+.nova-montagem-page h2 {
+  margin: 0 0 8px;
+  font-size: clamp(25px, 2.6vw, 34px);
+  line-height: 1.12;
+}
+
+.nova-montagem-page h3 {
+  margin: 0 0 10px;
+  font-size: 23px;
+  line-height: 1.15;
+}
+
+.nova-montagem-page label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Campos */
+.nova-montagem-page input,
+.nova-montagem-page textarea,
+.nova-montagem-page select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  color: var(--text);
+  font: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(251, 248, 242, 0.72));
+  border: 1px solid rgba(201, 154, 46, 0.30);
+  border-radius: 14px;
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    0 8px 18px rgba(8, 43, 77, 0.04);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition),
+    background var(--transition);
+}
+
+.nova-montagem-page textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.nova-montagem-page input:focus,
+.nova-montagem-page textarea:focus,
+.nova-montagem-page select:focus {
+  background: #ffffff;
+  border-color: rgba(31, 79, 122, 0.46);
+  box-shadow:
+    0 0 0 4px rgba(31, 79, 122, 0.09),
+    0 12px 22px rgba(8, 43, 77, 0.07);
+}
+
+.nova-montagem-page input:disabled,
+.nova-montagem-page textarea:disabled,
+.nova-montagem-page select:disabled {
+  color: rgba(102, 112, 133, 0.86);
+  background: rgba(248, 250, 252, 0.76);
+  border-color: rgba(230, 216, 192, 0.74);
+}
+
+/* Mensagens e status */
+.nova-montagem-page .status {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nova-montagem-page .ok {
+  color: #166534;
+}
+
+.nova-montagem-page .warn-t,
+.nova-montagem-page .warn {
+  color: #92400e;
+}
+
+.nova-montagem-page .err {
+  color: #b91c1c;
+}
+
+.nova-montagem-page .disabled {
+  opacity: 0.70;
+}
+
+.nova-montagem-page .disabled:not(#cg-card):not(#coord-equipes-card) {
+  pointer-events: none;
+}
+
+/* KPI */
+.nova-montagem-page .kpi {
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.nova-montagem-page #kpi-total {
+  width: fit-content;
+  padding: 9px 13px;
+  border: 1px solid rgba(31, 79, 122, 0.13);
+  border-radius: var(--radius-pill);
+  background:
+    linear-gradient(135deg, rgba(234, 241, 248, 0.88), rgba(255, 255, 255, 0.84));
+  box-shadow: 0 8px 18px rgba(8, 43, 77, 0.05);
+}
+
+.nova-montagem-page #kpi-done {
+  color: var(--accent-dark);
+}
+
+/* Pills */
+.nova-montagem-page .pill {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  border: 1px solid rgba(31, 79, 122, 0.14);
+  border-radius: var(--radius-pill);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(234, 241, 248, 0.78));
+}
+
+/* Cards das equipes e dirigentes */
+.nova-montagem-page .team-card {
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    background var(--transition);
+}
+
+.nova-montagem-page .team-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(201, 154, 46, 0.42);
+  box-shadow:
+    0 20px 40px rgba(8, 43, 77, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.nova-montagem-page .card.team-warn {
+  border-color: rgba(245, 158, 11, 0.38);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(254, 243, 199, 0.78));
+}
+
+.nova-montagem-page .card.team-ok {
+  border-color: rgba(34, 197, 94, 0.30);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(220, 252, 231, 0.78));
+}
+
+.nova-montagem-page .team-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.nova-montagem-page .team-head b {
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.nova-montagem-page .team-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.nova-montagem-page .justify {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(201, 154, 46, 0.38);
+}
+
+/* Destaque do Coordenador Geral e Coordenadores de Equipe */
+.nova-montagem-page #cg-card::after,
+.nova-montagem-page #coord-equipes-card::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -44px;
+  width: 190px;
+  height: 150px;
+  pointer-events: none;
+  border-radius: 48% 52% 0 0;
+  background:
+    radial-gradient(ellipse at center, rgba(31, 79, 122, 0.10), transparent 66%);
+  opacity: 0.85;
+}
+
+/* Pequenos ajustes para botões criados por JS */
+.nova-montagem-page a.btn.primary,
+.nova-montagem-page button.btn.primary {
+  color: #ffffff;
+}
+
+.nova-montagem-page a.btn.primary:hover,
+.nova-montagem-page button.btn.primary:hover {
+  color: #ffffff;
+}
+
+/* Responsividade */
+@media (max-width: 980px) {
+  .nova-montagem-page .grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .nova-montagem-page > header {
+    padding: 26px 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .nova-montagem-page {
+    padding-bottom: 36px;
+  }
+
+  .nova-montagem-page > header {
+    border-radius: 22px;
+  }
+
+  .nova-montagem-page .brand {
+    align-items: flex-start;
+  }
+
+  .nova-montagem-page .logo {
+    width: 56px;
+    height: 56px;
+    flex-basis: 56px;
+    border-radius: 18px;
+    font-size: 25px;
+  }
+
+  .nova-montagem-page h1 {
+    font-size: 34px;
+  }
+
+  .nova-montagem-page .row {
+    grid-template-columns: 1fr;
+  }
+
+  .nova-montagem-page .inline,
+  .nova-montagem-page .actions {
+    width: 100%;
+  }
+
+  .nova-montagem-page .inline .btn,
+  .nova-montagem-page .actions .btn {
+    flex: 1 1 160px;
+  }
+
+  .nova-montagem-page .card {
+    border-radius: 21px;
+    padding: 16px;
+  }
+
+  .nova-montagem-page > p.muted {
+    padding: 14px 16px 14px 52px;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nova-montagem-page h1 {
+    font-size: 30px;
+  }
+
+  .nova-montagem-page .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nova-montagem-page .btn {
+    width: 100%;
+  }
+
+  .nova-montagem-page #kpi-total {
+    width: 100%;
+  }
+
+  .nova-montagem-page .team-head {
+    align-items: stretch;
+  }
 }
 </style>
+{% endblock %}
+
 {% endblock %}
 
 {% block content %}
