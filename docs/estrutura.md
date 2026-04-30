@@ -30,3 +30,8 @@ Responsáveis por:
 - base.html central
 - templates comuns herdam base
 - templates de impressão são independentes
+
+## Sessão
+
+- paroquia_id → identifica a paróquia ativa
+- paroquia_nome → usado para exibição
