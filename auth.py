@@ -52,6 +52,17 @@ POSTS_DE_CONSULTA = {
     "api_circulos_buscar_encontrista",
 }
 
+# Rotas GET que abrem telas de escrita/manutenção.
+ROTAS_GET_DE_ESCRITA = {
+    "fichas": "encontristas",
+    "editar_encontrista": "encontristas",
+    "nova_montagem": "montagem",
+    "equipe_montagem": "montagem",
+    "palestras_nova": "palestras",
+    "nova_palestra": "palestras",
+    "circulos_transferir": "circulos",
+}
+
 ROTAS_PUBLICAS = {
     "static",
     "login",
@@ -71,6 +82,7 @@ ROTAS_ADMINISTRATIVAS = {
     "admin_usuarios_atualizar",
     "admin_usuarios_alternar",
     "init_db_route",
+    "minha_conta",
 }
 
 ROTAS_PAROQUIA = {
@@ -203,6 +215,31 @@ def carregar_usuario_por_login(login: str):
         conn.close()
 
 
+def carregar_usuario_por_id(usuario_id: int):
+    conn = db_conn()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT
+                u.id,
+                u.paroquia_id,
+                u.nome,
+                u.login,
+                u.senha_hash,
+                u.perfil,
+                u.ativo,
+                p.nome AS paroquia_nome
+            FROM usuarios u
+            LEFT JOIN paroquias p ON p.id = u.paroquia_id
+            WHERE u.id = %s
+            LIMIT 1
+        """, (usuario_id,))
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+
 def autenticar_usuario(login: str, senha: str):
     usuario = carregar_usuario_por_login(login)
     if not usuario:
@@ -228,6 +265,66 @@ def iniciar_sessao_usuario(usuario):
     if usuario.get("perfil") not in PERFIS_SELECIONAM_PAROQUIA:
         session["paroquia_id"] = usuario.get("paroquia_id")
         session["paroquia_nome"] = usuario.get("paroquia_nome")
+
+
+def atualizar_sessao_usuario(usuario):
+    if not usuario:
+        return
+
+    session["usuario"] = {
+        "id": usuario["id"],
+        "nome": usuario.get("nome"),
+        "login": usuario.get("login"),
+        "perfil": usuario.get("perfil"),
+        "paroquia_id": usuario.get("paroquia_id"),
+        "paroquia_nome": usuario.get("paroquia_nome"),
+    }
+
+    if usuario.get("perfil") not in PERFIS_SELECIONAM_PAROQUIA:
+        session["paroquia_id"] = usuario.get("paroquia_id")
+        session["paroquia_nome"] = usuario.get("paroquia_nome")
+
+
+def atualizar_minha_conta(usuario_id: int, nome: str, senha_atual: str, nova_senha: str = ""):
+    usuario = carregar_usuario_por_id(usuario_id)
+    if not usuario or not usuario.get("ativo"):
+        return False, "Usuário não encontrado ou inativo."
+
+    if not _verificar_senha(senha_atual, usuario.get("senha_hash")):
+        return False, "Senha atual incorreta."
+
+    nome = (nome or "").strip()
+    nova_senha = nova_senha or ""
+
+    if not nome:
+        return False, "Informe o nome."
+
+    conn = db_conn()
+    cur = conn.cursor()
+    try:
+        if nova_senha:
+            cur.execute("""
+                UPDATE usuarios
+                SET nome = %s, senha_hash = %s
+                WHERE id = %s
+            """, (nome, gerar_hash_senha(nova_senha), usuario_id))
+        else:
+            cur.execute("""
+                UPDATE usuarios
+                SET nome = %s
+                WHERE id = %s
+            """, (nome, usuario_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return False, f"Erro ao atualizar usuário: {e}"
+    finally:
+        cur.close()
+        conn.close()
+
+    usuario_atualizado = carregar_usuario_por_id(usuario_id)
+    atualizar_sessao_usuario(usuario_atualizado)
+    return True, "Dados atualizados com sucesso."
 
 
 def encerrar_sessao_usuario():
@@ -309,6 +406,41 @@ def registrar_auth_routes(app):
 
         return render_template("login.html", erro=erro, login=login_form)
 
+    @app.route("/minha-conta", methods=["GET", "POST"])
+    def minha_conta():
+        usuario = usuario_logado()
+        if not usuario:
+            return redirect(url_for("login"))
+
+        erro = None
+
+        if request.method == "POST":
+            nome = (request.form.get("nome") or "").strip()
+            senha_atual = request.form.get("senha_atual") or ""
+            nova_senha = request.form.get("nova_senha") or ""
+            confirmar_senha = request.form.get("confirmar_senha") or ""
+
+            if nova_senha and nova_senha != confirmar_senha:
+                erro = "A nova senha e a confirmação não conferem."
+            else:
+                ok, msg = atualizar_minha_conta(
+                    usuario_id_atual(),
+                    nome,
+                    senha_atual,
+                    nova_senha,
+                )
+                if ok:
+                    flash(msg, "success")
+                    return redirect(url_for("minha_conta"))
+                erro = msg
+
+        usuario = usuario_logado()
+        return render_template(
+            "minha_conta.html",
+            usuario=usuario,
+            erro=erro,
+        )
+
     @app.route("/logout")
     def logout():
         encerrar_sessao_usuario()
@@ -318,8 +450,6 @@ def registrar_auth_routes(app):
 def registrar_controle_acesso(app):
     @app.context_processor
     def inject_usuario_atual():
-        pode_ver_dados = pode_ver_dados_pastorais()
-
         return {
             "usuario_atual": usuario_logado(),
             "usuario_nome": usuario_nome_atual(),
@@ -327,7 +457,7 @@ def registrar_controle_acesso(app):
             "pode_trocar_paroquia": pode_selecionar_paroquia(),
             "pode_admin_paroquias": pode_gerenciar_paroquias(),
             "pode_admin_usuarios": pode_gerenciar_usuarios(),
-            "pode_ver_dados": pode_ver_dados,
+            "pode_ver_dados": pode_ver_dados_pastorais(),
             "pode_escrever_encontristas": pode_escrever("encontristas"),
             "pode_escrever_encontreiros": pode_escrever("encontreiros"),
             "pode_escrever_montagem": pode_escrever("montagem"),
@@ -379,9 +509,11 @@ def registrar_controle_acesso(app):
         } and not pode_gerenciar_usuarios():
             return _resposta_acesso_negado("Seu perfil não permite gerenciar usuários.")
 
-        # Tela de ficha é cadastro de encontristas. Quem só consulta deve ir para Encontristas.
-        if endpoint == "fichas" and not pode_escrever("encontristas"):
-            return _resposta_acesso_negado("Seu perfil permite consultar encontristas, mas não cadastrar ficha.")
+        # Bloqueio de telas de escrita acessadas por GET.
+        if request.method in {"GET", "HEAD"} and endpoint in ROTAS_GET_DE_ESCRITA:
+            area_get = ROTAS_GET_DE_ESCRITA[endpoint]
+            if not pode_escrever(area_get):
+                return _resposta_acesso_negado("Seu perfil permite consultar, mas não abrir telas de alteração destes dados.")
 
         # Bloqueio de escrita por área.
         if request.method not in {"GET", "HEAD", "OPTIONS"} and endpoint not in POSTS_DE_CONSULTA:
