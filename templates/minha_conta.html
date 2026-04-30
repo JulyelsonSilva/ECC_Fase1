@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Minha conta | Sistema ECC{% endblock %}
+
+{% block content %}
+<div class="page">
+  <section class="card hero">
+    <div class="eyebrow">Acesso pessoal</div>
+    <h2>Minha conta</h2>
+    <p>
+      Atualize seu nome de exibição ou altere sua senha de acesso.
+      O perfil e a paróquia vinculada não podem ser alterados nesta tela.
+    </p>
+  </section>
+
+  <section class="card" style="max-width: 760px; margin-top: 18px;">
+    {% if erro %}
+      <div class="flash error" style="margin-bottom: 16px;">
+        {{ erro }}
+      </div>
+    {% endif %}
+
+    <form method="post" class="stack">
+      <div class="form-grid">
+        <div class="field">
+          <label for="nome">Nome</label>
+          <input
+            type="text"
+            id="nome"
+            name="nome"
+            value="{{ usuario.nome or '' }}"
+            required
+          >
+        </div>
+
+        <div class="field">
+          <label for="login">Usuário</label>
+          <input
+            type="text"
+            id="login"
+            value="{{ usuario.login or '' }}"
+            disabled
+          >
+        </div>
+
+        <div class="field">
+          <label for="perfil">Perfil</label>
+          <input
+            type="text"
+            id="perfil"
+            value="{{ usuario.perfil or '' }}"
+            disabled
+          >
+        </div>
+
+        <div class="field">
+          <label for="paroquia">Paróquia</label>
+          <input
+            type="text"
+            id="paroquia"
+            value="{{ usuario.paroquia_nome or paroquia_nome or 'Não vinculada' }}"
+            disabled
+          >
+        </div>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--border, #e5e7eb); margin: 10px 0;">
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="senha_atual">Senha atual</label>
+          <input
+            type="password"
+            id="senha_atual"
+            name="senha_atual"
+            autocomplete="current-password"
+            required
+          >
+          <small>Obrigatória para salvar qualquer alteração.</small>
+        </div>
+
+        <div class="field">
+          <label for="nova_senha">Nova senha</label>
+          <input
+            type="password"
+            id="nova_senha"
+            name="nova_senha"
+            autocomplete="new-password"
+          >
+          <small>Deixe em branco para manter a senha atual.</small>
+        </div>
+
+        <div class="field">
+          <label for="confirmar_senha">Confirmar nova senha</label>
+          <input
+            type="password"
+            id="confirmar_senha"
+            name="confirmar_senha"
+            autocomplete="new-password"
+          >
+        </div>
+      </div>
+
+      <div class="actions-row" style="margin-top: 10px;">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check2-circle"></i>
+          <span>Salvar alterações</span>
+        </button>
+
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left"></i>
+          <span>Voltar</span>
+        </a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

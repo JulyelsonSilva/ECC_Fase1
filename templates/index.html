@@ -14,17 +14,17 @@
     </p>
 
     <div class="hero-actions">
-      {% if pode_ver_dados %}
+      {% if pode_escrever_montagem %}
         <a href="{{ url_for('montagem') }}" class="btn btn-primary">
           <i class="bi bi-diagram-3"></i>
           <span>Acessar Montagem</span>
         </a>
-
-        <a href="{{ url_for('encontristas') }}" class="btn btn-secondary">
-          <i class="bi bi-person-hearts"></i>
-          <span>Ver Encontristas</span>
-        </a>
       {% endif %}
+
+      <a href="{{ url_for('encontristas') }}" class="btn btn-secondary">
+        <i class="bi bi-person-hearts"></i>
+        <span>Ver Encontristas</span>
+      </a>
     </div>
   </section>
 
@@ -42,59 +42,65 @@
       </div>
 
       <div class="home-grid">
+        {% if pode_escrever_montagem %}
         <a href="{{ url_for('montagem') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-diagram-3"></i>
-          </div>
-          <div>
-            <h3>Montagem</h3>
-            <p>Prepare, distribua e acompanhe a formação das equipes do encontro.</p>
-            <span class="card-link-hint">
-              Acessar <i class="bi bi-arrow-right"></i>
-            </span>
-          </div>
-        </a>
-
-        {% if pode_escrever_encontristas %}
-          <a href="{{ url_for('fichas') }}" class="ecc-card">
-            <div class="ecc-card-icon">
-              <i class="bi bi-clipboard-check"></i>
-            </div>
-            <div>
-              <h3>Fichas</h3>
-              <p>Gerencie inscrições, dados iniciais e informações administrativas do encontro.</p>
-              <span class="card-link-hint">
-                Acessar <i class="bi bi-arrow-right"></i>
-              </span>
-            </div>
-          </a>
+                  <div class="ecc-card-icon">
+                    <i class="bi bi-diagram-3"></i>
+                  </div>
+                  <div>
+                    <h3>Montagem</h3>
+                    <p>Prepare, distribua e acompanhe a formação das equipes do encontro.</p>
+                    <span class="card-link-hint">
+                      Acessar <i class="bi bi-arrow-right"></i>
+                    </span>
+                  </div>
+                </a>
         {% endif %}
 
-        <a href="{{ url_for('palestras_painel') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-mic"></i>
-          </div>
-          <div>
-            <h3>Palestras</h3>
-            <p>Organize os temas, casais responsáveis e a estrutura pastoral das palestras.</p>
-            <span class="card-link-hint">
-              Acessar <i class="bi bi-arrow-right"></i>
-            </span>
-          </div>
-        </a>
+        {% if pode_escrever_encontristas %}
+        <a href="{{ url_for('fichas') }}" class="ecc-card">
+                  <div class="ecc-card-icon">
+                    <i class="bi bi-clipboard-check"></i>
+                  </div>
+                  <div>
+                    <h3>Fichas</h3>
+                    <p>Gerencie inscrições, dados iniciais e informações administrativas do encontro.</p>
+                    <span class="card-link-hint">
+                      Acessar <i class="bi bi-arrow-right"></i>
+                    </span>
+                  </div>
+                </a>
+        {% endif %}
 
+        {% if pode_escrever_palestras %}
+        <a href="{{ url_for('palestras_painel') }}" class="ecc-card">
+                  <div class="ecc-card-icon">
+                    <i class="bi bi-mic"></i>
+                  </div>
+                  <div>
+                    <h3>Palestras</h3>
+                    <p>Organize os temas, casais responsáveis e a estrutura pastoral das palestras.</p>
+                    <span class="card-link-hint">
+                      Acessar <i class="bi bi-arrow-right"></i>
+                    </span>
+                  </div>
+                </a>
+        {% endif %}
+
+        {% if pode_escrever_circulos %}
         <a href="{{ url_for('circulos_list') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-people"></i>
-          </div>
-          <div>
-            <h3>Círculos</h3>
-            <p>Gerencie os círculos, composição dos grupos e movimentações relacionadas.</p>
-            <span class="card-link-hint">
-              Acessar <i class="bi bi-arrow-right"></i>
-            </span>
-          </div>
-        </a>
+                  <div class="ecc-card-icon">
+                    <i class="bi bi-people"></i>
+                  </div>
+                  <div>
+                    <h3>Círculos</h3>
+                    <p>Gerencie os círculos, composição dos grupos e movimentações relacionadas.</p>
+                    <span class="card-link-hint">
+                      Acessar <i class="bi bi-arrow-right"></i>
+                    </span>
+                  </div>
+                </a>
+        {% endif %}
       </div>
     </section>
 

@@ -18,7 +18,7 @@
         <span class="brand-mark">
           <img
             src="{{ url_for('static', filename='img/brasao_divino.jpg') }}"
-            alt="Brasão do Sistema do ECC"
+            alt="Brasão do Sistema ECC Divino"
             onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=&quot;bi bi-shield-check&quot;></i>';"
           >
         </span>
@@ -65,32 +65,38 @@
               <span>Encontreiros</span>
             </a>
 
-            <a
-              href="{{ url_for('montagem') }}"
-              class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'equipe_montagem_sala', 'organograma', 'imprimir_relatorio_montagem'] %}is-active{% endif %}"
-              {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'equipe_montagem_sala', 'organograma', 'imprimir_relatorio_montagem'] %}aria-current="page"{% endif %}
-            >
-              <i class="bi bi-diagram-3"></i>
-              <span>Montagem</span>
-            </a>
+            {% if pode_escrever_montagem %}
+              <a
+                href="{{ url_for('montagem') }}"
+                class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}is-active{% endif %}"
+                {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}aria-current="page"{% endif %}
+              >
+                <i class="bi bi-diagram-3"></i>
+                <span>Montagem</span>
+              </a>
+            {% endif %}
 
-            <a
-              href="{{ url_for('palestras_painel') }}"
-              class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes', 'palestra_topico'] %}is-active{% endif %}"
-              {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes', 'palestra_topico'] %}aria-current="page"{% endif %}
-            >
-              <i class="bi bi-mic"></i>
-              <span>Palestras</span>
-            </a>
+            {% if pode_escrever_palestras %}
+              <a
+                href="{{ url_for('palestras_painel') }}"
+                class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}is-active{% endif %}"
+                {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}aria-current="page"{% endif %}
+              >
+                <i class="bi bi-mic"></i>
+                <span>Palestras</span>
+              </a>
+            {% endif %}
 
-            <a
-              href="{{ url_for('circulos_list') }}"
-              class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}is-active{% endif %}"
-              {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}aria-current="page"{% endif %}
-            >
-              <i class="bi bi-circle"></i>
-              <span>Círculos</span>
-            </a>
+            {% if pode_escrever_circulos %}
+              <a
+                href="{{ url_for('circulos_list') }}"
+                class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}is-active{% endif %}"
+                {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}aria-current="page"{% endif %}
+              >
+                <i class="bi bi-circle"></i>
+                <span>Círculos</span>
+              </a>
+            {% endif %}
 
             <a
               href="{{ url_for('relatorios') }}"
@@ -106,7 +112,6 @@
             <a
               href="{{ url_for('admin_home') }}"
               class="nav-link {% if request.endpoint in ['admin_home', 'admin_paroquias', 'admin_usuarios'] %}is-active{% endif %}"
-              {% if request.endpoint in ['admin_home', 'admin_paroquias', 'admin_usuarios'] %}aria-current="page"{% endif %}
             >
               <i class="bi bi-gear"></i>
               <span>Admin</span>
@@ -125,10 +130,14 @@
           {% endif %}
 
           {% if usuario_atual %}
-            <span class="nav-link" title="Usuário logado">
+            <a
+              href="{{ url_for('minha_conta') }}"
+              class="nav-link {% if request.endpoint == 'minha_conta' %}is-active{% endif %}"
+              title="Alterar meus dados"
+            >
               <i class="bi bi-person-circle"></i>
               <span>{{ usuario_nome }}</span>
-            </span>
+            </a>
 
             <a href="{{ url_for('logout') }}" class="nav-link">
               <i class="bi bi-box-arrow-right"></i>
@@ -147,9 +156,6 @@
           <div class="page-context" style="margin-bottom: 16px;">
             <span class="eyebrow">Paróquia selecionada</span>
             <strong>{{ paroquia_nome }}</strong>
-            {% if usuario_atual %}
-              <span style="margin-left: 10px;">Usuário: <strong>{{ usuario_nome }}</strong></span>
-            {% endif %}
             {% if pode_trocar_paroquia %}
               <a href="{{ url_for('trocar_paroquia') }}" style="margin-left: 10px;">
                 Trocar
