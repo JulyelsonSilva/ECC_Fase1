@@ -1553,3 +1553,264 @@ tbody tr:last-child td {
     height: 56px;
   }
 }
+
+/* =========================================================
+   ETAPA 3 — BASE HTML / TOPBAR
+   Complementos para a nova estrutura visual do topo.
+========================================================= */
+
+.brand-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.brand-mark-ecc {
+  width: 66px;
+  height: 66px;
+  flex-basis: 66px;
+  border-radius: 20px;
+}
+
+.brand-mark-ecc img {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+}
+
+.topbar-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.topbar-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 14px;
+  margin-left: 2px;
+  border-left: 1px solid rgba(244, 228, 187, 0.26);
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 6px 10px 6px 6px;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(244, 228, 187, 0.18);
+  transition:
+    transform var(--transition),
+    background var(--transition),
+    border-color var(--transition);
+}
+
+.account-chip:hover,
+.account-chip.is-active {
+  color: #ffffff;
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(244, 228, 187, 0.36);
+}
+
+.account-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  color: var(--primary);
+  background:
+    radial-gradient(circle at 35% 30%, #ffffff, #dfeaf5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.68);
+}
+
+.account-copy {
+  display: grid;
+  gap: 1px;
+  line-height: 1.05;
+  min-width: 0;
+}
+
+.account-copy strong {
+  max-width: 130px;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-greeting {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nav-link-context {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-link-logout {
+  padding-inline: 10px;
+}
+
+.page-context {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-context strong {
+  display: block;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.page-context .eyebrow {
+  margin-bottom: 4px;
+}
+
+.page-context-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  background: rgba(234, 241, 248, 0.76);
+  border: 1px solid rgba(31, 79, 122, 0.16);
+  transition:
+    transform var(--transition),
+    background var(--transition),
+    border-color var(--transition);
+}
+
+.page-context-link:hover {
+  transform: translateY(-1px);
+  background: #ffffff;
+  border-color: rgba(201, 154, 46, 0.38);
+}
+
+.flash-stack {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 1180px) {
+  .topbar-inner {
+    align-items: flex-start;
+  }
+
+  .topbar-navigation {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .main-nav {
+    justify-content: flex-end;
+  }
+
+  .topbar-account {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .topbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand-link {
+    width: 100%;
+  }
+
+  .topbar-navigation {
+    align-items: stretch;
+  }
+
+  .main-nav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+
+  .main-nav .nav-link {
+    flex: 0 0 auto;
+  }
+
+  .topbar-account {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .account-chip {
+    flex: 1 1 auto;
+  }
+
+  .account-copy strong {
+    max-width: 180px;
+  }
+
+  .page-context {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 520px) {
+  .brand-mark-ecc {
+    width: 56px;
+    height: 56px;
+    flex-basis: 56px;
+    border-radius: 17px;
+  }
+
+  .brand-mark-ecc img {
+    width: 52px;
+    height: 52px;
+  }
+
+  .brand-title {
+    font-size: 21px;
+  }
+
+  .brand-subtitle {
+    max-width: 245px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar-account {
+    gap: 6px;
+  }
+
+  .account-chip {
+    min-height: 42px;
+  }
+}
