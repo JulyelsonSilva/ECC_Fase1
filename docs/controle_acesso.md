@@ -48,31 +48,25 @@ Depois do primeiro acesso, recomenda-se alterar a senha do usuário `super` ou c
 
 As permissões foram centralizadas em `auth.py`, na função `registrar_controle_acesso(app)`. Isso evita espalhar verificações manuais por todas as rotas e preserva a estrutura atual do projeto: `routes` para fluxo, `services` para regras/SQL, `utils` para helpers e `db.py` para conexão.
 
-## Etapa 2 - permissões visuais e telas de escrita
 
-Além do bloqueio global de POST, o sistema passou a disponibilizar no contexto dos templates as seguintes variáveis/funções:
+## Etapa 3 — menu global e usuário no topo
 
-- `pode_escrever(area)`: verifica se o perfil atual pode gravar na área informada.
+O `base.html` passou a respeitar o contexto de permissões enviado pelo `auth.py`.
+
+A navegação superior agora segue estas regras:
+
+- `admin` não visualiza links de dados pastorais; permanece direcionado para a área administrativa.
+- perfis com acesso pastoral visualizam os módulos principais de consulta.
+- a troca de paróquia só aparece para `super` e `admin`.
+- o link `Admin` aparece para perfis que podem gerenciar paróquias ou usuários.
+- o nome do usuário logado aparece no topo da página, ao lado da opção de sair.
+
+O `auth.py` também passou a disponibilizar variáveis globais para os templates:
+
 - `pode_escrever_encontristas`
 - `pode_escrever_encontreiros`
 - `pode_escrever_montagem`
 - `pode_escrever_palestras`
 - `pode_escrever_circulos`
 
-Essas variáveis devem ser usadas nos templates para esconder botões de cadastro, edição, conclusão e demais ações de gravação.
-
-Também foi criada em `auth.py` a estrutura `ROTAS_SOMENTE_ESCRITA`, usada para bloquear telas que são acessadas por GET, mas que existem principalmente para alteração de dados, como:
-
-- `fichas`
-- `palestras_nova`
-- `nova_montagem`
-- `equipe_montagem`
-- `circulos_transferir`
-
-Com isso, perfis somente consulta não apenas são impedidos de salvar alterações, mas também deixam de visualizar telas operacionais de cadastro/alteração.
-
-Nesta etapa foram ajustados:
-
-- `templates/index.html`: exibe as pastas dirigentes apenas quando o perfil tem permissão de escrita na área correspondente.
-- `templates/encontristas.html`: esconde o botão `Nova ficha` e o botão `Editar` para perfis sem permissão de escrita em encontristas.
-- `auth.py`: adiciona variáveis de permissão ao contexto dos templates e bloqueia GET de telas de escrita.
+Essas variáveis devem ser usadas para esconder botões de inclusão, edição, conclusão ou transferência conforme o perfil. O bloqueio principal continua no backend, em `registrar_controle_acesso(app)`.
