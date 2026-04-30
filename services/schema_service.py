@@ -90,6 +90,42 @@ def ensure_database_schema():
                 (1, 'Paróquia Divino Espírito Santo', 'Maceió', 'AL', 'Arquidiocese de Maceió', 1)
         """)
 
+
+        # =========================
+        # USUÁRIOS / CONTROLE DE ACESSO
+        # =========================
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+              id INT NOT NULL AUTO_INCREMENT,
+              paroquia_id INT NULL,
+              nome VARCHAR(150) NOT NULL,
+              login VARCHAR(80) NOT NULL,
+              senha_hash VARCHAR(255) NOT NULL,
+              perfil ENUM(
+                'super',
+                'admin',
+                'admin_paroquia',
+                'montagem',
+                'palestras',
+                'fichas',
+                'pos_encontro',
+                'financas',
+                'usuario_comum'
+              ) NOT NULL DEFAULT 'usuario_comum',
+              ativo TINYINT(1) NOT NULL DEFAULT 1,
+              created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_usuarios_login (login),
+              INDEX idx_usuarios_paroquia (paroquia_id),
+              INDEX idx_usuarios_perfil (perfil),
+              INDEX idx_usuarios_ativo (ativo),
+              CONSTRAINT fk_usuarios_paroquia
+                FOREIGN KEY (paroquia_id) REFERENCES paroquias(id)
+                ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
         # =========================
         # ENCONTRISTAS
         # =========================
@@ -312,6 +348,24 @@ def ensure_database_schema():
                 cur.execute(stmt)
 
         # =========================
+        # COLUNAS FALTANTES - USUÁRIOS
+        # =========================
+        usuarios_missing = {
+            "paroquia_id": "ALTER TABLE usuarios ADD COLUMN paroquia_id INT NULL AFTER id",
+            "nome": "ALTER TABLE usuarios ADD COLUMN nome VARCHAR(150) NOT NULL AFTER paroquia_id",
+            "login": "ALTER TABLE usuarios ADD COLUMN login VARCHAR(80) NOT NULL AFTER nome",
+            "senha_hash": "ALTER TABLE usuarios ADD COLUMN senha_hash VARCHAR(255) NOT NULL AFTER login",
+            "perfil": "ALTER TABLE usuarios ADD COLUMN perfil ENUM('super','admin','admin_paroquia','montagem','palestras','fichas','pos_encontro','financas','usuario_comum') NOT NULL DEFAULT 'usuario_comum' AFTER senha_hash",
+            "ativo": "ALTER TABLE usuarios ADD COLUMN ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER perfil",
+            "created_at": "ALTER TABLE usuarios ADD COLUMN created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP AFTER ativo",
+            "updated_at": "ALTER TABLE usuarios ADD COLUMN updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at",
+        }
+
+        for col, stmt in usuarios_missing.items():
+            if not _column_exists(cur, "usuarios", col):
+                cur.execute(stmt)
+
+        # =========================
         # GARANTIR paroquia_id
         # =========================
         _ensure_paroquia_id(cur, "encontristas")
@@ -370,6 +424,30 @@ def ensure_database_schema():
                 ADD INDEX idx_circulos_paroquia (paroquia_id)
             """)
 
+        if not _index_exists(cur, "usuarios", "uq_usuarios_login"):
+            cur.execute("""
+                ALTER TABLE usuarios
+                ADD UNIQUE KEY uq_usuarios_login (login)
+            """)
+
+        if not _index_exists(cur, "usuarios", "idx_usuarios_paroquia"):
+            cur.execute("""
+                ALTER TABLE usuarios
+                ADD INDEX idx_usuarios_paroquia (paroquia_id)
+            """)
+
+        if not _index_exists(cur, "usuarios", "idx_usuarios_perfil"):
+            cur.execute("""
+                ALTER TABLE usuarios
+                ADD INDEX idx_usuarios_perfil (perfil)
+            """)
+
+        if not _index_exists(cur, "usuarios", "idx_usuarios_ativo"):
+            cur.execute("""
+                ALTER TABLE usuarios
+                ADD INDEX idx_usuarios_ativo (ativo)
+            """)
+
         # =========================
         # FOREIGN KEYS MULTIPARÓQUIA
         # =========================
@@ -377,6 +455,14 @@ def ensure_database_schema():
         _ensure_paroquia_fk(cur, "encontreiros", "fk_encontreiros_paroquia")
         _ensure_paroquia_fk(cur, "palestras", "fk_palestras_paroquia")
         _ensure_paroquia_fk(cur, "circulos", "fk_circulos_paroquia")
+
+        if not _foreign_key_exists(cur, "usuarios", "fk_usuarios_paroquia"):
+            cur.execute("""
+                ALTER TABLE usuarios
+                ADD CONSTRAINT fk_usuarios_paroquia
+                FOREIGN KEY (paroquia_id) REFERENCES paroquias(id)
+                ON DELETE SET NULL
+            """)
 
         # =========================
         # FOREIGN KEYS ESPECÍFICAS
