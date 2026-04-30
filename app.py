@@ -10,7 +10,7 @@ from config import (
 )
 
 from db import safe_fetch_one
-from auth import _admin_ok
+from auth import registrar_auth_routes, registrar_controle_acesso
 from utils import _norm, _sim, _q, _team_label
 from services.shared_service import encontrista_name_by_id
 
@@ -33,8 +33,10 @@ register_circulos_routes(app, encontrista_name_by_id)
 register_montagem_routes(app, TEAM_MAP, TEAM_LIMITS, _team_label)
 register_palestras_routes(app, PALESTRAS_TITULOS, PALESTRAS_SOLO)
 register_core_routes(app, TEAM_MAP, TEAM_LIMITS, _q)
-register_admin_routes(app, _admin_ok)
+register_auth_routes(app)
+register_admin_routes(app)
 register_casais_routes(app)
+registrar_controle_acesso(app)
 
 
 
