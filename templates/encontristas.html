@@ -2,8 +2,189 @@
 
 {% block title %}Encontristas - Sistema ECC{% endblock %}
 
+{% block extra_head %}
+<style>
+/* =========================================================
+   ETAPA 9 — DEMAIS TELAS / BLOCO 1
+   Encontristas
+========================================================= */
+
+.encontristas-page {
+  gap: 22px;
+}
+
+.encontristas-page .header {
+  position: relative;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("../img/bg-fluid-lines.svg") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.encontristas-page .header::before {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -130px;
+  width: 340px;
+  height: 340px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 154, 46, 0.16), transparent 66%);
+}
+
+.encontristas-page .header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.encontristas-page .title i {
+  color: var(--accent);
+  filter: drop-shadow(0 8px 14px rgba(201, 154, 46, 0.16));
+}
+
+.encontristas-page .data-card {
+  overflow: hidden;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.78));
+  box-shadow:
+    0 14px 34px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.encontristas-page .data-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url("../img/bg-fluid-lines.svg") right top / 58% auto no-repeat;
+  opacity: 0.075;
+}
+
+.encontristas-page .data-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.encontristas-page .card-head {
+  border-bottom: 1px solid rgba(230, 216, 192, 0.76);
+  background:
+    linear-gradient(135deg, rgba(234, 241, 248, 0.70), rgba(255, 247, 226, 0.40));
+}
+
+.encontristas-page .filters {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(230, 216, 192, 0.82);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(251, 248, 242, 0.66));
+}
+
+.encontristas-page .table-wrap {
+  border-radius: 20px;
+  border: 1px solid rgba(230, 216, 192, 0.86);
+  box-shadow: 0 10px 24px rgba(8, 43, 77, 0.04);
+}
+
+.encontristas-page table th {
+  color: var(--primary);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background:
+    linear-gradient(180deg, rgba(234, 241, 248, 0.88), rgba(255, 252, 246, 0.88));
+}
+
+.encontristas-page table td {
+  vertical-align: top;
+}
+
+.encontristas-page .couple-name {
+  color: var(--primary);
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.encontristas-page .couple-name strong {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.encontristas-page .couple-fullname {
+  margin-top: 5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.encontristas-page .year-badge,
+.encontristas-page .ecc-badge,
+.encontristas-page .id-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--primary);
+  font-weight: 900;
+  background: rgba(234, 241, 248, 0.88);
+  border: 1px solid rgba(31, 79, 122, 0.14);
+}
+
+.encontristas-page .ecc-badge {
+  color: var(--accent-dark);
+  background: rgba(255, 247, 226, 0.94);
+  border-color: rgba(201, 154, 46, 0.24);
+}
+
+.encontristas-page .id-badge {
+  min-width: 34px;
+  color: var(--muted);
+  background: rgba(248, 250, 252, 0.92);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.encontristas-page .row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.encontristas-page .pager {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(230, 216, 192, 0.82);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(234, 241, 248, 0.54));
+}
+
+@media (max-width: 820px) {
+  .encontristas-page .header {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .encontristas-page .filters .col-4,
+  .encontristas-page .filters .col-3,
+  .encontristas-page .filters .col-12 {
+    grid-column: span 12;
+  }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page">
+<div class="page encontristas-page">
   <div class="header">
     <div>
       <h1 class="title">
@@ -31,10 +212,13 @@
     <div class="flash info">Registro não encontrado.</div>
   {% endif %}
 
-  <section class="card">
+  <section class="card data-card">
     <div class="card-head">
-      <h2>Filtros</h2>
-      <p>Use um ou mais campos para localizar os encontristas.</p>
+      <div>
+        <span class="section-kicker">Base de casais</span>
+        <h2>Filtros</h2>
+        <p>Use um ou mais campos para localizar os encontristas.</p>
+      </div>
     </div>
 
     <div class="card-body">
@@ -103,12 +287,14 @@
           <tbody>
             {% for e in dados %}
               <tr>
-                <td>{{ e.id }}</td>
-                <td>{{ e.ano or '' }}</td>
+                <td><span class="id-badge">{{ e.id }}</span></td>
+                <td><span class="year-badge">{{ e.ano or '—' }}</span></td>
                 <td>
-                  <strong>{{ e.nome_usual_ele or '' }}</strong> e
-                  <strong>{{ e.nome_usual_ela or '' }}</strong>
-                  <div class="small">
+                  <div class="couple-name">
+                    <strong>{{ e.nome_usual_ele or '' }}</strong> e
+                    <strong>{{ e.nome_usual_ela or '' }}</strong>
+                  </div>
+                  <div class="small couple-fullname">
                     {{ e.nome_completo_ele or '' }}{% if e.nome_completo_ele or e.nome_completo_ela %} / {% endif %}{{ e.nome_completo_ela or '' }}
                   </div>
                 </td>
@@ -118,9 +304,9 @@
                   {{ e.telefone_ela or '' }}
                 </td>
                 <td>{{ e.endereco or '' }}</td>
-                <td>{{ e.num_ecc or '' }}</td>
+                <td><span class="ecc-badge">{{ e.num_ecc or '—' }}</span></td>
                 <td>
-                  <div class="actions">
+                  <div class="actions row-actions">
                     {% if pode_escrever_encontristas %}
                       <a class="btn btn-sm" href="{{ url_for('editar_encontrista', encontrista_id=e.id) }}">
                         <i class="bi bi-pencil-square"></i>

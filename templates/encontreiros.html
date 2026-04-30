@@ -2,8 +2,168 @@
 
 {% block title %}Encontreiros{% endblock %}
 
+{% block extra_head %}
+<style>
+/* =========================================================
+   ETAPA 9 — DEMAIS TELAS / BLOCO 1
+   Encontreiros
+========================================================= */
+
+.encontreiros-page {
+  gap: 22px;
+}
+
+.encontreiros-page .header {
+  position: relative;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid rgba(230, 216, 192, 0.92);
+  border-radius: 28px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.84)),
+    url("../img/bg-fluid-lines.svg") right center / 62% 100% no-repeat;
+  box-shadow:
+    0 22px 54px rgba(8, 43, 77, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.encontreiros-page .header::before {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -130px;
+  width: 340px;
+  height: 340px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 154, 46, 0.16), transparent 66%);
+}
+
+.encontreiros-page .header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.encontreiros-page .title i {
+  color: var(--accent);
+  filter: drop-shadow(0 8px 14px rgba(201, 154, 46, 0.16));
+}
+
+.encontreiros-page .data-card,
+.encontreiros-page .year-card {
+  overflow: hidden;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 252, 246, 0.78));
+  box-shadow:
+    0 14px 34px rgba(8, 43, 77, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.encontreiros-page .data-card::before,
+.encontreiros-page .year-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url("../img/bg-fluid-lines.svg") right top / 58% auto no-repeat;
+  opacity: 0.07;
+}
+
+.encontreiros-page .data-card > *,
+.encontreiros-page .year-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.encontreiros-page .card-head {
+  border-bottom: 1px solid rgba(230, 216, 192, 0.76);
+  background:
+    linear-gradient(135deg, rgba(234, 241, 248, 0.70), rgba(255, 247, 226, 0.40));
+}
+
+.encontreiros-page .filters {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(230, 216, 192, 0.82);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(251, 248, 242, 0.66));
+}
+
+.encontreiros-page .year-card {
+  margin-top: 18px;
+  box-shadow:
+    0 12px 28px rgba(8, 43, 77, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70);
+}
+
+.encontreiros-page .year-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.encontreiros-page .year-title::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  box-shadow: 0 0 0 5px rgba(234, 241, 248, 0.88);
+}
+
+.encontreiros-page .table-wrap {
+  border-radius: 20px;
+  border: 1px solid rgba(230, 216, 192, 0.86);
+  box-shadow: 0 10px 24px rgba(8, 43, 77, 0.04);
+}
+
+.encontreiros-page table th {
+  color: var(--primary);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background:
+    linear-gradient(180deg, rgba(234, 241, 248, 0.88), rgba(255, 252, 246, 0.88));
+}
+
+.encontreiros-page table td {
+  vertical-align: top;
+}
+
+.encontreiros-page .empty-state {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid rgba(230, 216, 192, 0.86);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(234, 241, 248, 0.54));
+}
+
+@media (max-width: 820px) {
+  .encontreiros-page .header {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .encontreiros-page .filters .col-4,
+  .encontreiros-page .filters .col-3,
+  .encontreiros-page .filters .col-12 {
+    grid-column: span 12;
+  }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page">
+<div class="page encontreiros-page">
   <div class="header">
     <div>
       <h1 class="title">
@@ -14,10 +174,13 @@
     </div>
   </div>
 
-  <section class="card">
+  <section class="card data-card">
     <div class="card-head">
-      <h2>Filtros</h2>
-      <p>Filtre por nome ou ano para localizar os registros.</p>
+      <div>
+        <span class="section-kicker">Histórico de serviço</span>
+        <h2>Filtros</h2>
+        <p>Filtre por nome ou ano para localizar os registros.</p>
+      </div>
     </div>
 
     <div class="card-body">
@@ -56,9 +219,9 @@
 
       {% if por_ano %}
         {% for ano, registros in por_ano.items() %}
-          <section class="card" style="margin-top:18px; box-shadow:none;">
+          <section class="card year-card">
             <div class="card-head">
-              <h2>{{ ano }}</h2>
+              <h2 class="year-title">{{ ano }}</h2>
             </div>
 
             <div class="card-body">
@@ -84,13 +247,13 @@
                   </table>
                 </div>
               {% else %}
-                <p class="small">Sem registros para este ano.</p>
+                <p class="small empty-state">Sem registros para este ano.</p>
               {% endif %}
             </div>
           </section>
         {% endfor %}
       {% else %}
-        <p class="small">Nenhum resultado encontrado com os filtros informados.</p>
+        <p class="small empty-state">Nenhum resultado encontrado com os filtros informados.</p>
       {% endif %}
     </div>
   </section>
