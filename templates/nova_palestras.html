@@ -4,43 +4,48 @@
 
 {% block extra_head %}
 <style>
-:root { --bg:#f6f7fb; --card:#ffffff; --muted:#64748b; --border:#e5e7eb; --ink:#0f172a; --brand:#2563eb; --danger:#b91c1c; --warn:#92400e; --ok:#065f46; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); background:
-      radial-gradient(1200px 800px at 80% -10%, #e0ebff 0%, rgba(224,235,255,0) 60%),
-      radial-gradient(1000px 600px at -10% 110%, #fff3d6 0%, rgba(255,243,214,0) 60%),
-      var(--bg); }
-    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
-    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap; }
-    h1 { margin:0; font-size: 22px; }
-    .muted { color:var(--muted); }
-    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; text-decoration:none; color:inherit; }
-    .btn.primary { background: var(--brand); color:#fff; border-color: var(--brand); }
-    .btn.warn { border-color:#f59e0b; }
-    .btn.danger { border-color: var(--danger); color: var(--danger); }
-    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-    label { display:block; font-size: 12px; font-weight:600; color:#334155; margin-bottom:6px; }
-    input, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-    .row { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    .status { margin-top:8px; font-size:13px; }
-    .ok { color:var(--ok); }
-    .warn-t { color:var(--warn); }
-    .err { color:var(--danger); }
-    .repbar { height:8px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
-    .repbar > div { height:100%; width:0%; transition: width .2s ease; }
-    .rep0 { background:#10b981; }
-    .rep1 { background:#22c55e; }
-    .rep2 { background:#eab308; }
-    .rep3 { background:#f59e0b; }
-    .rep4 { background:#f97316; }
-    .rep5 { background:#ef4444; }
-    .justify { display:none; margin-top:8px; }
-    .note { font-size:12px; color:#475569; margin-top:6px; }
+/* =========================================================
+   ETAPA 9 — PALESTRAS / CADASTRO DO ANO
+   Modernização visual preservando IDs, JS e APIs.
+========================================================= */
+
+.nova-palestras-page { max-width: 1120px; margin: 0 auto; padding: 8px 0 64px; color: var(--text); }
+.nova-palestras-page .header { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; padding: clamp(22px, 3.6vw, 38px); overflow: hidden; border: 1px solid rgba(230, 216, 192, 0.92); border-radius: 28px; background: linear-gradient(110deg, rgba(255,255,255,.94), rgba(255,252,246,.84)), url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right center / 62% 100% no-repeat; box-shadow: 0 22px 54px rgba(8, 43, 77, 0.09), inset 0 1px 0 rgba(255,255,255,.72); }
+.nova-palestras-page .header::before { content: ""; position: absolute; right: -110px; top: -130px; width: 340px; height: 340px; pointer-events: none; border-radius: 50%; background: radial-gradient(circle, rgba(201,154,46,.16), transparent 66%); }
+.nova-palestras-page .header > * { position: relative; z-index: 1; }
+.nova-palestras-page h1 { margin: 0; color: var(--primary); font-family: var(--font-display); font-size: clamp(34px, 4.4vw, 52px); font-weight: 800; line-height: 1.03; letter-spacing: -0.04em; }
+.nova-palestras-page h1::before { content: "\F490"; display: inline-grid; place-items: center; width: 56px; height: 56px; margin-right: 14px; vertical-align: middle; color: #fff; font-family: "bootstrap-icons"; font-size: 26px; border-radius: 20px; background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.24), transparent 32%), linear-gradient(135deg, var(--primary), #1f4f7a 52%, var(--primary-dark)); box-shadow: 0 16px 28px rgba(8,43,77,.16); }
+.nova-palestras-page .muted, .nova-palestras-page .note { color: var(--muted); line-height: 1.55; }
+.nova-palestras-page .note { font-size: 12px; margin-top: 8px; }
+.nova-palestras-page .btn { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; color: var(--primary); font-weight: 900; line-height: 1; text-decoration: none; cursor: pointer; border: 1px solid rgba(31,79,122,.16); border-radius: var(--radius-pill); background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(234,241,248,.72)); box-shadow: 0 8px 18px rgba(8,43,77,.06), inset 0 1px 0 rgba(255,255,255,.72); transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition), filter var(--transition); }
+.nova-palestras-page .btn:hover { transform: translateY(-1px); border-color: rgba(201,154,46,.42); box-shadow: 0 14px 26px rgba(8,43,77,.10), inset 0 1px 0 rgba(255,255,255,.78); }
+.nova-palestras-page .btn.primary, .nova-palestras-page .btn-primary { color: #fff; border-color: rgba(244,228,187,.42); background: linear-gradient(135deg, var(--primary), #1f4f7a 52%, var(--primary-dark)); box-shadow: 0 16px 26px rgba(8,43,77,.18), inset 0 1px 0 rgba(255,255,255,.18); }
+.nova-palestras-page .btn.warn { color: #92400e; border-color: rgba(245,158,11,.34); background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(254,243,199,.82)); }
+.nova-palestras-page .btn.danger { color: #991b1b; border-color: rgba(185,28,28,.28); background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(254,226,226,.78)); }
+.nova-palestras-page .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.nova-palestras-page .card { position: relative; overflow: hidden; padding: 18px; border: 1px solid rgba(230,216,192,.90); border-radius: 24px; background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(255,252,246,.78)); box-shadow: 0 14px 34px rgba(8,43,77,.06), inset 0 1px 0 rgba(255,255,255,.72); }
+.nova-palestras-page .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right top / 64% auto no-repeat; opacity: .06; }
+.nova-palestras-page .card > * { position: relative; z-index: 1; }
+.nova-palestras-page h3 { margin: 0 0 12px !important; color: var(--primary); font-family: var(--font-display); font-size: 23px; line-height: 1.15; letter-spacing: -0.025em; }
+.nova-palestras-page .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.nova-palestras-page label { display: block; margin-bottom: 6px; color: var(--primary); font-size: 12px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.nova-palestras-page input, .nova-palestras-page textarea { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; color: var(--text); font: inherit; background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(251,248,242,.72)); border: 1px solid rgba(201,154,46,.30); border-radius: 14px; outline: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.74), 0 8px 18px rgba(8,43,77,.04); transition: border-color var(--transition), box-shadow var(--transition), background var(--transition); }
+.nova-palestras-page textarea { min-height: 88px; resize: vertical; }
+.nova-palestras-page input:focus, .nova-palestras-page textarea:focus { background: #fff; border-color: rgba(31,79,122,.46); box-shadow: 0 0 0 4px rgba(31,79,122,.09), 0 12px 22px rgba(8,43,77,.07); }
+.nova-palestras-page .status { margin-top: 9px; min-height: 20px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.nova-palestras-page .ok { color: #166534; }
+.nova-palestras-page .warn-t { color: #92400e; }
+.nova-palestras-page .err { color: #b91c1c; }
+.nova-palestras-page .repbar { height: 9px; overflow: hidden; border-radius: 999px; background: rgba(226,232,240,.88); box-shadow: inset 0 1px 2px rgba(8,43,77,.08); }
+.nova-palestras-page .repbar > div { height: 100%; width: 0%; transition: width .2s ease; }
+.nova-palestras-page .rep0 { background: #10b981; } .nova-palestras-page .rep1 { background: #22c55e; } .nova-palestras-page .rep2 { background: #eab308; } .nova-palestras-page .rep3 { background: #f59e0b; } .nova-palestras-page .rep4 { background: #f97316; } .nova-palestras-page .rep5 { background: #ef4444; }
+.nova-palestras-page .justify { display: none; margin-top: 10px; padding-top: 12px; border-top: 1px dashed rgba(201,154,46,.36); }
+@media (max-width: 760px) { .nova-palestras-page .header { padding: 24px 20px; border-radius: 22px; } .nova-palestras-page h1 { font-size: 34px; } .nova-palestras-page h1::before { width: 48px; height: 48px; margin-right: 10px; font-size: 22px; border-radius: 17px; } .nova-palestras-page .row, .nova-palestras-page .grid { grid-template-columns: 1fr; } .nova-palestras-page .btn { width: 100%; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="wrap">
+<div class="wrap nova-palestras-page">
     <div class="header">
       <h1>Palestras — Ano</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">

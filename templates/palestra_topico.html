@@ -4,73 +4,40 @@
 
 {% block extra_head %}
 <style>
-  .palestra-wrap {
-    max-width: 1100px;
-    margin: 0 auto;
-  }
+/* =========================================================
+   ETAPA 9 — PALESTRA POR TÓPICO
+   Modernização visual preservando IDs, JS e APIs.
+========================================================= */
 
-  .palestra-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 16px;
-    align-items: start;
-  }
-
-  .palestra-row {
-    display: grid;
-    gap: 10px;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .suggest {
-    display: block;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: #fff;
-    text-decoration: none;
-    color: inherit;
-    margin-bottom: 8px;
-  }
-
-  .readonly {
-    background: #f8fafc;
-  }
-
-  .status {
-    margin-top: 8px;
-    font-size: 13px;
-  }
-
-  .ok { color: #065f46; }
-  .warn { color: #92400e; }
-  .err { color: #991b1b; }
-
-  .meter {
-    height: 8px;
-    border-radius: 999px;
-    background: linear-gradient(90deg,#16a34a 0%, #f59e0b 50%, #dc2626 100%);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .meter .fill {
-    height: 100%;
-    background: rgba(255,255,255,.6);
-    width: 0%;
-  }
-
-  @media (max-width: 900px) {
-    .palestra-layout,
-    .palestra-row {
-      grid-template-columns: 1fr;
-    }
-  }
+.palestra-topico-page { max-width: 1120px; margin: 0 auto; padding: 8px 0 64px; }
+.palestra-topico-page .page-header { position: relative; margin-bottom: 16px; padding: clamp(22px, 3.6vw, 38px); overflow: hidden; border: 1px solid rgba(230,216,192,.92); border-radius: 28px; background: linear-gradient(110deg, rgba(255,255,255,.94), rgba(255,252,246,.84)), url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right center / 62% 100% no-repeat; box-shadow: 0 22px 54px rgba(8,43,77,.09), inset 0 1px 0 rgba(255,255,255,.72); }
+.palestra-topico-page .page-header::before { content: ""; position: absolute; right: -110px; top: -130px; width: 340px; height: 340px; pointer-events: none; border-radius: 50%; background: radial-gradient(circle, rgba(201,154,46,.16), transparent 66%); }
+.palestra-topico-page .page-header > * { position: relative; z-index: 1; }
+.palestra-topico-page .page-title { margin: 0; color: var(--primary); font-family: var(--font-display); font-size: clamp(34px, 4.4vw, 52px); font-weight: 800; line-height: 1.03; letter-spacing: -0.04em; }
+.palestra-topico-page .page-subtitle { margin-top: 10px; color: var(--text-soft); line-height: 1.65; }
+.palestra-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.palestra-topico-page .card { overflow: hidden; border-radius: 24px; background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(255,252,246,.78)); box-shadow: 0 14px 34px rgba(8,43,77,.06), inset 0 1px 0 rgba(255,255,255,.72); }
+.palestra-topico-page .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right top / 64% auto no-repeat; opacity: .05; }
+.palestra-topico-page .card > * { position: relative; z-index: 1; }
+.palestra-row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.palestra-topico-page label { display: block; margin-bottom: 6px; color: var(--primary); font-size: 12px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.palestra-topico-page input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; color: var(--text); font: inherit; background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(251,248,242,.72)); border: 1px solid rgba(201,154,46,.30); border-radius: 14px; outline: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.74), 0 8px 18px rgba(8,43,77,.04); transition: border-color var(--transition), box-shadow var(--transition), background var(--transition); }
+.palestra-topico-page input:focus { background: #fff; border-color: rgba(31,79,122,.46); box-shadow: 0 0 0 4px rgba(31,79,122,.09), 0 12px 22px rgba(8,43,77,.07); }
+.palestra-topico-page .readonly { color: var(--muted); background: rgba(248,250,252,.76); border-color: rgba(230,216,192,.74); }
+.suggest { position: relative; display: block; margin-bottom: 8px; padding: 10px 12px 10px 34px; color: var(--text); text-decoration: none; border: 1px solid rgba(230,216,192,.88); border-radius: 15px; background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(234,241,248,.62)); box-shadow: 0 8px 18px rgba(8,43,77,.04); transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition); }
+.suggest::before { content: "\F4D7"; position: absolute; left: 11px; top: 10px; color: var(--accent-dark); font-family: "bootstrap-icons"; }
+.suggest:hover { transform: translateY(-1px); border-color: rgba(201,154,46,.42); box-shadow: 0 12px 24px rgba(8,43,77,.08); }
+.status { margin-top: 10px; min-height: 22px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.ok { color: #166534; } .warn { color: #92400e; } .err { color: #991b1b; }
+.meter { position: relative; height: 9px; overflow: hidden; border-radius: 999px; background: linear-gradient(90deg, #16a34a 0%, #f59e0b 50%, #dc2626 100%); box-shadow: inset 0 1px 2px rgba(8,43,77,.08); }
+.meter .fill { height: 100%; width: 0%; background: rgba(255,255,255,.62); }
+@media (max-width: 920px) { .palestra-layout, .palestra-row { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .palestra-topico-page .page-header { padding: 24px 20px; border-radius: 22px; } .palestra-topico-page .page-title { font-size: 34px; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="palestra-wrap">
+<div class="palestra-wrap palestra-topico-page">
   <section class="page-header">
     <div>
       <div class="eyebrow">Palestras</div>

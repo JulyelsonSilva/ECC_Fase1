@@ -2,8 +2,31 @@
 
 {% block title %}Palestrantes{% endblock %}
 
+{% block extra_head %}
+<style>
+/* =========================================================
+   ETAPA 9 — PALESTRANTES
+========================================================= */
+
+.palestrantes-page { gap: 22px; }
+.palestrantes-page .header { position: relative; padding: clamp(24px, 4vw, 42px); overflow: hidden; border: 1px solid rgba(230,216,192,.92); border-radius: 28px; background: linear-gradient(110deg, rgba(255,255,255,.94), rgba(255,252,246,.84)), url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right center / 62% 100% no-repeat; box-shadow: 0 22px 54px rgba(8,43,77,.09), inset 0 1px 0 rgba(255,255,255,.72); }
+.palestrantes-page .header::before { content: ""; position: absolute; right: -110px; top: -130px; width: 340px; height: 340px; pointer-events: none; border-radius: 50%; background: radial-gradient(circle, rgba(201,154,46,.16), transparent 66%); }
+.palestrantes-page .header > * { position: relative; z-index: 1; }
+.palestrantes-page .title i { color: var(--accent); filter: drop-shadow(0 8px 14px rgba(201,154,46,.16)); }
+.palestrantes-page .card { overflow: hidden; border-radius: 24px; background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(255,252,246,.78)); box-shadow: 0 14px 34px rgba(8,43,77,.06), inset 0 1px 0 rgba(255,255,255,.72); }
+.palestrantes-page .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: url("{{ url_for('static', filename='img/bg-fluid-lines.svg') }}") right top / 64% auto no-repeat; opacity: .045; }
+.palestrantes-page .card > * { position: relative; z-index: 1; }
+.palestrantes-page .year-card { margin-top: 18px; box-shadow: none; border-color: rgba(230,216,192,.82); background: linear-gradient(135deg, rgba(255,255,255,.90), rgba(234,241,248,.54)); }
+.palestrantes-page .year-card .card-head { border-bottom: 1px solid rgba(230,216,192,.74); background: linear-gradient(135deg, rgba(234,241,248,.70), rgba(255,247,226,.42)); }
+.palestrantes-page .year-card h2 { margin: 0; color: var(--primary); font-family: var(--font-display); font-size: 28px; line-height: 1.1; }
+.palestrantes-page table th { color: var(--primary); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; background: linear-gradient(180deg, rgba(234,241,248,.88), rgba(255,252,246,.88)); }
+.palestrantes-page table td:first-child { color: var(--primary); font-weight: 900; }
+@media (max-width: 720px) { .palestrantes-page .header { padding: 24px 20px; border-radius: 22px; } }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page">
+<div class="page palestrantes-page">
   <div class="header">
     <div>
       <h1 class="title"><i class="bi bi-megaphone"></i><span>Palestrantes</span></h1>
@@ -47,7 +70,7 @@
 
       {% if por_ano %}
         {% for ano, registros in por_ano.items() %}
-          <section class="card" style="margin-top:18px; box-shadow:none;">
+          <section class="card year-card">
             <div class="card-head"><h2>{{ ano }}</h2></div>
             <div class="card-body">
               {% if registros %}
