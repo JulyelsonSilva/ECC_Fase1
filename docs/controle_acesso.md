@@ -48,25 +48,22 @@ Depois do primeiro acesso, recomenda-se alterar a senha do usuário `super` ou c
 
 As permissões foram centralizadas em `auth.py`, na função `registrar_controle_acesso(app)`. Isso evita espalhar verificações manuais por todas as rotas e preserva a estrutura atual do projeto: `routes` para fluxo, `services` para regras/SQL, `utils` para helpers e `db.py` para conexão.
 
+## Etapa 4 - Minha conta e refinamento do menu
 
-## Etapa 3 — menu global e usuário no topo
+Foram incluídos os seguintes ajustes:
 
-O `base.html` passou a respeitar o contexto de permissões enviado pelo `auth.py`.
+- Nova rota `/minha-conta`, registrada em `auth.py`.
+- Novo template `templates/minha_conta.html`, herdando o `base.html`.
+- O usuário logado pode alterar o próprio nome e a própria senha.
+- Para salvar qualquer alteração, é obrigatório informar a senha atual.
+- A tela não permite alterar login, perfil ou paróquia.
+- Após alterar o nome, a sessão é atualizada para refletir o novo nome no topo da página.
+- O `base.html` passou a exibir o nome do usuário logado como link para `Minha conta`.
+- O menu superior passou a esconder os módulos operacionais de escrita conforme o perfil:
+  - `Montagem` somente para quem escreve em montagem.
+  - `Palestras` somente para quem escreve em palestras.
+  - `Círculos` somente para quem escreve em círculos.
+- O `index.html` passou a esconder os cards das pastas dirigentes quando o perfil não pode escrever na respectiva área.
+- O bloqueio global de acesso passou a impedir acesso direto, via URL, a telas GET de escrita, como `fichas`, `editar_encontrista`, `montagem/nova`, `equipe-montagem`, `palestras/nova` e `circulos/transferir`.
 
-A navegação superior agora segue estas regras:
-
-- `admin` não visualiza links de dados pastorais; permanece direcionado para a área administrativa.
-- perfis com acesso pastoral visualizam os módulos principais de consulta.
-- a troca de paróquia só aparece para `super` e `admin`.
-- o link `Admin` aparece para perfis que podem gerenciar paróquias ou usuários.
-- o nome do usuário logado aparece no topo da página, ao lado da opção de sair.
-
-O `auth.py` também passou a disponibilizar variáveis globais para os templates:
-
-- `pode_escrever_encontristas`
-- `pode_escrever_encontreiros`
-- `pode_escrever_montagem`
-- `pode_escrever_palestras`
-- `pode_escrever_circulos`
-
-Essas variáveis devem ser usadas para esconder botões de inclusão, edição, conclusão ou transferência conforme o perfil. O bloqueio principal continua no backend, em `registrar_controle_acesso(app)`.
+O bloqueio de gravação continua centralizado em `auth.py`, preservando a regra de que o backend é a proteção principal, enquanto o frontend apenas evita exibir botões e menus indevidos.
