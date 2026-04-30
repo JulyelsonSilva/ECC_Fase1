@@ -19,3 +19,12 @@
 - helpers de paróquia estão em utils.py
 - não duplicar lógica de sessão
 - não usar mysql.connector direto fora de db.py
+
+## Decisões técnicas importantes
+
+- Uso de pool de conexões para evitar overhead de conexão
+- Separação de responsabilidades:
+  - routes → fluxo
+  - services → lógica e SQL
+- Templates centralizados em base.html
+- Multi-paróquia via session (paroquia_id)
