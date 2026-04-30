@@ -2,57 +2,96 @@
 
 {% block title %}Login | Sistema do ECC{% endblock %}
 
+{% block body_class %}auth-body{% endblock %}
+
 {% block main_nav %}{% endblock %}
 {% block page_context %}{% endblock %}
 
 {% block content %}
-  <div style="max-width: 520px; margin: 0 auto; padding-top: 32px;">
-    <section class="hero-card">
-      <div class="eyebrow">Área restrita</div>
+<section class="auth-page">
 
-      <h1 class="page-title">Acesso ao Sistema do ECC</h1>
+  <div class="auth-bg-mark auth-bg-mark-left"></div>
+  <div class="auth-bg-mark auth-bg-mark-right"></div>
 
-      <p class="page-subtitle">
-        Informe seu usuário e senha para continuar.
-      </p>
+  <div class="auth-brand-corner">
+    <img
+      src="{{ url_for('static', filename='img/brasao_ecc_nacional.png') }}"
+      alt="Brasão do Encontro de Casais com Cristo"
+    >
+    <div>
+      <strong>ECC</strong>
+      <span>Encontro de Casais com Cristo</span>
+    </div>
+  </div>
 
-      {% if erro %}
-        <div class="flash error" style="margin-bottom: 16px;">
-          {{ erro }}
-        </div>
-      {% endif %}
+  <div class="auth-card">
 
-      <form method="post" action="{{ url_for('login') }}" class="stack">
-        <div>
-          <label class="form-label">Usuário</label>
+    <div class="auth-emblem">
+      <img
+        src="{{ url_for('static', filename='img/brasao_ecc_nacional.png') }}"
+        alt="Brasão Nacional do ECC"
+      >
+    </div>
+
+    <div class="auth-heading">
+      <span class="auth-kicker">Área restrita</span>
+      <h1>Sistema do ECC</h1>
+      <p>Acesse com seu usuário e senha.</p>
+    </div>
+
+    {% if erro %}
+      <div class="flash error auth-error">
+        {{ erro }}
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('login') }}" class="auth-form">
+
+      <div class="auth-field">
+        <label for="login">Usuário</label>
+
+        <div class="auth-input-wrap">
+          <i class="bi bi-person"></i>
           <input
+            id="login"
             type="text"
             name="login"
-            class="form-control"
             value="{{ login or '' }}"
             placeholder="Digite seu usuário"
             autocomplete="username"
             required
           >
         </div>
+      </div>
 
-        <div>
-          <label class="form-label">Senha</label>
+      <div class="auth-field">
+        <label for="senha">Senha</label>
+
+        <div class="auth-input-wrap">
+          <i class="bi bi-lock"></i>
           <input
+            id="senha"
             type="password"
             name="senha"
-            class="form-control"
             placeholder="Digite sua senha"
             autocomplete="current-password"
             required
           >
         </div>
+      </div>
 
-        <button type="submit" class="btn btn-primary">
-          <i class="bi bi-box-arrow-in-right"></i>
-          Entrar
-        </button>
-      </form>
-    </section>
+      <button type="submit" class="auth-submit">
+        <span>Entrar</span>
+        <i class="bi bi-arrow-right"></i>
+      </button>
+    </form>
+
+    <div class="auth-footer-line">
+      <span></span>
+      <strong></strong>
+      <span></span>
+    </div>
+
   </div>
+</section>
 {% endblock %}
