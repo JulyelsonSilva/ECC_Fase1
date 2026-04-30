@@ -1,9 +1,6 @@
 /*
   Arquivo CSS principal do Sistema do ECC.
-
-  Por enquanto, o projeto ainda mantém a maior parte dos estilos em styles.css.
-  Este arquivo passa a ser o ponto único recomendado para carregamento no base.html.
-  Futuramente, os estilos podem ser migrados aos poucos para arquivos modulares.
+  Mantém um ponto único de carregamento para a identidade visual global.
 */
 
 @import url("./styles.css");
