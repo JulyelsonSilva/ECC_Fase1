@@ -1,12 +1,10 @@
-from flask import request, jsonify, session
+from flask import request, jsonify
 
 from services.casais_service import montar_resposta_busca_casal
+from utils import paroquia_id_atual
 
 
 def register_casais_routes(app):
-
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
 
     @app.route("/api/casais/buscar")
     def api_casais_buscar():
