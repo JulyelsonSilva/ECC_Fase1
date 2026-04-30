@@ -164,9 +164,7 @@ def register_encontreiros_routes(
             dados = buscar_relatorio_casais(
                 paroquia_id=paroquia_id,
                 entrada=entrada,
-                titulo=titulo,
-                DB_CONFIG=DB_CONFIG,
-                safe_fetch_one=safe_fetch_one
+                titulo=titulo
             )
             resultados = dados["resultados"]
             titulo = dados["titulo"]
