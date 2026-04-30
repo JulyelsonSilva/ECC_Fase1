@@ -32,16 +32,6 @@ PERFIS_GERENCIAM_PAROQUIAS = {"super", "admin"}
 PERFIS_GERENCIAM_USUARIOS = {"super", "admin", "admin_paroquia", "montagem"}
 PERFIS_SEM_DADOS_PASTORAIS = {"admin"}
 
-# Rotas que exibem formulário/tela operacional de escrita.
-# Mesmo usando GET, devem ficar disponíveis apenas para perfis com permissão de gravação.
-ROTAS_SOMENTE_ESCRITA = {
-    "fichas": "encontristas",
-    "palestras_nova": "palestras",
-    "nova_montagem": "montagem",
-    "equipe_montagem": "montagem",
-    "circulos_transferir": "circulos",
-}
-
 # Perfis que podem gravar em cada área.
 PERMISSOES_ESCRITA = {
     "encontristas": {"super", "montagem", "fichas"},
@@ -177,15 +167,6 @@ def pode_escrever(area: str) -> bool:
     if perfil == "super":
         return True
     return perfil in PERMISSOES_ESCRITA.get(area, set())
-
-
-def pode_acessar_area(area: str) -> bool:
-    """Indica se o usuário pode visualizar uma área pastoral.
-
-    Admin geral não acessa dados pastorais. Os demais perfis vinculados
-    à paróquia podem consultar os dados da própria paróquia.
-    """
-    return pode_ver_dados_pastorais()
 
 
 def login_required(view_func):
@@ -337,6 +318,8 @@ def registrar_auth_routes(app):
 def registrar_controle_acesso(app):
     @app.context_processor
     def inject_usuario_atual():
+        pode_ver_dados = pode_ver_dados_pastorais()
+
         return {
             "usuario_atual": usuario_logado(),
             "usuario_nome": usuario_nome_atual(),
@@ -344,9 +327,7 @@ def registrar_controle_acesso(app):
             "pode_trocar_paroquia": pode_selecionar_paroquia(),
             "pode_admin_paroquias": pode_gerenciar_paroquias(),
             "pode_admin_usuarios": pode_gerenciar_usuarios(),
-            "pode_ver_dados": pode_ver_dados_pastorais(),
-            "pode_acessar_area": pode_acessar_area,
-            "pode_escrever": pode_escrever,
+            "pode_ver_dados": pode_ver_dados,
             "pode_escrever_encontristas": pode_escrever("encontristas"),
             "pode_escrever_encontreiros": pode_escrever("encontreiros"),
             "pode_escrever_montagem": pode_escrever("montagem"),
@@ -398,11 +379,9 @@ def registrar_controle_acesso(app):
         } and not pode_gerenciar_usuarios():
             return _resposta_acesso_negado("Seu perfil não permite gerenciar usuários.")
 
-        # Bloqueio de telas que são essencialmente de escrita, mesmo quando acessadas por GET.
-        if endpoint in ROTAS_SOMENTE_ESCRITA:
-            area_rota = ROTAS_SOMENTE_ESCRITA[endpoint]
-            if not pode_escrever(area_rota):
-                return _resposta_acesso_negado("Seu perfil permite consultar, mas não acessar telas de alteração destes dados.")
+        # Tela de ficha é cadastro de encontristas. Quem só consulta deve ir para Encontristas.
+        if endpoint == "fichas" and not pode_escrever("encontristas"):
+            return _resposta_acesso_negado("Seu perfil permite consultar encontristas, mas não cadastrar ficha.")
 
         # Bloqueio de escrita por área.
         if request.method not in {"GET", "HEAD", "OPTIONS"} and endpoint not in POSTS_DE_CONSULTA:
