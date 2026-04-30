@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, redirect, url_for, session
+from flask import render_template, request, jsonify
 
 from services.palestras_service import (
     listar_anos_palestras,
@@ -13,18 +13,14 @@ from services.palestras_service import (
 )
 
 
+from utils import paroquia_id_atual, exigir_paroquia, json_sem_paroquia
+
+
 def register_palestras_routes(
     app,
     PALESTRAS_TITULOS,
     PALESTRAS_SOLO,
 ):
-    def paroquia_id_atual():
-        return session.get("paroquia_id")
-
-    def exigir_paroquia():
-        if not paroquia_id_atual():
-            return redirect(url_for("selecionar_paroquia"))
-        return None
 
     @app.route('/palestras')
     def palestras_painel():
@@ -72,7 +68,7 @@ def register_palestras_routes(
     def api_palestras_validate_compat():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         palestra = (data.get('titulo') or data.get('palestra') or '').strip()
@@ -125,7 +121,7 @@ def register_palestras_routes(
     def api_palestras_save_compat():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         ano = data.get('ano')
@@ -166,7 +162,7 @@ def register_palestras_routes(
     def api_palestras_buscar():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         palestra = (data.get('palestra') or '').strip()
@@ -201,7 +197,7 @@ def register_palestras_routes(
     def api_palestras_adicionar():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         ano = data.get('ano')
@@ -242,7 +238,7 @@ def register_palestras_routes(
     def api_palestras_encerrar():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         ano = data.get('ano')
@@ -264,7 +260,7 @@ def register_palestras_routes(
     def api_palestras_marcar_status():
         paroquia_id = paroquia_id_atual()
         if not paroquia_id:
-            return jsonify({"ok": False, "msg": "Paróquia não selecionada."}), 400
+            return json_sem_paroquia()
 
         data = request.get_json(silent=True) or {}
         _id = data.get('id')
