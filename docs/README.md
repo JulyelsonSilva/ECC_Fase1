@@ -27,3 +27,21 @@ Sistema web para gerenciamento de Encontro de Casais com Cristo (ECC).
 - Pool de conexões implementado
 - Services centralizados (encontristas/encontreiros)
 - Pronto para iniciar controle de acesso
+
+## Deploy
+
+O sistema está hospedado em ambiente cloud (Render/Railway).
+
+Configurações importantes:
+
+- Variáveis de ambiente:
+  - DB_HOST
+  - DB_USER
+  - DB_PASSWORD
+  - DB_NAME
+  - SECRET_KEY
+
+- Uso de pool de conexões em `db.py`
+
+Observação:
+Evitar conexões diretas com mysql.connector fora de db.py.
