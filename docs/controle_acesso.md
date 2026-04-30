@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-O sistema passa a exigir login por usuário e senha. O acesso é definido pelo perfil do usuário e, quando aplicável, pela paróquia vinculada ao cadastro.
+O sistema exige login por usuário e senha. O acesso é definido pelo perfil do usuário e, quando aplicável, pela paróquia vinculada ao cadastro.
 
 ## Perfis
 
@@ -24,46 +24,77 @@ Somente `super` e `admin` acessam a tela de seleção de paróquia e podem troca
 
 Os demais perfis entram diretamente na paróquia vinculada ao próprio usuário. Para esses perfis, a troca de paróquia não é exibida nem permitida.
 
+## Banco de dados
+
+A tabela `usuarios` faz parte do schema oficial do sistema e é garantida por `services/schema_service.py`, na função `ensure_database_schema()`.
+
+Estrutura esperada:
+
+```sql
+CREATE TABLE usuarios (
+  id INT NOT NULL AUTO_INCREMENT,
+  paroquia_id INT NULL,
+  nome VARCHAR(150) NOT NULL,
+  login VARCHAR(80) NOT NULL,
+  senha_hash VARCHAR(255) NOT NULL,
+  perfil ENUM('super','admin','admin_paroquia','montagem','palestras','fichas','pos_encontro','financas','usuario_comum') NOT NULL DEFAULT 'usuario_comum',
+  ativo TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_usuarios_login (login),
+  KEY idx_usuarios_paroquia (paroquia_id),
+  KEY idx_usuarios_perfil (perfil),
+  KEY idx_usuarios_ativo (ativo),
+  CONSTRAINT fk_usuarios_paroquia FOREIGN KEY (paroquia_id) REFERENCES paroquias(id) ON DELETE SET NULL
+);
+```
+
+Não há necessidade de executar arquivo SQL separado para a tabela `usuarios` quando `/__init_db__` estiver funcionando. O banco atual já possui `senha_hash` e `ativo`.
+
 ## Arquivos principais
 
-- `auth.py`: autenticação, sessão, perfis e bloqueio global de permissões.
+- `auth.py`: autenticação, sessão, perfis, hash de senha e bloqueio global de permissões.
 - `routes/admin.py`: administração de paróquias e usuários.
+- `services/schema_service.py`: garantia da estrutura do banco, incluindo `usuarios`.
 - `templates/login.html`: tela inicial de login usando o `base.html`.
+- `templates/minha_conta.html`: alteração de nome e senha do próprio usuário.
 - `templates/admin_usuarios.html`: CRUD administrativo de usuários.
-- `templates/base.html`: exibição condicional de navegação, administração, troca de paróquia e logout.
-- `sql/controle_acesso.sql`: criação da tabela `usuarios` e usuário inicial.
+- `templates/base.html`: navegação condicional, usuário logado, administração, troca de paróquia e logout.
 
-## Primeiro acesso
+## Minha conta
 
-Execute `sql/controle_acesso.sql` no Adminer.
+A rota `/minha-conta` permite ao usuário alterar o próprio nome e senha.
 
-Usuário inicial:
+Regras:
 
-- Login: `super`
-- Senha: `admin123`
+- exige senha atual para salvar qualquer alteração;
+- não permite alterar login;
+- não permite alterar perfil;
+- não permite alterar paróquia;
+- após alterar o nome, a sessão é atualizada para refletir o novo nome no topo da página.
 
-Depois do primeiro acesso, recomenda-se alterar a senha do usuário `super` ou criar outro usuário `super` e desativar o inicial.
+## Segurança básica
 
-## Observação de manutenção
+As senhas são armazenadas em `senha_hash`, não em texto puro.
 
-As permissões foram centralizadas em `auth.py`, na função `registrar_controle_acesso(app)`. Isso evita espalhar verificações manuais por todas as rotas e preserva a estrutura atual do projeto: `routes` para fluxo, `services` para regras/SQL, `utils` para helpers e `db.py` para conexão.
+O sistema usa o formato interno:
 
-## Etapa 4 - Minha conta e refinamento do menu
+```text
+sha256$salt$digest
+```
 
-Foram incluídos os seguintes ajustes:
+A comparação é feita por hash, usando `hmac.compare_digest`.
 
-- Nova rota `/minha-conta`, registrada em `auth.py`.
-- Novo template `templates/minha_conta.html`, herdando o `base.html`.
-- O usuário logado pode alterar o próprio nome e a própria senha.
-- Para salvar qualquer alteração, é obrigatório informar a senha atual.
-- A tela não permite alterar login, perfil ou paróquia.
-- Após alterar o nome, a sessão é atualizada para refletir o novo nome no topo da página.
-- O `base.html` passou a exibir o nome do usuário logado como link para `Minha conta`.
-- O menu superior passou a esconder os módulos operacionais de escrita conforme o perfil:
-  - `Montagem` somente para quem escreve em montagem.
-  - `Palestras` somente para quem escreve em palestras.
-  - `Círculos` somente para quem escreve em círculos.
-- O `index.html` passou a esconder os cards das pastas dirigentes quando o perfil não pode escrever na respectiva área.
-- O bloqueio global de acesso passou a impedir acesso direto, via URL, a telas GET de escrita, como `fichas`, `editar_encontrista`, `montagem/nova`, `equipe-montagem`, `palestras/nova` e `circulos/transferir`.
+A tabela também possui o campo `ativo`, permitindo bloquear o acesso de um usuário sem apagar seu histórico.
 
-O bloqueio de gravação continua centralizado em `auth.py`, preservando a regra de que o backend é a proteção principal, enquanto o frontend apenas evita exibir botões e menus indevidos.
+## Manutenção
+
+As permissões foram centralizadas em `auth.py`, na função `registrar_controle_acesso(app)`. Isso evita espalhar verificações manuais por todas as rotas e preserva a estrutura atual do projeto:
+
+- `routes` para fluxo;
+- `services` para regras e SQL;
+- `utils` para helpers;
+- `db.py` para conexão.
+
+O backend continua sendo a proteção principal. O frontend apenas evita exibir menus, cards e botões indevidos.
