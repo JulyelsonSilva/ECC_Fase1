@@ -3,34 +3,46 @@
 {% block title %}Início | Sistema ECC{% endblock %}
 
 {% block content %}
-<div class="page">
+<div class="page home-page">
 
-  <section class="card hero">
-    <div class="eyebrow">Portal ECC</div>
-    <h2>Bem-vindo ao Sistema do ECC</h2>
-    <p>
-      Um ambiente unificado para organizar, acompanhar e visualizar as principais
-      frentes do Encontro de Casais com Cristo, com clareza, ordem e identidade pastoral.
-    </p>
+  <section class="card hero home-hero">
+    <div class="home-hero-content">
+      <div class="eyebrow">Portal ECC</div>
 
-    <div class="hero-actions">
-      {% if pode_escrever_montagem %}
-        <a href="{{ url_for('montagem') }}" class="btn btn-primary">
-          <i class="bi bi-diagram-3"></i>
-          <span>Acessar Montagem</span>
+      <h2>Bem-vindo ao Sistema do ECC</h2>
+
+      <p>
+        Um ambiente integrado para apoiar e fortalecer a caminhada dos casais,
+        equipes e dirigentes, com organização, comunhão e amor ao serviço do
+        Encontro de Casais com Cristo.
+      </p>
+
+      <div class="hero-actions">
+        {% if pode_escrever_montagem %}
+          <a href="{{ url_for('montagem') }}" class="btn btn-primary">
+            <i class="bi bi-diagram-3"></i>
+            <span>Acessar Montagem</span>
+          </a>
+        {% endif %}
+
+        <a href="{{ url_for('encontristas') }}" class="btn btn-secondary">
+          <i class="bi bi-person-hearts"></i>
+          <span>Ver Encontristas</span>
         </a>
-      {% endif %}
+      </div>
+    </div>
 
-      <a href="{{ url_for('encontristas') }}" class="btn btn-secondary">
-        <i class="bi bi-person-hearts"></i>
-        <span>Ver Encontristas</span>
-      </a>
+    <div class="home-hero-visual" aria-hidden="true">
+      <img
+        src="{{ url_for('static', filename='img/brasao_ecc_nacional.png') }}"
+        alt=""
+      >
     </div>
   </section>
 
   <div class="home-stack">
 
-    <section class="home-section">
+    <section class="home-section home-section-featured">
       <div class="home-section-header">
         <div>
           <div class="section-kicker">Nível estratégico</div>
@@ -43,63 +55,67 @@
 
       <div class="home-grid">
         {% if pode_escrever_montagem %}
-        <a href="{{ url_for('montagem') }}" class="ecc-card">
-                  <div class="ecc-card-icon">
-                    <i class="bi bi-diagram-3"></i>
-                  </div>
-                  <div>
-                    <h3>Montagem</h3>
-                    <p>Prepare, distribua e acompanhe a formação das equipes do encontro.</p>
-                    <span class="card-link-hint">
-                      Acessar <i class="bi bi-arrow-right"></i>
-                    </span>
-                  </div>
-                </a>
+          <a href="{{ url_for('montagem') }}" class="ecc-card ecc-card-blue">
+            <div class="ecc-card-icon">
+              <img src="{{ url_for('static', filename='img/icons/icon-montagem.svg') }}" alt="">
+            </div>
+
+            <div class="ecc-card-content">
+              <h3>Montagem</h3>
+              <p>Prepare, distribua e acompanhe a formação das equipes do encontro.</p>
+              <span class="card-link-hint">
+                Acessar <i class="bi bi-arrow-right"></i>
+              </span>
+            </div>
+          </a>
         {% endif %}
 
         {% if pode_escrever_encontristas %}
-        <a href="{{ url_for('fichas') }}" class="ecc-card">
-                  <div class="ecc-card-icon">
-                    <i class="bi bi-clipboard-check"></i>
-                  </div>
-                  <div>
-                    <h3>Fichas</h3>
-                    <p>Gerencie inscrições, dados iniciais e informações administrativas do encontro.</p>
-                    <span class="card-link-hint">
-                      Acessar <i class="bi bi-arrow-right"></i>
-                    </span>
-                  </div>
-                </a>
+          <a href="{{ url_for('fichas') }}" class="ecc-card ecc-card-gold">
+            <div class="ecc-card-icon">
+              <img src="{{ url_for('static', filename='img/icons/icon-fichas.svg') }}" alt="">
+            </div>
+
+            <div class="ecc-card-content">
+              <h3>Fichas</h3>
+              <p>Gerencie inscrições, dados iniciais e informações administrativas do encontro.</p>
+              <span class="card-link-hint">
+                Acessar <i class="bi bi-arrow-right"></i>
+              </span>
+            </div>
+          </a>
         {% endif %}
 
         {% if pode_escrever_palestras %}
-        <a href="{{ url_for('palestras_painel') }}" class="ecc-card">
-                  <div class="ecc-card-icon">
-                    <i class="bi bi-mic"></i>
-                  </div>
-                  <div>
-                    <h3>Palestras</h3>
-                    <p>Organize os temas, casais responsáveis e a estrutura pastoral das palestras.</p>
-                    <span class="card-link-hint">
-                      Acessar <i class="bi bi-arrow-right"></i>
-                    </span>
-                  </div>
-                </a>
+          <a href="{{ url_for('palestras_painel') }}" class="ecc-card ecc-card-blue">
+            <div class="ecc-card-icon">
+              <img src="{{ url_for('static', filename='img/icons/icon-palestras.svg') }}" alt="">
+            </div>
+
+            <div class="ecc-card-content">
+              <h3>Palestras</h3>
+              <p>Organize os temas, casais responsáveis e a estrutura pastoral das palestras.</p>
+              <span class="card-link-hint">
+                Acessar <i class="bi bi-arrow-right"></i>
+              </span>
+            </div>
+          </a>
         {% endif %}
 
         {% if pode_escrever_circulos %}
-        <a href="{{ url_for('circulos_list') }}" class="ecc-card">
-                  <div class="ecc-card-icon">
-                    <i class="bi bi-people"></i>
-                  </div>
-                  <div>
-                    <h3>Círculos</h3>
-                    <p>Gerencie os círculos, composição dos grupos e movimentações relacionadas.</p>
-                    <span class="card-link-hint">
-                      Acessar <i class="bi bi-arrow-right"></i>
-                    </span>
-                  </div>
-                </a>
+          <a href="{{ url_for('circulos_list') }}" class="ecc-card ecc-card-gold">
+            <div class="ecc-card-icon">
+              <img src="{{ url_for('static', filename='img/icons/icon-circulos.svg') }}" alt="">
+            </div>
+
+            <div class="ecc-card-content">
+              <h3>Círculos</h3>
+              <p>Gerencie os círculos, composição dos grupos e movimentações relacionadas.</p>
+              <span class="card-link-hint">
+                Acessar <i class="bi bi-arrow-right"></i>
+              </span>
+            </div>
+          </a>
         {% endif %}
       </div>
     </section>
@@ -116,11 +132,12 @@
       </div>
 
       <div class="home-grid">
-        <a href="{{ url_for('encontristas') }}" class="ecc-card">
+        <a href="{{ url_for('encontristas') }}" class="ecc-card ecc-card-blue">
           <div class="ecc-card-icon">
-            <i class="bi bi-person-hearts"></i>
+            <img src="{{ url_for('static', filename='img/icons/icon-encontristas.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Encontristas</h3>
             <p>Consulte e atualize a base de casais participantes dos encontros.</p>
             <span class="card-link-hint">
@@ -129,11 +146,12 @@
           </div>
         </a>
 
-        <a href="{{ url_for('encontreiros') }}" class="ecc-card">
+        <a href="{{ url_for('encontreiros') }}" class="ecc-card ecc-card-gold">
           <div class="ecc-card-icon">
-            <i class="bi bi-people-fill"></i>
+            <img src="{{ url_for('static', filename='img/icons/icon-encontreiros.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Encontreiros</h3>
             <p>Gerencie os casais que trabalharam nos encontros e suas equipes.</p>
             <span class="card-link-hint">
@@ -142,11 +160,12 @@
           </div>
         </a>
 
-        <a href="{{ url_for('palestrantes') }}" class="ecc-card">
+        <a href="{{ url_for('palestrantes') }}" class="ecc-card ecc-card-blue">
           <div class="ecc-card-icon">
-            <i class="bi bi-person-video3"></i>
+            <img src="{{ url_for('static', filename='img/icons/icon-palestras.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Palestrantes</h3>
             <p>Visualize e mantenha o cadastro de casais e responsáveis por palestras.</p>
             <span class="card-link-hint">
@@ -155,11 +174,12 @@
           </div>
         </a>
 
-        <a href="{{ url_for('pesquisa_circulos') }}" class="ecc-card">
+        <a href="{{ url_for('pesquisa_circulos') }}" class="ecc-card ecc-card-gold">
           <div class="ecc-card-icon">
-            <i class="bi bi-search"></i>
+            <img src="{{ url_for('static', filename='img/icons/icon-circulos.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Pesquisa de Círculos</h3>
             <p>Pesquise integrantes, composição e histórico dos círculos cadastrados.</p>
             <span class="card-link-hint">
@@ -182,11 +202,12 @@
       </div>
 
       <div class="home-grid-2">
-        <a href="{{ url_for('visao_casal') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-heart"></i>
+        <a href="{{ url_for('visao_casal') }}" class="ecc-card ecc-card-wide ecc-card-blue">
+          <div class="ecc-card-illustration">
+            <img src="{{ url_for('static', filename='img/icons/icon-visao-casal.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Visão do Casal</h3>
             <p>Consulte de forma objetiva a trajetória, atuações e histórico do casal no ECC.</p>
             <span class="card-link-hint">
@@ -195,11 +216,12 @@
           </div>
         </a>
 
-        <a href="{{ url_for('visao_equipes') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-diagram-2"></i>
+        <a href="{{ url_for('visao_equipes') }}" class="ecc-card ecc-card-wide ecc-card-gold">
+          <div class="ecc-card-illustration">
+            <img src="{{ url_for('static', filename='img/icons/icon-visao-equipes.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Visão de Equipes</h3>
             <p>Tenha uma visão geral das equipes montadas, composição e distribuição funcional.</p>
             <span class="card-link-hint">
@@ -222,11 +244,12 @@
       </div>
 
       <div class="home-grid-2">
-        <a href="{{ url_for('organograma') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-bezier2"></i>
+        <a href="{{ url_for('organograma') }}" class="ecc-card ecc-card-wide ecc-card-blue">
+          <div class="ecc-card-illustration">
+            <img src="{{ url_for('static', filename='img/icons/icon-organograma.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Organograma</h3>
             <p>Visualize a estrutura hierárquica e funcional das equipes do ECC.</p>
             <span class="card-link-hint">
@@ -235,11 +258,12 @@
           </div>
         </a>
 
-        <a href="{{ url_for('relatorios') }}" class="ecc-card">
-          <div class="ecc-card-icon">
-            <i class="bi bi-bar-chart-line"></i>
+        <a href="{{ url_for('relatorios') }}" class="ecc-card ecc-card-wide ecc-card-gold">
+          <div class="ecc-card-illustration">
+            <img src="{{ url_for('static', filename='img/icons/icon-relatorios.svg') }}" alt="">
           </div>
-          <div>
+
+          <div class="ecc-card-content">
             <h3>Relatórios</h3>
             <p>Analise indicadores, consolidados e painéis de apoio à gestão do encontro.</p>
             <span class="card-link-hint">
