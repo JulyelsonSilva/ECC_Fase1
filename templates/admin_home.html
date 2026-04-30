@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Configurações | Sistema do ECC{% endblock %}
+{% block title %}Administração | Sistema do ECC{% endblock %}
 
 {% block main_nav %}
   <nav class="main-nav" aria-label="Ações administrativas">
-    <a href="{{ url_for('selecionar_paroquia') }}" class="nav-link">
-      <i class="bi bi-arrow-left"></i>
-      <span>Voltar</span>
+    {% if pode_ver_dados %}
+      <a href="{{ url_for('index') }}" class="nav-link">
+        <i class="bi bi-house-door"></i>
+        <span>Início</span>
+      </a>
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}" class="nav-link">
+      <i class="bi bi-box-arrow-right"></i>
+      <span>Sair</span>
     </a>
   </nav>
 {% endblock %}
@@ -19,43 +26,42 @@
       <div class="eyebrow">Administração</div>
       <h1 class="page-title">Configurações do Sistema</h1>
       <p class="page-subtitle">
-        Gerencie os cadastros estruturais do sistema.
+        Gerencie os cadastros estruturais permitidos para o seu perfil.
       </p>
     </div>
-
-    <a href="{{ url_for('selecionar_paroquia') }}" class="btn btn-soft">
-      <i class="bi bi-arrow-left"></i>
-      Voltar
-    </a>
   </section>
 
   <section class="cards-grid">
 
-    <a class="feature-card" href="{{ url_for('admin_paroquias', token=token) }}">
-      <div class="feature-icon">
-        <i class="bi bi-buildings"></i>
-      </div>
+    {% if pode_admin_paroquias %}
+      <a class="feature-card" href="{{ url_for('admin_paroquias') }}">
+        <div class="feature-icon">
+          <i class="bi bi-buildings"></i>
+        </div>
 
-      <div>
-        <h2>Paróquias</h2>
-        <p>
-          Cadastrar, editar, ativar ou desativar paróquias disponíveis no sistema.
-        </p>
-      </div>
-    </a>
+        <div>
+          <h2>Paróquias</h2>
+          <p>
+            Cadastrar, editar, ativar ou desativar paróquias disponíveis no sistema.
+          </p>
+        </div>
+      </a>
+    {% endif %}
 
-    <div class="feature-card is-disabled">
-      <div class="feature-icon">
-        <i class="bi bi-people-gear"></i>
-      </div>
+    {% if pode_admin_usuarios %}
+      <a class="feature-card" href="{{ url_for('admin_usuarios') }}">
+        <div class="feature-icon">
+          <i class="bi bi-people-gear"></i>
+        </div>
 
-      <div>
-        <h2>Usuários</h2>
-        <p>
-          Controle de usuários e permissões será implementado na próxima etapa.
-        </p>
-      </div>
-    </div>
+        <div>
+          <h2>Usuários</h2>
+          <p>
+            Cadastrar, editar, ativar ou desativar usuários conforme o perfil de acesso.
+          </p>
+        </div>
+      </a>
+    {% endif %}
 
   </section>
 {% endblock %}

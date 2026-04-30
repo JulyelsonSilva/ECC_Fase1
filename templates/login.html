@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Login | Sistema do ECC{% endblock %}
+
+{% block main_nav %}{% endblock %}
+{% block page_context %}{% endblock %}
+
+{% block content %}
+  <div style="max-width: 520px; margin: 0 auto; padding-top: 32px;">
+    <section class="hero-card">
+      <div class="eyebrow">Área restrita</div>
+
+      <h1 class="page-title">Acesso ao Sistema do ECC</h1>
+
+      <p class="page-subtitle">
+        Informe seu usuário e senha para continuar.
+      </p>
+
+      {% if erro %}
+        <div class="flash error" style="margin-bottom: 16px;">
+          {{ erro }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('login') }}" class="stack">
+        <div>
+          <label class="form-label">Usuário</label>
+          <input
+            type="text"
+            name="login"
+            class="form-control"
+            value="{{ login or '' }}"
+            placeholder="Digite seu usuário"
+            autocomplete="username"
+            required
+          >
+        </div>
+
+        <div>
+          <label class="form-label">Senha</label>
+          <input
+            type="password"
+            name="senha"
+            class="form-control"
+            placeholder="Digite sua senha"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-box-arrow-in-right"></i>
+          Entrar
+        </button>
+      </form>
+    </section>
+  </div>
+{% endblock %}

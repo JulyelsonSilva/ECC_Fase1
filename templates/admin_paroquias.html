@@ -4,7 +4,7 @@
 
 {% block main_nav %}
   <nav class="main-nav" aria-label="Ações administrativas">
-    <a href="{{ url_for('admin_home', token=token) }}" class="nav-link">
+    <a href="{{ url_for('admin_home') }}" class="nav-link">
       <i class="bi bi-arrow-left"></i>
       <span>Voltar</span>
     </a>
@@ -23,7 +23,7 @@
       </p>
     </div>
 
-    <a href="{{ url_for('admin_home', token=token) }}" class="btn btn-secondary">
+    <a href="{{ url_for('admin_home') }}" class="btn btn-secondary">
       <i class="bi bi-arrow-left"></i>
       Voltar
     </a>
@@ -37,7 +37,6 @@
           <h2>Editar paróquia</h2>
 
           <form method="post" action="{{ url_for('admin_paroquias_atualizar', paroquia_id=editando.id) }}" class="stack">
-            <input type="hidden" name="token" value="{{ token }}">
 
             <div>
               <label>Nome da paróquia</label>
@@ -60,7 +59,7 @@
             </div>
 
             <div class="form-actions">
-              <a class="btn btn-secondary" href="{{ url_for('admin_paroquias', token=token) }}">
+              <a class="btn btn-secondary" href="{{ url_for('admin_paroquias') }}">
                 Cancelar
               </a>
 
@@ -75,7 +74,6 @@
           <h2>Cadastrar nova paróquia</h2>
 
           <form method="post" action="{{ url_for('admin_paroquias_criar') }}" class="stack">
-            <input type="hidden" name="token" value="{{ token }}">
 
             <div>
               <label>Nome da paróquia</label>
@@ -155,13 +153,12 @@
                   <td>
                     <div class="table-actions">
                       <a class="btn btn-sm btn-secondary"
-                         href="{{ url_for('admin_paroquias_editar', paroquia_id=p.id, token=token) }}">
+                         href="{{ url_for('admin_paroquias_editar', paroquia_id=p.id) }}">
                         <i class="bi bi-pencil"></i>
                         Editar
                       </a>
 
                       <form method="post" action="{{ url_for('admin_paroquias_alternar', paroquia_id=p.id) }}">
-                        <input type="hidden" name="token" value="{{ token }}">
 
                         {% if p.ativa %}
                           <button type="submit" class="btn btn-sm btn-secondary">

@@ -37,70 +37,82 @@
 
       {% block main_nav %}
         <nav class="main-nav" aria-label="Navegação principal">
-          <a
-            href="{{ url_for('index') }}"
-            class="nav-link {% if request.endpoint == 'index' %}is-active{% endif %}"
-            {% if request.endpoint == 'index' %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-house-door"></i>
-            <span>Início</span>
-          </a>
+          {% if pode_ver_dados %}
+            <a
+              href="{{ url_for('index') }}"
+              class="nav-link {% if request.endpoint == 'index' %}is-active{% endif %}"
+              {% if request.endpoint == 'index' %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-house-door"></i>
+              <span>Início</span>
+            </a>
 
-          <a
-            href="{{ url_for('encontristas') }}"
-            class="nav-link {% if request.endpoint in ['encontristas', 'fichas', 'editar_encontrista'] %}is-active{% endif %}"
-            {% if request.endpoint in ['encontristas', 'fichas', 'editar_encontrista'] %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-person-hearts"></i>
-            <span>Encontristas</span>
-          </a>
+            <a
+              href="{{ url_for('encontristas') }}"
+              class="nav-link {% if request.endpoint in ['encontristas', 'fichas', 'editar_encontrista'] %}is-active{% endif %}"
+              {% if request.endpoint in ['encontristas', 'fichas', 'editar_encontrista'] %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-person-hearts"></i>
+              <span>Encontristas</span>
+            </a>
 
-          <a
-            href="{{ url_for('encontreiros') }}"
-            class="nav-link {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes', 'visao_equipes_select', 'relatorio_casais'] %}is-active{% endif %}"
-            {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes', 'visao_equipes_select', 'relatorio_casais'] %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-people"></i>
-            <span>Encontreiros</span>
-          </a>
+            <a
+              href="{{ url_for('encontreiros') }}"
+              class="nav-link {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes', 'visao_equipes_select', 'relatorio_casais'] %}is-active{% endif %}"
+              {% if request.endpoint in ['encontreiros', 'visao_casal', 'visao_equipes', 'visao_equipes_select', 'relatorio_casais'] %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-people"></i>
+              <span>Encontreiros</span>
+            </a>
 
-          <a
-            href="{{ url_for('montagem') }}"
-            class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}is-active{% endif %}"
-            {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-diagram-3"></i>
-            <span>Montagem</span>
-          </a>
+            <a
+              href="{{ url_for('montagem') }}"
+              class="nav-link {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}is-active{% endif %}"
+              {% if request.endpoint in ['montagem', 'nova_montagem', 'equipe_montagem', 'organograma', 'imprimir_relatorio_montagem'] %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-diagram-3"></i>
+              <span>Montagem</span>
+            </a>
 
-          <a
-            href="{{ url_for('palestras_painel') }}"
-            class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}is-active{% endif %}"
-            {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-mic"></i>
-            <span>Palestras</span>
-          </a>
+            <a
+              href="{{ url_for('palestras_painel') }}"
+              class="nav-link {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}is-active{% endif %}"
+              {% if request.endpoint in ['palestras_painel', 'palestras_nova', 'palestrantes'] %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-mic"></i>
+              <span>Palestras</span>
+            </a>
 
-          <a
-            href="{{ url_for('circulos_list') }}"
-            class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}is-active{% endif %}"
-            {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-circle"></i>
-            <span>Círculos</span>
-          </a>
+            <a
+              href="{{ url_for('circulos_list') }}"
+              class="nav-link {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}is-active{% endif %}"
+              {% if request.endpoint in ['circulos_list', 'circulos_view', 'pesquisa_circulos', 'circulos_transferir'] %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-circle"></i>
+              <span>Círculos</span>
+            </a>
 
-          <a
-            href="{{ url_for('relatorios') }}"
-            class="nav-link {% if request.endpoint in ['relatorios', 'docs_index', 'auditoria_enderecos', 'relatorio_mapa_encontristas'] %}is-active{% endif %}"
-            {% if request.endpoint in ['relatorios', 'docs_index', 'auditoria_enderecos', 'relatorio_mapa_encontristas'] %}aria-current="page"{% endif %}
-          >
-            <i class="bi bi-bar-chart"></i>
-            <span>Relatórios</span>
-          </a>
+            <a
+              href="{{ url_for('relatorios') }}"
+              class="nav-link {% if request.endpoint in ['relatorios', 'docs_index', 'auditoria_enderecos', 'relatorio_mapa_encontristas'] %}is-active{% endif %}"
+              {% if request.endpoint in ['relatorios', 'docs_index', 'auditoria_enderecos', 'relatorio_mapa_encontristas'] %}aria-current="page"{% endif %}
+            >
+              <i class="bi bi-bar-chart"></i>
+              <span>Relatórios</span>
+            </a>
+          {% endif %}
 
-          {% if paroquia_nome %}
+          {% if pode_admin_paroquias or pode_admin_usuarios %}
+            <a
+              href="{{ url_for('admin_home') }}"
+              class="nav-link {% if request.endpoint in ['admin_home', 'admin_paroquias', 'admin_usuarios'] %}is-active{% endif %}"
+            >
+              <i class="bi bi-gear"></i>
+              <span>Admin</span>
+            </a>
+          {% endif %}
+
+          {% if paroquia_nome and pode_trocar_paroquia %}
             <a
               href="{{ url_for('trocar_paroquia') }}"
               class="nav-link"
@@ -108,6 +120,13 @@
             >
               <i class="bi bi-arrow-left-right"></i>
               <span>Trocar</span>
+            </a>
+          {% endif %}
+
+          {% if usuario_atual %}
+            <a href="{{ url_for('logout') }}" class="nav-link">
+              <i class="bi bi-box-arrow-right"></i>
+              <span>Sair</span>
             </a>
           {% endif %}
         </nav>
@@ -122,9 +141,11 @@
           <div class="page-context" style="margin-bottom: 16px;">
             <span class="eyebrow">Paróquia selecionada</span>
             <strong>{{ paroquia_nome }}</strong>
-            <a href="{{ url_for('trocar_paroquia') }}" style="margin-left: 10px;">
-              Trocar
-            </a>
+            {% if pode_trocar_paroquia %}
+              <a href="{{ url_for('trocar_paroquia') }}" style="margin-left: 10px;">
+                Trocar
+              </a>
+            {% endif %}
           </div>
         {% endif %}
       {% endblock %}
